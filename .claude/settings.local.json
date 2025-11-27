@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash",
+      "Edit",
+      "Read",
+      "Write",
+      "Glob",
+      "Grep",
+      "Task",
+      "NotebookEdit",
+      "SlashCommand",
+      "Skill",
+      "BashOutput",
+      "KillShell"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

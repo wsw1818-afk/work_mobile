@@ -1,0 +1,68 @@
+{
+  // Claude Code 자동 승인 설정
+  "claude.autoApproveTools": "all",
+  "claude.confirmBeforeApprove": false,
+
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "explicit"
+  },
+
+  // TypeScript
+  "typescript.tsdk": "node_modules/typescript/lib",
+  "typescript.enablePromptUseWorkspaceTsdk": true,
+
+  // 파일 제외
+  "files.exclude": {
+    "**/.git": true,
+    "**/.DS_Store": true,
+    "**/node_modules": true,
+    "**/.expo": true,
+    "**/.expo-shared": true
+  },
+
+  // 검색 제외
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/.expo": true,
+    "**/ios": true,
+    "**/android": true
+  },
+
+  // React Native
+  "reactNativeTools.showUserTips": false,
+  "reactNativeTools.projectRoot": "",
+
+  // ESLint
+  "eslint.validate": [
+    "javascript",
+    "javascriptreact",
+    "typescript",
+    "typescriptreact"
+  ],
+
+  // 경고 하이라이트
+  "todo-tree.general.tags": [
+    "BUG",
+    "HACK",
+    "FIXME",
+    "TODO",
+    "XXX",
+    "CRITICAL"
+  ],
+  "todo-tree.highlights.customHighlight": {
+    "CRITICAL": {
+      "icon": "alert",
+      "foreground": "#fff",
+      "background": "#ef4444",
+      "iconColour": "#ef4444"
+    },
+    "BUG": {
+      "icon": "bug",
+      "foreground": "#fff",
+      "background": "#f97316",
+      "iconColour": "#f97316"
+    }
+  }
+}

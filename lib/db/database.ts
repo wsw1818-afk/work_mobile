@@ -36,7 +36,7 @@ export interface BankAccount {
 export interface Transaction {
   id: number;
   amount: number;
-  type: 'income' | 'expense';
+  type: 'income' | 'expense' | 'transfer' | 'refund';
   categoryId: number;
   categoryName?: string;
   categoryColor?: string;
@@ -44,12 +44,18 @@ export interface Transaction {
   accountName?: string;
   description: string;
   merchant?: string;
+  memo?: string;
   date: string; // YYYY-MM-DD
   tags?: string; // JSON array
   isTransfer?: boolean;
   fromBankAccountId?: number;
   toBankAccountId?: number;
+  status?: 'confirmed' | 'pending' | 'excluded';
+  cardName?: string;
+  cardNumber?: string;
   createdAt: string;
+  updatedAt?: string;
+  isExcluded?: number; // 제외 패턴에 의해 제외되는지 여부 (0 또는 1)
 }
 
 export interface Budget {
@@ -83,10 +89,14 @@ export interface RecurringTransaction {
 export interface Receipt {
   id: number;
   url: string; // 로컬 파일 경로
+  mime: string;
+  size: number;
   ocrText?: string;
   ocrAmount?: number;
   ocrDate?: string;
   ocrMerchant?: string;
+  ocrCardNumber?: string;
+  ocrConfidence?: number;
   linkedTxId?: number;
   uploadedAt: string;
 }
@@ -99,6 +109,14 @@ export interface Rule {
   assignCategoryId: number;
   assignCategoryName?: string;
   priority: number;
+  isActive: boolean;
+  createdAt: string;
+}
+
+export interface ExclusionPattern {
+  id: number;
+  pattern: string;
+  type: 'merchant' | 'memo' | 'both' | 'account';
   isActive: boolean;
   createdAt: string;
 }
@@ -150,17 +168,22 @@ class Database {
       CREATE TABLE IF NOT EXISTS transactions (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         amount REAL NOT NULL,
-        type TEXT NOT NULL CHECK(type IN ('income', 'expense')),
+        type TEXT NOT NULL CHECK(type IN ('income', 'expense', 'transfer', 'refund')),
         categoryId INTEGER NOT NULL,
         accountId INTEGER,
         description TEXT,
         merchant TEXT,
+        memo TEXT,
         date TEXT NOT NULL,
         tags TEXT,
         isTransfer INTEGER DEFAULT 0,
         fromBankAccountId INTEGER,
         toBankAccountId INTEGER,
+        status TEXT DEFAULT 'confirmed' CHECK(status IN ('confirmed', 'pending', 'excluded')),
+        cardName TEXT,
+        cardNumber TEXT,
         createdAt TEXT NOT NULL,
+        updatedAt TEXT,
         FOREIGN KEY (categoryId) REFERENCES categories(id),
         FOREIGN KEY (accountId) REFERENCES accounts(id),
         FOREIGN KEY (fromBankAccountId) REFERENCES bank_accounts(id),
@@ -199,10 +222,14 @@ class Database {
       CREATE TABLE IF NOT EXISTS receipts (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         url TEXT NOT NULL,
+        mime TEXT NOT NULL,
+        size INTEGER NOT NULL,
         ocrText TEXT,
         ocrAmount REAL,
         ocrDate TEXT,
         ocrMerchant TEXT,
+        ocrCardNumber TEXT,
+        ocrConfidence REAL,
         linkedTxId INTEGER,
         uploadedAt TEXT NOT NULL,
         FOREIGN KEY (linkedTxId) REFERENCES transactions(id)
@@ -220,12 +247,192 @@ class Database {
         FOREIGN KEY (assignCategoryId) REFERENCES categories(id)
       );
 
+      CREATE TABLE IF NOT EXISTS exclusion_patterns (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        pattern TEXT NOT NULL,
+        type TEXT NOT NULL CHECK(type IN ('merchant', 'memo', 'both', 'account')),
+        isActive INTEGER DEFAULT 1,
+        createdAt TEXT NOT NULL
+      );
+
       CREATE INDEX IF NOT EXISTS idx_transactions_date ON transactions(date);
       CREATE INDEX IF NOT EXISTS idx_transactions_type ON transactions(type);
       CREATE INDEX IF NOT EXISTS idx_transactions_category ON transactions(categoryId);
       CREATE INDEX IF NOT EXISTS idx_budgets_month ON budgets(month);
       CREATE INDEX IF NOT EXISTS idx_recurring_active ON recurring_transactions(isActive);
+      CREATE INDEX IF NOT EXISTS idx_exclusion_patterns_active ON exclusion_patterns(isActive);
     `);
+
+    // 데이터베이스 마이그레이션: 누락된 컬럼 추가
+    try {
+      // categories 테이블: excludeFromStats 컬럼 추가
+      const categoriesInfo = await this.db.getAllAsync('PRAGMA table_info(categories)') as Array<{name: string}>;
+      const hasExcludeFromStats = categoriesInfo.some(col => col.name === 'excludeFromStats');
+
+      if (!hasExcludeFromStats) {
+        console.log('Adding excludeFromStats column to categories table...');
+        await this.db.execAsync(`
+          ALTER TABLE categories ADD COLUMN excludeFromStats INTEGER DEFAULT 0;
+        `);
+        console.log('Successfully added excludeFromStats column');
+      }
+
+      // categories 테이블: isFixedExpense 컬럼 추가
+      const hasIsFixedExpense = categoriesInfo.some(col => col.name === 'isFixedExpense');
+      if (!hasIsFixedExpense) {
+        console.log('Adding isFixedExpense column to categories table...');
+        await this.db.execAsync(`
+          ALTER TABLE categories ADD COLUMN isFixedExpense INTEGER DEFAULT 0;
+        `);
+        console.log('Successfully added isFixedExpense column');
+      }
+
+      // transactions 테이블: 누락된 컬럼들 확인 및 추가
+      const transactionsInfo = await this.db.getAllAsync('PRAGMA table_info(transactions)') as Array<{name: string}>;
+
+      // isTransfer 컬럼 추가
+      const hasIsTransfer = transactionsInfo.some(col => col.name === 'isTransfer');
+      if (!hasIsTransfer) {
+        console.log('Adding isTransfer column to transactions table...');
+        await this.db.execAsync(`
+          ALTER TABLE transactions ADD COLUMN isTransfer INTEGER DEFAULT 0;
+        `);
+        console.log('Successfully added isTransfer column');
+      }
+
+      // accountId 컬럼 추가
+      const hasAccountId = transactionsInfo.some(col => col.name === 'accountId');
+      if (!hasAccountId) {
+        console.log('Adding accountId column to transactions table...');
+        await this.db.execAsync(`
+          ALTER TABLE transactions ADD COLUMN accountId INTEGER;
+        `);
+        console.log('Successfully added accountId column');
+      }
+
+      // categoryId 컬럼 추가 (필수 컬럼이므로 기본값 필요)
+      const hasCategoryId = transactionsInfo.some(col => col.name === 'categoryId');
+      if (!hasCategoryId) {
+        console.log('Adding categoryId column to transactions table...');
+        await this.db.execAsync(`
+          ALTER TABLE transactions ADD COLUMN categoryId INTEGER NOT NULL DEFAULT 1;
+        `);
+        console.log('Successfully added categoryId column');
+      }
+
+      // fromBankAccountId 컬럼 추가
+      const hasFromBankAccountId = transactionsInfo.some(col => col.name === 'fromBankAccountId');
+      if (!hasFromBankAccountId) {
+        console.log('Adding fromBankAccountId column to transactions table...');
+        await this.db.execAsync(`
+          ALTER TABLE transactions ADD COLUMN fromBankAccountId INTEGER;
+        `);
+        console.log('Successfully added fromBankAccountId column');
+      }
+
+      // toBankAccountId 컬럼 추가
+      const hasToBankAccountId = transactionsInfo.some(col => col.name === 'toBankAccountId');
+      if (!hasToBankAccountId) {
+        console.log('Adding toBankAccountId column to transactions table...');
+        await this.db.execAsync(`
+          ALTER TABLE transactions ADD COLUMN toBankAccountId INTEGER;
+        `);
+        console.log('Successfully added toBankAccountId column');
+      }
+
+      // cardName 컬럼 추가
+      const hasCardName = transactionsInfo.some(col => col.name === 'cardName');
+      if (!hasCardName) {
+        console.log('Adding cardName column to transactions table...');
+        await this.db.execAsync(`
+          ALTER TABLE transactions ADD COLUMN cardName TEXT;
+        `);
+        console.log('Successfully added cardName column');
+      }
+
+      // cardNumber 컬럼 추가
+      const hasCardNumber = transactionsInfo.some(col => col.name === 'cardNumber');
+      if (!hasCardNumber) {
+        console.log('Adding cardNumber column to transactions table...');
+        await this.db.execAsync(`
+          ALTER TABLE transactions ADD COLUMN cardNumber TEXT;
+        `);
+        console.log('Successfully added cardNumber column');
+      }
+
+      // description 컬럼 추가
+      const hasDescription = transactionsInfo.some(col => col.name === 'description');
+      if (!hasDescription) {
+        console.log('Adding description column to transactions table...');
+        await this.db.execAsync(`
+          ALTER TABLE transactions ADD COLUMN description TEXT;
+        `);
+        console.log('Successfully added description column');
+      }
+
+      // merchant 컬럼 추가
+      const hasMerchant = transactionsInfo.some(col => col.name === 'merchant');
+      if (!hasMerchant) {
+        console.log('Adding merchant column to transactions table...');
+        await this.db.execAsync(`
+          ALTER TABLE transactions ADD COLUMN merchant TEXT;
+        `);
+        console.log('Successfully added merchant column');
+      }
+
+      // memo 컬럼 추가
+      const hasMemo = transactionsInfo.some(col => col.name === 'memo');
+      if (!hasMemo) {
+        console.log('Adding memo column to transactions table...');
+        await this.db.execAsync(`
+          ALTER TABLE transactions ADD COLUMN memo TEXT;
+        `);
+        console.log('Successfully added memo column');
+      }
+
+      // tags 컬럼 추가
+      const hasTags = transactionsInfo.some(col => col.name === 'tags');
+      if (!hasTags) {
+        console.log('Adding tags column to transactions table...');
+        await this.db.execAsync(`
+          ALTER TABLE transactions ADD COLUMN tags TEXT;
+        `);
+        console.log('Successfully added tags column');
+      }
+
+      // status 컬럼 추가
+      const hasStatus = transactionsInfo.some(col => col.name === 'status');
+      if (!hasStatus) {
+        console.log('Adding status column to transactions table...');
+        await this.db.execAsync(`
+          ALTER TABLE transactions ADD COLUMN status TEXT DEFAULT 'confirmed';
+        `);
+        console.log('Successfully added status column');
+      }
+
+      // createdAt 컬럼 추가 (필수 컬럼)
+      const hasCreatedAt = transactionsInfo.some(col => col.name === 'createdAt');
+      if (!hasCreatedAt) {
+        console.log('Adding createdAt column to transactions table...');
+        await this.db.execAsync(`
+          ALTER TABLE transactions ADD COLUMN createdAt TEXT NOT NULL DEFAULT (datetime('now'));
+        `);
+        console.log('Successfully added createdAt column');
+      }
+
+      // updatedAt 컬럼 추가
+      const hasUpdatedAt = transactionsInfo.some(col => col.name === 'updatedAt');
+      if (!hasUpdatedAt) {
+        console.log('Adding updatedAt column to transactions table...');
+        await this.db.execAsync(`
+          ALTER TABLE transactions ADD COLUMN updatedAt TEXT;
+        `);
+        console.log('Successfully added updatedAt column');
+      }
+    } catch (migrationError) {
+      console.error('Migration error (non-fatal):', migrationError);
+      // 마이그레이션 실패는 치명적이지 않음 (이미 컬럼이 있거나 새 DB인 경우)
+    }
 
     // 기본 데이터 초기화
     await this.seedDefaultData();
@@ -274,8 +481,8 @@ class Database {
   async getCategories(type?: 'income' | 'expense'): Promise<Category[]> {
     const db = await this.init();
     const query = type
-      ? 'SELECT * FROM categories WHERE type = ? ORDER BY name'
-      : 'SELECT * FROM categories ORDER BY type, name';
+      ? 'SELECT * FROM categories WHERE categories.type = ? ORDER BY name'
+      : 'SELECT * FROM categories ORDER BY categories.type, name';
 
     return type
       ? await db.getAllAsync<Category>(query, [type])
@@ -461,10 +668,10 @@ class Database {
 
   // ===== 거래 관리 =====
 
-  async addTransaction(transaction: Omit<Transaction, 'id' | 'createdAt'>): Promise<number> {
+  async addTransaction(transaction: Omit<Transaction, 'id' | 'createdAt' | 'updatedAt'>): Promise<number> {
     const db = await this.init();
     const result = await db.runAsync(
-      'INSERT INTO transactions (amount, type, categoryId, accountId, description, merchant, date, tags, isTransfer, fromBankAccountId, toBankAccountId, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime(\'now\'))',
+      'INSERT INTO transactions (amount, type, categoryId, accountId, description, merchant, memo, date, tags, isTransfer, fromBankAccountId, toBankAccountId, status, cardName, cardNumber, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime(\'now\'), datetime(\'now\'))',
       [
         transaction.amount,
         transaction.type,
@@ -472,36 +679,77 @@ class Database {
         transaction.accountId || null,
         transaction.description || '',
         transaction.merchant || null,
+        transaction.memo || null,
         transaction.date,
         transaction.tags || null,
         transaction.isTransfer ? 1 : 0,
         transaction.fromBankAccountId || null,
         transaction.toBankAccountId || null,
+        transaction.status || 'confirmed',
+        transaction.cardName || null,
+        transaction.cardNumber || null,
       ]
     );
     return result.lastInsertRowId;
   }
 
-  async getTransactions(startDate?: string, endDate?: string): Promise<Transaction[]> {
+  async getTransactions(startDate?: string, endDate?: string, includeExcluded = true): Promise<Transaction[]> {
     const db = await this.init();
     let query = `
-      SELECT t.*, c.name as categoryName, c.color as categoryColor, a.name as accountName
+      SELECT
+        t.id, t.amount, t.type as type, t.categoryId, t.accountId, t.description,
+        t.merchant, t.memo, t.date, t.tags, t.isTransfer, t.fromBankAccountId,
+        t.toBankAccountId, t.status, t.cardName, t.cardNumber, t.createdAt, t.updatedAt,
+        c.name as categoryName, c.color as categoryColor, a.name as accountName,
+        CASE
+          WHEN t.status = 'excluded' THEN 1
+          WHEN EXISTS (
+            SELECT 1 FROM exclusion_patterns ep
+            WHERE ep.isActive = 1
+            AND (
+              (ep.type = 'merchant' AND t.merchant LIKE '%' || ep.pattern || '%')
+              OR (ep.type = 'memo' AND t.memo LIKE '%' || ep.pattern || '%')
+              OR (ep.type = 'both' AND (t.merchant LIKE '%' || ep.pattern || '%' OR t.memo LIKE '%' || ep.pattern || '%'))
+              OR (ep.type = 'account' AND a.name LIKE '%' || ep.pattern || '%')
+            )
+          ) THEN 1
+          ELSE 0
+        END as isExcluded
       FROM transactions t
       LEFT JOIN categories c ON t.categoryId = c.id
       LEFT JOIN accounts a ON t.accountId = a.id
     `;
 
     const params: any[] = [];
+    const conditions: string[] = [];
 
     if (startDate && endDate) {
-      query += ' WHERE t.date >= ? AND t.date <= ?';
+      conditions.push('t.date >= ? AND t.date <= ?');
       params.push(startDate, endDate);
     } else if (startDate) {
-      query += ' WHERE t.date >= ?';
+      conditions.push('t.date >= ?');
       params.push(startDate);
     } else if (endDate) {
-      query += ' WHERE t.date <= ?';
+      conditions.push('t.date <= ?');
       params.push(endDate);
+    }
+
+    if (!includeExcluded) {
+      conditions.push('t.status != \'excluded\'');
+      conditions.push(`NOT EXISTS (
+        SELECT 1 FROM exclusion_patterns ep
+        WHERE ep.isActive = 1
+        AND (
+          (ep.type = 'merchant' AND t.merchant LIKE '%' || ep.pattern || '%')
+          OR (ep.type = 'memo' AND t.memo LIKE '%' || ep.pattern || '%')
+          OR (ep.type = 'both' AND (t.merchant LIKE '%' || ep.pattern || '%' OR t.memo LIKE '%' || ep.pattern || '%'))
+          OR (ep.type = 'account' AND a.name LIKE '%' || ep.pattern || '%')
+        )
+      )`);
+    }
+
+    if (conditions.length > 0) {
+      query += ' WHERE ' + conditions.join(' AND ');
     }
 
     query += ' ORDER BY t.date DESC, t.createdAt DESC';
@@ -512,7 +760,11 @@ class Database {
   async getTransactionById(id: number): Promise<Transaction | null> {
     const db = await this.init();
     const result = await db.getFirstAsync<Transaction>(
-      `SELECT t.*, c.name as categoryName, c.color as categoryColor, a.name as accountName
+      `SELECT
+        t.id, t.amount, t.type, t.categoryId, t.accountId, t.description,
+        t.merchant, t.memo, t.date, t.tags, t.isTransfer, t.fromBankAccountId,
+        t.toBankAccountId, t.status, t.cardName, t.cardNumber, t.createdAt, t.updatedAt,
+        c.name as categoryName, c.color as categoryColor, a.name as accountName
        FROM transactions t
        LEFT JOIN categories c ON t.categoryId = c.id
        LEFT JOIN accounts a ON t.accountId = a.id
@@ -522,9 +774,9 @@ class Database {
     return result || null;
   }
 
-  async updateTransaction(id: number, transaction: Partial<Omit<Transaction, 'id' | 'createdAt'>>): Promise<void> {
+  async updateTransaction(id: number, transaction: Partial<Omit<Transaction, 'id' | 'createdAt' | 'updatedAt'>>): Promise<void> {
     const db = await this.init();
-    const fields: string[] = [];
+    const fields: string[] = ['updatedAt = datetime(\'now\')'];
     const values: any[] = [];
 
     if (transaction.amount !== undefined) {
@@ -551,6 +803,10 @@ class Database {
       fields.push('merchant = ?');
       values.push(transaction.merchant);
     }
+    if (transaction.memo !== undefined) {
+      fields.push('memo = ?');
+      values.push(transaction.memo);
+    }
     if (transaction.date !== undefined) {
       fields.push('date = ?');
       values.push(transaction.date);
@@ -563,11 +819,21 @@ class Database {
       fields.push('isTransfer = ?');
       values.push(transaction.isTransfer ? 1 : 0);
     }
-
-    if (fields.length > 0) {
-      values.push(id);
-      await db.runAsync(`UPDATE transactions SET ${fields.join(', ')} WHERE id = ?`, values);
+    if (transaction.status !== undefined) {
+      fields.push('status = ?');
+      values.push(transaction.status);
     }
+    if (transaction.cardName !== undefined) {
+      fields.push('cardName = ?');
+      values.push(transaction.cardName);
+    }
+    if (transaction.cardNumber !== undefined) {
+      fields.push('cardNumber = ?');
+      values.push(transaction.cardNumber);
+    }
+
+    values.push(id);
+    await db.runAsync(`UPDATE transactions SET ${fields.join(', ')} WHERE id = ?`, values);
   }
 
   async deleteTransaction(id: number): Promise<void> {
@@ -579,7 +845,11 @@ class Database {
     const db = await this.init();
     const searchPattern = `%${keyword}%`;
     return await db.getAllAsync<Transaction>(
-      `SELECT t.*, c.name as categoryName, c.color as categoryColor, a.name as accountName
+      `SELECT
+        t.id, t.amount, t.type, t.categoryId, t.accountId, t.description,
+        t.merchant, t.memo, t.date, t.tags, t.isTransfer, t.fromBankAccountId,
+        t.toBankAccountId, t.status, t.cardName, t.cardNumber, t.createdAt, t.updatedAt,
+        c.name as categoryName, c.color as categoryColor, a.name as accountName
        FROM transactions t
        LEFT JOIN categories c ON t.categoryId = c.id
        LEFT JOIN accounts a ON t.accountId = a.id
@@ -598,13 +868,24 @@ class Database {
 
     const result = await db.getFirstAsync<{ income: number; expense: number }>(
       `SELECT
-        COALESCE(SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END), 0) as income,
-        COALESCE(SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END), 0) as expense
+        COALESCE(SUM(CASE WHEN t.type = 'income' THEN t.amount ELSE 0 END), 0) as income,
+        COALESCE(SUM(CASE WHEN t.type = 'expense' THEN t.amount ELSE 0 END), 0) as expense
        FROM transactions t
        LEFT JOIN categories c ON t.categoryId = c.id
+       LEFT JOIN accounts a ON t.accountId = a.id
        WHERE t.date >= ? AND t.date <= ?
-       AND (c.excludeFromStats IS NULL OR c.excludeFromStats = 0)
-       AND t.isTransfer = 0`,
+       AND t.isTransfer = 0
+       AND t.status != 'excluded'
+       AND NOT EXISTS (
+         SELECT 1 FROM exclusion_patterns ep
+         WHERE ep.isActive = 1
+         AND (
+           (ep.type = 'merchant' AND t.merchant LIKE '%' || ep.pattern || '%')
+           OR (ep.type = 'memo' AND t.memo LIKE '%' || ep.pattern || '%')
+           OR (ep.type = 'both' AND (t.merchant LIKE '%' || ep.pattern || '%' OR t.memo LIKE '%' || ep.pattern || '%'))
+           OR (ep.type = 'account' AND a.name LIKE '%' || ep.pattern || '%')
+         )
+       )`,
       [startDate, endDate]
     );
 
@@ -616,23 +897,50 @@ class Database {
     const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
     const endDate = `${year}-${String(month).padStart(2, '0')}-31`;
 
-    return await db.getAllAsync(
+    const stats = await db.getAllAsync<{
+      categoryName: string;
+      categoryColor: string;
+      categoryId: number;
+      total: number;
+      count: number;
+      isFixedExpense: number;
+    }>(
       `SELECT
         c.name as categoryName,
         c.color as categoryColor,
         c.id as categoryId,
+        c.isFixedExpense as isFixedExpense,
         SUM(t.amount) as total,
         COUNT(t.id) as count
        FROM transactions t
        JOIN categories c ON t.categoryId = c.id
-       WHERE t.type = 'expense'
-       AND t.date >= ? AND t.date <= ?
-       AND (c.excludeFromStats IS NULL OR c.excludeFromStats = 0)
+       LEFT JOIN accounts a ON t.accountId = a.id
+       WHERE t.date >= ? AND t.date <= ?
+       AND t.type = 'expense'
        AND t.isTransfer = 0
+       AND t.status != 'excluded'
+       AND NOT EXISTS (
+         SELECT 1 FROM exclusion_patterns ep
+         WHERE ep.isActive = 1
+         AND (
+           (ep.type = 'merchant' AND t.merchant LIKE '%' || ep.pattern || '%')
+           OR (ep.type = 'memo' AND t.memo LIKE '%' || ep.pattern || '%')
+           OR (ep.type = 'both' AND (t.merchant LIKE '%' || ep.pattern || '%' OR t.memo LIKE '%' || ep.pattern || '%'))
+           OR (ep.type = 'account' AND a.name LIKE '%' || ep.pattern || '%')
+         )
+       )
        GROUP BY c.id
        ORDER BY total DESC`,
       [startDate, endDate]
     );
+
+    // 총 지출 계산 및 퍼센티지 추가
+    const totalExpense = stats.reduce((sum, stat) => sum + stat.total, 0);
+    return stats.map(stat => ({
+      ...stat,
+      isFixedExpense: stat.isFixedExpense === 1,
+      percentage: totalExpense > 0 ? (stat.total / totalExpense) * 100 : 0
+    }));
   }
 
   // ===== 예산 관리 =====
@@ -797,6 +1105,220 @@ class Database {
   async deleteRule(id: number): Promise<void> {
     const db = await this.init();
     await db.runAsync('DELETE FROM rules WHERE id = ?', [id]);
+  }
+
+  // 기존 거래에 카테고리 규칙 적용
+  async applyCategoryRulesToExistingTransactions(): Promise<{ updated: number; details: Array<{ rulePattern: string; count: number }> }> {
+    const db = await this.init();
+    const rules = await this.getRules(true); // 활성화된 규칙만
+
+    let totalUpdated = 0;
+    const details: Array<{ rulePattern: string; count: number }> = [];
+
+    for (const rule of rules) {
+      let query = 'UPDATE transactions SET categoryId = ?, updatedAt = datetime(\'now\') WHERE ';
+      const conditions: string[] = [];
+
+      if (rule.checkMerchant) {
+        conditions.push('merchant LIKE ?');
+      }
+      if (rule.checkMemo) {
+        conditions.push('memo LIKE ?');
+      }
+
+      if (conditions.length === 0) continue;
+
+      query += `(${conditions.join(' OR ')})`;
+
+      const params: any[] = [rule.assignCategoryId];
+      if (rule.checkMerchant) {
+        params.push(`%${rule.pattern}%`);
+      }
+      if (rule.checkMemo) {
+        params.push(`%${rule.pattern}%`);
+      }
+
+      const result = await db.runAsync(query, params);
+      const count = result.changes;
+      totalUpdated += count;
+
+      if (count > 0) {
+        details.push({
+          rulePattern: rule.pattern,
+          count: count,
+        });
+      }
+    }
+
+    return { updated: totalUpdated, details };
+  }
+
+  // 기존 거래에 제외 규칙 적용
+  async applyExclusionPatternsToExistingTransactions(): Promise<{ updated: number; details: Array<{ pattern: string; count: number }> }> {
+    const db = await this.init();
+    const patterns = await this.getExclusionPatterns(true); // 활성화된 패턴만
+
+    let totalUpdated = 0;
+    const details: Array<{ pattern: string; count: number }> = [];
+
+    for (const exclusion of patterns) {
+      let query = '';
+      const params: any[] = [];
+
+      if (exclusion.type === 'merchant') {
+        query = 'UPDATE transactions SET status = \'excluded\', updatedAt = datetime(\'now\') WHERE (status IS NULL OR status != \'excluded\') AND merchant LIKE ?';
+        params.push(`%${exclusion.pattern}%`);
+      } else if (exclusion.type === 'memo') {
+        query = 'UPDATE transactions SET status = \'excluded\', updatedAt = datetime(\'now\') WHERE (status IS NULL OR status != \'excluded\') AND memo LIKE ?';
+        params.push(`%${exclusion.pattern}%`);
+      } else if (exclusion.type === 'both') {
+        query = 'UPDATE transactions SET status = \'excluded\', updatedAt = datetime(\'now\') WHERE (status IS NULL OR status != \'excluded\') AND (merchant LIKE ? OR memo LIKE ?)';
+        params.push(`%${exclusion.pattern}%`, `%${exclusion.pattern}%`);
+      } else if (exclusion.type === 'account') {
+        query = 'UPDATE transactions SET status = \'excluded\', updatedAt = datetime(\'now\') WHERE id IN (SELECT t.id FROM transactions t LEFT JOIN accounts a ON t.accountId = a.id WHERE (t.status IS NULL OR t.status != \'excluded\') AND a.name LIKE ?)';
+        params.push(`%${exclusion.pattern}%`);
+      }
+
+      if (!query) continue;
+
+      const result = await db.runAsync(query, params);
+      const count = result.changes;
+      totalUpdated += count;
+
+      if (count > 0) {
+        details.push({
+          pattern: exclusion.pattern,
+          count: count,
+        });
+      }
+    }
+
+    return { updated: totalUpdated, details };
+  }
+
+  // ===== 영수증 관리 =====
+
+  async getReceipts(): Promise<Receipt[]> {
+    const db = await this.init();
+    return await db.getAllAsync<Receipt>(
+      'SELECT * FROM receipts ORDER BY uploadedAt DESC'
+    );
+  }
+
+  async getReceipt(id: number): Promise<Receipt | null> {
+    const db = await this.init();
+    return await db.getFirstAsync<Receipt>(
+      'SELECT * FROM receipts WHERE id = ?',
+      [id]
+    );
+  }
+
+  async addReceipt(receipt: Omit<Receipt, 'id'>): Promise<number> {
+    const db = await this.init();
+    const result = await db.runAsync(
+      `INSERT INTO receipts (url, mime, size, ocrText, ocrAmount, ocrDate, ocrMerchant,
+        ocrCardNumber, ocrConfidence, linkedTxId, uploadedAt)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        receipt.url,
+        receipt.mime,
+        receipt.size,
+        receipt.ocrText || null,
+        receipt.ocrAmount || null,
+        receipt.ocrDate || null,
+        receipt.ocrMerchant || null,
+        receipt.ocrCardNumber || null,
+        receipt.ocrConfidence || null,
+        receipt.linkedTxId || null,
+        receipt.uploadedAt,
+      ]
+    );
+    return result.lastInsertRowId;
+  }
+
+  async updateReceipt(id: number, updates: Partial<Omit<Receipt, 'id'>>): Promise<void> {
+    const db = await this.init();
+    const fields: string[] = [];
+    const values: any[] = [];
+
+    if (updates.linkedTxId !== undefined) {
+      fields.push('linkedTxId = ?');
+      values.push(updates.linkedTxId);
+    }
+    if (updates.ocrText !== undefined) {
+      fields.push('ocrText = ?');
+      values.push(updates.ocrText);
+    }
+    if (updates.ocrAmount !== undefined) {
+      fields.push('ocrAmount = ?');
+      values.push(updates.ocrAmount);
+    }
+    if (updates.ocrDate !== undefined) {
+      fields.push('ocrDate = ?');
+      values.push(updates.ocrDate);
+    }
+    if (updates.ocrMerchant !== undefined) {
+      fields.push('ocrMerchant = ?');
+      values.push(updates.ocrMerchant);
+    }
+
+    if (fields.length > 0) {
+      values.push(id);
+      await db.runAsync(`UPDATE receipts SET ${fields.join(', ')} WHERE id = ?`, values);
+    }
+  }
+
+  async deleteReceipt(id: number): Promise<void> {
+    const db = await this.init();
+    await db.runAsync('DELETE FROM receipts WHERE id = ?', [id]);
+  }
+
+  // ===== 제외 패턴 관리 =====
+
+  async getExclusionPatterns(activeOnly = false): Promise<ExclusionPattern[]> {
+    const db = await this.init();
+    const query = activeOnly
+      ? 'SELECT * FROM exclusion_patterns WHERE isActive = 1 ORDER BY id DESC'
+      : 'SELECT * FROM exclusion_patterns ORDER BY isActive DESC, id DESC';
+    return await db.getAllAsync<ExclusionPattern>(query);
+  }
+
+  async addExclusionPattern(pattern: Omit<ExclusionPattern, 'id' | 'createdAt'>): Promise<number> {
+    const db = await this.init();
+    const result = await db.runAsync(
+      'INSERT INTO exclusion_patterns (pattern, type, isActive, createdAt) VALUES (?, ?, ?, datetime(\'now\'))',
+      [pattern.pattern, pattern.type, pattern.isActive ? 1 : 0]
+    );
+    return result.lastInsertRowId;
+  }
+
+  async updateExclusionPattern(id: number, updates: Partial<ExclusionPattern>): Promise<void> {
+    const db = await this.init();
+    const fields: string[] = [];
+    const values: any[] = [];
+
+    if (updates.pattern !== undefined) {
+      fields.push('pattern = ?');
+      values.push(updates.pattern);
+    }
+    if (updates.type !== undefined) {
+      fields.push('type = ?');
+      values.push(updates.type);
+    }
+    if (updates.isActive !== undefined) {
+      fields.push('isActive = ?');
+      values.push(updates.isActive ? 1 : 0);
+    }
+
+    if (fields.length > 0) {
+      values.push(id);
+      await db.runAsync(`UPDATE exclusion_patterns SET ${fields.join(', ')} WHERE id = ?`, values);
+    }
+  }
+
+  async deleteExclusionPattern(id: number): Promise<void> {
+    const db = await this.init();
+    await db.runAsync('DELETE FROM exclusion_patterns WHERE id = ?', [id]);
   }
 }
 

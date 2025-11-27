@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
-import { View, ScrollView, StyleSheet, RefreshControl, Alert } from 'react-native';
-import { Text, Card, Button, Dialog, Portal, TextInput, FAB, Chip, RadioButton, Switch } from 'react-native-paper';
+import { View, ScrollView, StyleSheet, RefreshControl, Alert, TouchableOpacity, Modal, KeyboardAvoidingView, Platform, TouchableWithoutFeedback, Keyboard } from 'react-native';
+import { Text, Card, Button, TextInput, FAB, Chip, RadioButton, Switch } from 'react-native-paper';
 import { useFocusEffect } from '@react-navigation/native';
 import { Picker } from '@react-native-picker/picker';
 import { format } from 'date-fns';
@@ -162,31 +162,20 @@ export default function RecurringScreen() {
                   <View style={styles.cardInfo}>
                     <Text variant="titleMedium">{item.name}</Text>
                     <View style={styles.tags}>
-                      <Chip mode="flat" compact style={styles.chip}>
-                        {item.type === 'income' ? '수입' : '지출'}
-                      </Chip>
-                      <Chip mode="flat" compact style={styles.chip}>
-                        {getFrequencyLabel(item.frequency)}
-                        {item.frequency === 'monthly' && item.dayOfMonth && ` ${item.dayOfMonth}일`}
-                      </Chip>
-                      <Chip mode="flat" compact style={styles.chip}>
-                        {item.categoryName}
-                      </Chip>
+                      <Chip mode="flat" compact style={styles.chip}>{item.type === 'income' ? '수입' : '지출'}</Chip>
+                      <Chip mode="flat" compact style={styles.chip}>{getFrequencyLabel(item.frequency)}{item.frequency === 'monthly' && item.dayOfMonth && ` ${item.dayOfMonth}일`}</Chip>
+                      <Chip mode="flat" compact style={styles.chip}>{item.categoryName}</Chip>
                     </View>
                   </View>
-                  <Chip mode="flat" style={{ backgroundColor: item.isActive ? '#d1fae5' : '#f3f4f6' }}>
-                    {item.isActive ? '활성' : '비활성'}
-                  </Chip>
+                  <Chip mode="flat" style={{ backgroundColor: item.isActive ? '#d1fae5' : '#f3f4f6' }}>{item.isActive ? '활성' : '비활성'}</Chip>
                 </View>
 
                 <Text variant="headlineSmall" style={[styles.amount, item.type === 'income' && styles.incomeAmount]}>
-                  {item.amount.toLocaleString()}원
+                  {Math.round(item.amount).toLocaleString()}원
                 </Text>
               </Card.Content>
               <Card.Actions>
-                <Button onPress={() => handleToggleActive(item)}>
-                  {item.isActive ? '비활성화' : '활성화'}
-                </Button>
+                <Button onPress={() => handleToggleActive(item)}>{item.isActive ? '비활성화' : '활성화'}</Button>
                 <Button onPress={() => handleDelete(item)}>삭제</Button>
               </Card.Actions>
             </Card>
@@ -200,94 +189,162 @@ export default function RecurringScreen() {
         onPress={() => setAddDialogVisible(true)}
       />
 
-      <Portal>
-        <Dialog visible={addDialogVisible} onDismiss={() => setAddDialogVisible(false)}>
-          <Dialog.Title>반복 거래 추가</Dialog.Title>
-          <Dialog.ScrollArea style={{ maxHeight: 400 }}>
-            <ScrollView>
-              <Dialog.Content>
-                <TextInput
-                  label="거래 이름"
-                  value={name}
-                  onChangeText={setName}
-                  mode="outlined"
-                  style={styles.input}
-                  placeholder="예: 넷플릭스 구독료"
-                />
+      <Modal visible={addDialogVisible} onRequestClose={() => setAddDialogVisible(false)} transparent animationType="fade">
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalContainer}>
+          <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+            <View style={styles.modalOverlay}>
+              <TouchableWithoutFeedback>
+                <View style={styles.modalContent}>
+                  <Text style={styles.modalTitle}>반복 거래 추가</Text>
+                  <ScrollView style={styles.modalScrollView} keyboardShouldPersistTaps="handled">
+                    <TextInput
+                      label="거래 이름"
+                      value={name}
+                      onChangeText={setName}
+                      mode="outlined"
+                      style={styles.input}
+                      placeholder="예: 넷플릭스 구독료"
+                      keyboardType="default"
+                      autoCorrect={false}
+                      autoComplete="off"
+                      autoCapitalize="none"
+                      spellCheck={false}
+                      textContentType="none"
+                    />
 
-                <Text style={styles.label}>종류</Text>
-                <RadioButton.Group onValueChange={(value) => setType(value as any)} value={type}>
-                  <View style={styles.radioRow}>
-                    <RadioButton.Item label="지출" value="expense" />
-                    <RadioButton.Item label="수입" value="income" />
+                    <Text style={styles.label}>종류</Text>
+                    <View style={styles.radioRow}>
+                      <TouchableOpacity
+                        style={styles.radioOption}
+                        onPress={() => setType('expense')}
+                      >
+                        <RadioButton.Android
+                          value="expense"
+                          status={type === 'expense' ? 'checked' : 'unchecked'}
+                          onPress={() => setType('expense')}
+                        />
+                        <Text>지출</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={styles.radioOption}
+                        onPress={() => setType('income')}
+                      >
+                        <RadioButton.Android
+                          value="income"
+                          status={type === 'income' ? 'checked' : 'unchecked'}
+                          onPress={() => setType('income')}
+                        />
+                        <Text>수입</Text>
+                      </TouchableOpacity>
+                    </View>
+
+                    <TextInput
+                      label="금액"
+                      value={amount}
+                      onChangeText={setAmount}
+                      keyboardType="numeric"
+                      mode="outlined"
+                      style={styles.input}
+                      right={<TextInput.Affix text="원" />}
+                      autoCorrect={false}
+                      autoComplete="off"
+                      autoCapitalize="none"
+                      spellCheck={false}
+                      textContentType="none"
+                    />
+
+                    <Text style={styles.label}>카테고리</Text>
+                    <View style={styles.pickerContainer}>
+                      <Picker
+                        selectedValue={categoryId}
+                        onValueChange={(value) => setCategoryId(value)}
+                      >
+                        <Picker.Item label="카테고리 선택" value={null} />
+                        {categories
+                          .filter(c => c.type === type)
+                          .map((cat) => (
+                            <Picker.Item key={cat.id} label={cat.name} value={cat.id} />
+                          ))}
+                      </Picker>
+                    </View>
+
+                    <Text style={styles.label}>계좌</Text>
+                    <View style={styles.pickerContainer}>
+                      <Picker
+                        selectedValue={accountId}
+                        onValueChange={(value) => setAccountId(value)}
+                      >
+                        <Picker.Item label="계좌 선택" value={null} />
+                        {accounts.map((acc) => (
+                          <Picker.Item key={acc.id} label={acc.name} value={acc.id} />
+                        ))}
+                      </Picker>
+                    </View>
+
+                    <Text style={styles.label}>반복 주기</Text>
+                    <View style={styles.frequencyContainer}>
+                      <TouchableOpacity
+                        style={styles.radioOption}
+                        onPress={() => setFrequency('monthly')}
+                      >
+                        <RadioButton.Android
+                          value="monthly"
+                          status={frequency === 'monthly' ? 'checked' : 'unchecked'}
+                          onPress={() => setFrequency('monthly')}
+                        />
+                        <Text>매월</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={styles.radioOption}
+                        onPress={() => setFrequency('weekly')}
+                      >
+                        <RadioButton.Android
+                          value="weekly"
+                          status={frequency === 'weekly' ? 'checked' : 'unchecked'}
+                          onPress={() => setFrequency('weekly')}
+                        />
+                        <Text>매주</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={styles.radioOption}
+                        onPress={() => setFrequency('yearly')}
+                      >
+                        <RadioButton.Android
+                          value="yearly"
+                          status={frequency === 'yearly' ? 'checked' : 'unchecked'}
+                          onPress={() => setFrequency('yearly')}
+                        />
+                        <Text>매년</Text>
+                      </TouchableOpacity>
+                    </View>
+
+                    {frequency === 'monthly' && (
+                      <TextInput
+                        label="매월 반복일"
+                        value={dayOfMonth}
+                        onChangeText={setDayOfMonth}
+                        keyboardType="numeric"
+                        mode="outlined"
+                        style={styles.input}
+                        placeholder="1-31"
+                        autoCorrect={false}
+                        autoComplete="off"
+                        autoCapitalize="none"
+                        spellCheck={false}
+                        textContentType="none"
+                      />
+                    )}
+                  </ScrollView>
+                  <View style={styles.modalActions}>
+                    <Button mode="outlined" onPress={() => setAddDialogVisible(false)} style={styles.modalButton}>취소</Button>
+                    <Button mode="contained" onPress={handleAddRecurring} style={styles.modalButton}>추가</Button>
                   </View>
-                </RadioButton.Group>
-
-                <TextInput
-                  label="금액"
-                  value={amount}
-                  onChangeText={setAmount}
-                  keyboardType="numeric"
-                  mode="outlined"
-                  style={styles.input}
-                  right={<TextInput.Affix text="원" />}
-                />
-
-                <Text style={styles.label}>카테고리</Text>
-                <View style={styles.pickerContainer}>
-                  <Picker
-                    selectedValue={categoryId}
-                    onValueChange={(value) => setCategoryId(value)}
-                  >
-                    <Picker.Item label="카테고리 선택" value={null} />
-                    {categories
-                      .filter(c => c.type === type)
-                      .map((cat) => (
-                        <Picker.Item key={cat.id} label={cat.name} value={cat.id} />
-                      ))}
-                  </Picker>
                 </View>
-
-                <Text style={styles.label}>계좌</Text>
-                <View style={styles.pickerContainer}>
-                  <Picker
-                    selectedValue={accountId}
-                    onValueChange={(value) => setAccountId(value)}
-                  >
-                    <Picker.Item label="계좌 선택" value={null} />
-                    {accounts.map((acc) => (
-                      <Picker.Item key={acc.id} label={acc.name} value={acc.id} />
-                    ))}
-                  </Picker>
-                </View>
-
-                <Text style={styles.label}>반복 주기</Text>
-                <RadioButton.Group onValueChange={(value) => setFrequency(value as any)} value={frequency}>
-                  <RadioButton.Item label="매월" value="monthly" />
-                  <RadioButton.Item label="매주" value="weekly" />
-                  <RadioButton.Item label="매년" value="yearly" />
-                </RadioButton.Group>
-
-                {frequency === 'monthly' && (
-                  <TextInput
-                    label="매월 반복일"
-                    value={dayOfMonth}
-                    onChangeText={setDayOfMonth}
-                    keyboardType="numeric"
-                    mode="outlined"
-                    style={styles.input}
-                    placeholder="1-31"
-                  />
-                )}
-              </Dialog.Content>
-            </ScrollView>
-          </Dialog.ScrollArea>
-          <Dialog.Actions>
-            <Button onPress={() => setAddDialogVisible(false)}>취소</Button>
-            <Button onPress={handleAddRecurring}>추가</Button>
-          </Dialog.Actions>
-        </Dialog>
-      </Portal>
+              </TouchableWithoutFeedback>
+            </View>
+          </TouchableWithoutFeedback>
+        </KeyboardAvoidingView>
+      </Modal>
     </View>
   );
 }
@@ -379,10 +436,52 @@ const styles = StyleSheet.create({
   radioRow: {
     flexDirection: 'row',
   },
+  radioOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  frequencyContainer: {
+    flexDirection: 'row',
+    marginBottom: 12,
+  },
   pickerContainer: {
     borderWidth: 1,
     borderColor: '#ccc',
     borderRadius: 4,
     marginBottom: 12,
+  },
+  modalContainer: {
+    flex: 1,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 20,
+    width: '90%',
+    maxHeight: '80%',
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 16,
+  },
+  modalScrollView: {
+    maxHeight: 400,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 8,
+    marginTop: 16,
+  },
+  modalButton: {
+    minWidth: 80,
   },
 });

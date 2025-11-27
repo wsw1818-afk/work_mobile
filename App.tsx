@@ -3,9 +3,14 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createDrawerNavigator } from '@react-navigation/drawer';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Provider as PaperProvider } from 'react-native-paper';
-import { View, ActivityIndicator } from 'react-native';
+import { View, ActivityIndicator, LogBox } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { database } from './lib/db/database';
+import { ErrorBoundary } from './components/ErrorBoundary';
+import { setupGlobalErrorHandler, ignoreWarnings } from './lib/error-tracker';
+
+// LogBox 완전 비활성화 (디버깅용)
+LogBox.ignoreAllLogs(true);
 
 // Screens
 import DashboardScreen from './screens/DashboardScreen';
@@ -18,6 +23,9 @@ import AccountsScreen from './screens/AccountsScreen';
 import RecurringScreen from './screens/RecurringScreen';
 import RulesScreen from './screens/RulesScreen';
 import SettingsScreen from './screens/SettingsScreen';
+import ReceiptScreen from './screens/ReceiptScreen';
+import ImportScreen from './screens/ImportScreen';
+import ErrorLogsScreen from './screens/ErrorLogsScreen';
 
 const Tab = createBottomTabNavigator();
 const Drawer = createDrawerNavigator();
@@ -75,6 +83,14 @@ export default function App() {
   const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
+    // 전역 에러 핸들러 설정
+    setupGlobalErrorHandler();
+
+    // 무시할 경고 설정 (원하는 경고 패턴 추가 가능)
+    ignoreWarnings([
+      'Non-serializable values were found in the navigation state',
+    ]);
+
     // 데이터베이스 초기화
     const initializeApp = async () => {
       try {
@@ -98,9 +114,10 @@ export default function App() {
   }
 
   return (
-    <PaperProvider>
-      <NavigationContainer>
-        <Drawer.Navigator
+    <ErrorBoundary>
+      <PaperProvider>
+        <NavigationContainer>
+          <Drawer.Navigator
           initialRouteName="Main"
           screenOptions={{
             headerStyle: {
@@ -186,6 +203,30 @@ export default function App() {
             }}
           />
 
+          {/* 영수증 스캔 */}
+          <Drawer.Screen
+            name="Receipt"
+            component={ReceiptScreen}
+            options={{
+              title: '영수증 스캔',
+              drawerIcon: ({ color, size }) => (
+                <Ionicons name="camera" size={size} color={color} />
+              ),
+            }}
+          />
+
+          {/* 거래 가져오기 */}
+          <Drawer.Screen
+            name="Import"
+            component={ImportScreen}
+            options={{
+              title: '거래 가져오기',
+              drawerIcon: ({ color, size }) => (
+                <Ionicons name="document" size={size} color={color} />
+              ),
+            }}
+          />
+
           {/* 설정 */}
           <Drawer.Screen
             name="Settings"
@@ -197,8 +238,23 @@ export default function App() {
               ),
             }}
           />
+
+          {/* 에러 로그 (개발용) */}
+          {__DEV__ && (
+            <Drawer.Screen
+              name="ErrorLogs"
+              component={ErrorLogsScreen}
+              options={{
+                title: '🐛 에러 로그',
+                drawerIcon: ({ color, size }) => (
+                  <Ionicons name="bug" size={size} color={color} />
+                ),
+              }}
+            />
+          )}
         </Drawer.Navigator>
       </NavigationContainer>
     </PaperProvider>
+    </ErrorBoundary>
   );
 }

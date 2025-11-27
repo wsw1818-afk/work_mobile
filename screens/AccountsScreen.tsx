@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
-import { View, ScrollView, StyleSheet, RefreshControl, Alert } from 'react-native';
-import { Text, Card, Button, Dialog, Portal, TextInput, FAB, Chip, RadioButton } from 'react-native-paper';
+import { View, ScrollView, StyleSheet, RefreshControl, Alert, TouchableOpacity, Modal, KeyboardAvoidingView, Platform, TouchableWithoutFeedback, Keyboard } from 'react-native';
+import { Text, Card, Button, TextInput, FAB, Chip, RadioButton } from 'react-native-paper';
 import { useFocusEffect } from '@react-navigation/native';
 import { database, Account } from '../lib/db/database';
 
@@ -126,13 +126,9 @@ export default function AccountsScreen() {
                   <View style={styles.accountInfo}>
                     <Text variant="titleMedium">{account.name}</Text>
                     <View style={styles.typeChips}>
-                      <Chip mode="flat" compact style={styles.chip}>
-                        {getTypeLabel(account.type)}
-                      </Chip>
+                      <Chip mode="flat" compact style={styles.chip}>{getTypeLabel(account.type)}</Chip>
                       {account.cardType && (
-                        <Chip mode="flat" compact style={styles.chip}>
-                          {getCardTypeLabel(account.cardType)}
-                        </Chip>
+                        <Chip mode="flat" compact style={styles.chip}>{getCardTypeLabel(account.cardType)}</Chip>
                       )}
                     </View>
                   </View>
@@ -152,45 +148,95 @@ export default function AccountsScreen() {
         onPress={() => setAddDialogVisible(true)}
       />
 
-      <Portal>
-        <Dialog visible={addDialogVisible} onDismiss={() => setAddDialogVisible(false)}>
-          <Dialog.Title>계좌 추가</Dialog.Title>
-          <Dialog.Content>
-            <TextInput
-              label="계좌 이름"
-              value={name}
-              onChangeText={setName}
-              mode="outlined"
-              style={styles.input}
-              placeholder="예: 신한카드, 현금"
-            />
+      <Modal visible={addDialogVisible} onRequestClose={() => setAddDialogVisible(false)} transparent animationType="fade">
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalContainer}>
+          <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+            <View style={styles.modalOverlay}>
+              <TouchableWithoutFeedback>
+                <View style={styles.modalContent}>
+                  <Text style={styles.modalTitle}>계좌 추가</Text>
+                  <ScrollView style={styles.modalScrollView} keyboardShouldPersistTaps="handled">
+                    <TextInput
+                      label="계좌 이름"
+                      value={name}
+                      onChangeText={setName}
+                      mode="outlined"
+                      style={styles.input}
+                      placeholder="예: 신한카드, 현금"
+                      keyboardType="default"
+                      autoCorrect={false}
+                      autoComplete="off"
+                      autoCapitalize="none"
+                      spellCheck={false}
+                      textContentType="none"
+                    />
 
-            <Text style={styles.label}>종류</Text>
-            <RadioButton.Group onValueChange={(value) => setType(value as any)} value={type}>
-              <View style={styles.radioRow}>
-                <RadioButton.Item label="카드" value="card" />
-                <RadioButton.Item label="현금" value="cash" />
-              </View>
-            </RadioButton.Group>
+                    <Text style={styles.label}>종류</Text>
+                    <View style={styles.radioRow}>
+                      <TouchableOpacity
+                        style={styles.radioOption}
+                        onPress={() => setType('card')}
+                      >
+                        <RadioButton.Android
+                          value="card"
+                          status={type === 'card' ? 'checked' : 'unchecked'}
+                          onPress={() => setType('card')}
+                        />
+                        <Text>카드</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={styles.radioOption}
+                        onPress={() => setType('cash')}
+                      >
+                        <RadioButton.Android
+                          value="cash"
+                          status={type === 'cash' ? 'checked' : 'unchecked'}
+                          onPress={() => setType('cash')}
+                        />
+                        <Text>현금</Text>
+                      </TouchableOpacity>
+                    </View>
 
-            {type === 'card' && (
-              <>
-                <Text style={styles.label}>카드 종류</Text>
-                <RadioButton.Group onValueChange={(value) => setCardType(value as any)} value={cardType}>
-                  <View style={styles.radioRow}>
-                    <RadioButton.Item label="신용카드" value="credit" />
-                    <RadioButton.Item label="체크카드" value="debit" />
+                    {type === 'card' && (
+                      <>
+                        <Text style={styles.label}>카드 종류</Text>
+                        <View style={styles.radioRow}>
+                          <TouchableOpacity
+                            style={styles.radioOption}
+                            onPress={() => setCardType('credit')}
+                          >
+                            <RadioButton.Android
+                              value="credit"
+                              status={cardType === 'credit' ? 'checked' : 'unchecked'}
+                              onPress={() => setCardType('credit')}
+                            />
+                            <Text>신용카드</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            style={styles.radioOption}
+                            onPress={() => setCardType('debit')}
+                          >
+                            <RadioButton.Android
+                              value="debit"
+                              status={cardType === 'debit' ? 'checked' : 'unchecked'}
+                              onPress={() => setCardType('debit')}
+                            />
+                            <Text>체크카드</Text>
+                          </TouchableOpacity>
+                        </View>
+                      </>
+                    )}
+                  </ScrollView>
+                  <View style={styles.modalActions}>
+                    <Button mode="outlined" onPress={() => setAddDialogVisible(false)} style={styles.modalButton}>취소</Button>
+                    <Button mode="contained" onPress={handleAddAccount} style={styles.modalButton}>추가</Button>
                   </View>
-                </RadioButton.Group>
-              </>
-            )}
-          </Dialog.Content>
-          <Dialog.Actions>
-            <Button onPress={() => setAddDialogVisible(false)}>취소</Button>
-            <Button onPress={handleAddAccount}>추가</Button>
-          </Dialog.Actions>
-        </Dialog>
-      </Portal>
+                </View>
+              </TouchableWithoutFeedback>
+            </View>
+          </TouchableWithoutFeedback>
+        </KeyboardAvoidingView>
+      </Modal>
     </View>
   );
 }
@@ -260,5 +306,43 @@ const styles = StyleSheet.create({
   },
   radioRow: {
     flexDirection: 'row',
+  },
+  radioOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  modalContainer: {
+    flex: 1,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 20,
+    width: '90%',
+    maxHeight: '80%',
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 16,
+  },
+  modalScrollView: {
+    maxHeight: 400,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 8,
+    marginTop: 16,
+  },
+  modalButton: {
+    minWidth: 80,
   },
 });

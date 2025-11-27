@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "gagyebu-native",
+    "name": "가계부",
     "slug": "gagyebu-native",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -20,19 +20,30 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false,
-      "package": "com.anonymous.gagyebunative"
+      "package": "com.anonymous.gagyebunative",
+      "permissions": [
+        "CAMERA",
+        "RECORD_AUDIO"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-sqlite"
+      "expo-sqlite",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "kotlinVersion": "1.9.25"
+          }
+        }
+      ],
+      "expo-barcode-scanner"
     ],
     "extra": {
       "eas": {
-        "projectId": "d2a6f202-e023-4aab-a3e9-ec71906f29a7"
+        "projectId": "1a5328d6-0ebc-413d-a35c-6e1cc28e0261"
       }
     }
   }

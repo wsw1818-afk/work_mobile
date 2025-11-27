@@ -10,7 +10,6 @@ import {
 import {
   TextInput,
   Button,
-  SegmentedButtons,
   Card,
   Text,
   Menu,
@@ -125,23 +124,10 @@ export default function AddTransactionScreen() {
             <Text variant="titleMedium" style={styles.label}>
               유형
             </Text>
-            <SegmentedButtons
-              value={type}
-              onValueChange={(value) => setType(value as 'income' | 'expense')}
-              buttons={[
-                {
-                  value: 'income',
-                  label: '수입',
-                  style: type === 'income' ? styles.activeButton : undefined,
-                },
-                {
-                  value: 'expense',
-                  label: '지출',
-                  style: type === 'expense' ? styles.activeButton : undefined,
-                },
-              ]}
-              style={styles.segmentedButtons}
-            />
+            <View style={styles.typeButtons}>
+              <Button mode={type === 'income' ? 'contained' : 'outlined'} onPress={() => setType('income')} style={[styles.typeButton, type === 'income' ? styles.activeButton : undefined]} icon="plus-circle">수입</Button>
+              <Button mode={type === 'expense' ? 'contained' : 'outlined'} onPress={() => setType('expense')} style={[styles.typeButton, type === 'expense' ? styles.activeButton : undefined]} icon="minus-circle">지출</Button>
+            </View>
 
             {/* 금액 입력 */}
             <Text variant="titleMedium" style={styles.label}>
@@ -156,6 +142,11 @@ export default function AddTransactionScreen() {
               placeholder="0"
               right={<TextInput.Affix text="원" />}
               style={styles.input}
+              autoCorrect={false}
+              autoComplete="off"
+              autoCapitalize="none"
+              spellCheck={false}
+              textContentType="none"
             />
 
             {/* 카테고리 선택 */}
@@ -183,7 +174,7 @@ export default function AddTransactionScreen() {
                       <Text>{selectedCategory.name}</Text>
                     </View>
                   ) : (
-                    '카테고리 선택'
+                    <Text>카테고리 선택</Text>
                   )}
                 </Button>
               }
@@ -224,7 +215,7 @@ export default function AddTransactionScreen() {
                   style={styles.categoryButton}
                   contentStyle={styles.categoryButtonContent}
                 >
-                  {selectedAccount ? selectedAccount.name : '계좌 선택'}
+                  <Text>{selectedAccount ? selectedAccount.name : '계좌 선택'}</Text>
                 </Button>
               }
             >
@@ -251,6 +242,12 @@ export default function AddTransactionScreen() {
               onChangeText={setDate}
               placeholder="yyyy-MM-dd"
               style={styles.input}
+              keyboardType="default"
+              autoCorrect={false}
+              autoComplete="off"
+              autoCapitalize="none"
+              spellCheck={false}
+              textContentType="none"
             />
 
             {/* 메모 입력 */}
@@ -266,21 +263,18 @@ export default function AddTransactionScreen() {
               multiline
               numberOfLines={3}
               style={styles.input}
+              keyboardType="default"
+              autoCorrect={false}
+              autoComplete="off"
+              autoCapitalize="none"
+              spellCheck={false}
+              textContentType="none"
             />
 
             <Divider style={styles.divider} />
 
             {/* 추가 버튼 */}
-            <Button
-              mode="contained"
-              onPress={handleSubmit}
-              loading={loading}
-              disabled={loading}
-              style={styles.submitButton}
-              buttonColor={type === 'income' ? '#10b981' : '#ef4444'}
-            >
-              {type === 'income' ? '수입' : '지출'} 추가
-            </Button>
+            <Button mode="contained" onPress={handleSubmit} loading={loading} disabled={loading} style={styles.submitButton} buttonColor={type === 'income' ? '#10b981' : '#ef4444'}>{type === 'income' ? '수입' : '지출'} 추가</Button>
           </Card.Content>
         </Card>
       </ScrollView>
@@ -304,8 +298,13 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     fontWeight: 'bold',
   },
-  segmentedButtons: {
+  typeButtons: {
+    flexDirection: 'row',
+    gap: 12,
     marginBottom: 8,
+  },
+  typeButton: {
+    flex: 1,
   },
   activeButton: {
     backgroundColor: '#e0f2fe',

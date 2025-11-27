@@ -5,7 +5,10 @@ import {
   StyleSheet,
   RefreshControl,
   Alert,
+  Clipboard,
+  Pressable,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   Text,
   Card,
@@ -20,7 +23,7 @@ import {
   TextInput as PaperInput,
   SegmentedButtons,
 } from 'react-native-paper';
-import { format } from 'date-fns';
+import { format, addMonths, subMonths } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { database, Transaction, Category } from '../lib/db/database';
 
@@ -31,6 +34,22 @@ export default function TransactionsScreen() {
   const [filteredTransactions, setFilteredTransactions] = useState<Transaction[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'income' | 'expense'>('all');
+
+  // 월별 필터
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [showMonthPicker, setShowMonthPicker] = useState(false);
+
+  const goToPreviousMonth = () => {
+    setSelectedDate(subMonths(selectedDate, 1));
+  };
+
+  const goToNextMonth = () => {
+    setSelectedDate(addMonths(selectedDate, 1));
+  };
+
+  const goToCurrentMonth = () => {
+    setSelectedDate(new Date());
+  };
 
   // 편집 모달
   const [editModalVisible, setEditModalVisible] = useState(false);
@@ -45,7 +64,13 @@ export default function TransactionsScreen() {
 
   const loadTransactions = useCallback(async () => {
     try {
-      const allTransactions = await database.getTransactions();
+      // 선택된 월의 시작일과 종료일
+      const year = selectedDate.getFullYear();
+      const month = selectedDate.getMonth();
+      const startDate = format(new Date(year, month, 1), 'yyyy-MM-dd');
+      const endDate = format(new Date(year, month + 1, 0), 'yyyy-MM-dd');
+
+      const allTransactions = await database.getTransactions(startDate, endDate);
       setTransactions(allTransactions);
       applyFilters(allTransactions, searchQuery, filterType);
     } catch (error) {
@@ -54,11 +79,11 @@ export default function TransactionsScreen() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [searchQuery, filterType]);
+  }, [searchQuery, filterType, selectedDate]);
 
   useEffect(() => {
     loadTransactions();
-  }, []);
+  }, [loadTransactions]);
 
   const applyFilters = (
     allTransactions: Transaction[],
@@ -164,6 +189,34 @@ export default function TransactionsScreen() {
     }
   };
 
+  const handleLongPress = (transaction: Transaction) => {
+    const typeText = transaction.type === 'income' ? '수입' : '지출';
+    const dateText = format(new Date(transaction.date), 'yyyy년 M월 d일 (E)', { locale: ko });
+    const amountText = `${transaction.type === 'income' ? '+' : '-'}${Math.round(transaction.amount).toLocaleString()}원`;
+
+    const copyText = `${dateText}\n${transaction.categoryName}\n${transaction.description || ''}\n${amountText}`.trim();
+
+    Alert.alert(
+      '거래 내역',
+      copyText,
+      [
+        { text: '닫기', style: 'cancel' },
+        {
+          text: '복사',
+          onPress: () => {
+            Clipboard.setString(copyText);
+            Alert.alert('복사 완료', '거래 내역이 클립보드에 복사되었습니다.');
+          },
+        },
+      ]
+    );
+  };
+
+  const copyToClipboard = (text: string, label: string) => {
+    Clipboard.setString(text);
+    Alert.alert('복사 완료', `${label}이(가) 복사되었습니다.`);
+  };
+
   if (loading) {
     return (
       <View style={styles.centered}>
@@ -172,8 +225,38 @@ export default function TransactionsScreen() {
     );
   }
 
+  const year = selectedDate.getFullYear();
+  const month = selectedDate.getMonth() + 1;
+  const isCurrentMonth =
+    year === new Date().getFullYear() &&
+    month === new Date().getMonth() + 1;
+
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.safeArea}>
+      <View style={styles.container}>
+      {/* 월별 선택 헤더 */}
+      <View style={styles.monthSelector}>
+        <IconButton
+          icon="chevron-left"
+          size={24}
+          onPress={goToPreviousMonth}
+        />
+        <View style={styles.monthInfo}>
+          <Text variant="titleLarge" style={styles.monthText}>
+            {format(selectedDate, 'yyyy년 M월', { locale: ko })}
+          </Text>
+          {!isCurrentMonth && (
+            <Button mode="text" compact onPress={goToCurrentMonth} style={styles.currentMonthButton}>이번 달로</Button>
+          )}
+        </View>
+        <IconButton
+          icon="chevron-right"
+          size={24}
+          onPress={goToNextMonth}
+          disabled={isCurrentMonth}
+        />
+      </View>
+
       {/* 검색 및 필터 */}
       <View style={styles.filterContainer}>
         <Searchbar
@@ -183,27 +266,9 @@ export default function TransactionsScreen() {
           style={styles.searchbar}
         />
         <View style={styles.chipContainer}>
-          <Chip
-            selected={filterType === 'all'}
-            onPress={() => setFilterType('all')}
-            style={styles.chip}
-          >
-            전체
-          </Chip>
-          <Chip
-            selected={filterType === 'income'}
-            onPress={() => setFilterType('income')}
-            style={styles.chip}
-          >
-            수입
-          </Chip>
-          <Chip
-            selected={filterType === 'expense'}
-            onPress={() => setFilterType('expense')}
-            style={styles.chip}
-          >
-            지출
-          </Chip>
+          <Chip selected={filterType === 'all'} onPress={() => setFilterType('all')} style={styles.chip}>전체</Chip>
+          <Chip selected={filterType === 'income'} onPress={() => setFilterType('income')} style={styles.chip}>수입</Chip>
+          <Chip selected={filterType === 'expense'} onPress={() => setFilterType('expense')} style={styles.chip}>지출</Chip>
         </View>
       </View>
 
@@ -224,63 +289,84 @@ export default function TransactionsScreen() {
           </View>
         ) : (
           filteredTransactions.map((transaction) => (
-            <Card key={transaction.id} style={styles.card}>
-              <Card.Content style={styles.cardContent}>
-                <View style={styles.transactionRow}>
-                  <View style={styles.transactionLeft}>
-                    <View
-                      style={[
-                        styles.categoryDot,
-                        { backgroundColor: transaction.categoryColor || '#6b7280' },
-                      ]}
-                    />
-                    <View style={styles.transactionInfo}>
-                      <Text variant="bodyLarge" style={styles.categoryName}>
-                        {transaction.categoryName}
-                      </Text>
-                      {transaction.description && (
-                        <Text variant="bodySmall" style={styles.description}>
-                          {transaction.description}
-                        </Text>
-                      )}
-                      <Text variant="bodySmall" style={styles.date}>
-                        {format(new Date(transaction.date), 'yyyy년 M월 d일 (E)', {
-                          locale: ko,
-                        })}
-                      </Text>
-                    </View>
-                  </View>
-
-                  <View style={styles.transactionRight}>
-                    <Text
-                      variant="bodyLarge"
-                      style={[
-                        styles.amount,
-                        {
-                          color:
-                            transaction.type === 'income' ? '#10b981' : '#ef4444',
-                        },
-                      ]}
+            <Pressable
+              key={transaction.id}
+              onLongPress={() => handleLongPress(transaction)}
+              delayLongPress={1000}
+            >
+              <Card style={styles.card}>
+                <Card.Content style={styles.cardContent}>
+                  <View style={styles.transactionRow}>
+                    <Pressable
+                      style={styles.transactionLeft}
+                      onLongPress={() => {
+                        const text = `${transaction.categoryName}${transaction.description ? '\n' + transaction.description : ''}`;
+                        copyToClipboard(text, '거래 내용');
+                      }}
+                      delayLongPress={1000}
                     >
-                      {transaction.type === 'income' ? '+' : '-'}
-                      {transaction.amount.toLocaleString()}원
-                    </Text>
-                    <View style={styles.actionButtons}>
-                      <IconButton
-                        icon="pencil"
-                        size={20}
-                        onPress={() => handleEdit(transaction)}
+                      <View
+                        style={[
+                          styles.categoryDot,
+                          { backgroundColor: transaction.categoryColor || '#6b7280' },
+                        ]}
                       />
-                      <IconButton
-                        icon="delete"
-                        size={20}
-                        onPress={() => handleDelete(transaction)}
-                      />
+                      <View style={styles.transactionInfo}>
+                        <Text variant="bodyLarge" style={styles.categoryName}>
+                          {transaction.categoryName}
+                        </Text>
+                        {transaction.description && (
+                          <Text variant="bodySmall" style={styles.description}>
+                            {transaction.description}
+                          </Text>
+                        )}
+                        <Text variant="bodySmall" style={styles.date}>
+                          {format(new Date(transaction.date), 'yyyy년 M월 d일 (E)', {
+                            locale: ko,
+                          })}
+                        </Text>
+                      </View>
+                    </Pressable>
+
+                    <View style={styles.transactionRight}>
+                      <Pressable
+                        onLongPress={() => {
+                          const amountText = `${transaction.type === 'income' ? '+' : '-'}${Math.round(transaction.amount).toLocaleString()}원`;
+                          copyToClipboard(amountText, '금액');
+                        }}
+                        delayLongPress={1000}
+                      >
+                        <Text
+                          variant="bodyLarge"
+                          style={[
+                            styles.amount,
+                            {
+                              color:
+                                transaction.type === 'income' ? '#10b981' : '#ef4444',
+                            },
+                          ]}
+                        >
+                          {transaction.type === 'income' ? '+' : '-'}
+                          {Math.round(transaction.amount).toLocaleString()}원
+                        </Text>
+                      </Pressable>
+                      <View style={styles.actionButtons}>
+                        <IconButton
+                          icon="pencil"
+                          size={20}
+                          onPress={() => handleEdit(transaction)}
+                        />
+                        <IconButton
+                          icon="delete"
+                          size={20}
+                          onPress={() => handleDelete(transaction)}
+                        />
+                      </View>
                     </View>
                   </View>
-                </View>
-              </Card.Content>
-            </Card>
+                </Card.Content>
+              </Card>
+            </Pressable>
           ))
         )}
       </ScrollView>
@@ -314,19 +400,18 @@ export default function TransactionsScreen() {
             keyboardType="numeric"
             right={<PaperInput.Affix text="원" />}
             style={styles.input}
+            autoCorrect={false}
+            autoComplete="off"
+            autoCapitalize="none"
+            spellCheck={false}
+            textContentType="none"
           />
 
           <Menu
             visible={categoryMenuVisible}
             onDismiss={() => setCategoryMenuVisible(false)}
             anchor={
-              <Button
-                mode="outlined"
-                onPress={() => setCategoryMenuVisible(true)}
-                style={styles.categoryButton}
-              >
-                {editCategory ? editCategory.name : '카테고리 선택'}
-              </Button>
+              <Button mode="outlined" onPress={() => setCategoryMenuVisible(true)} style={styles.categoryButton}>{editCategory ? editCategory.name : '카테고리 선택'}</Button>
             }
           >
             {categories.map((category) => (
@@ -347,6 +432,12 @@ export default function TransactionsScreen() {
             value={editDate}
             onChangeText={setEditDate}
             style={styles.input}
+            keyboardType="default"
+            autoCorrect={false}
+            autoComplete="off"
+            autoCapitalize="none"
+            spellCheck={false}
+            textContentType="none"
           />
 
           <PaperInput
@@ -357,31 +448,57 @@ export default function TransactionsScreen() {
             multiline
             numberOfLines={2}
             style={styles.input}
+            keyboardType="default"
+            autoCorrect={false}
+            autoComplete="off"
+            autoCapitalize="none"
+            spellCheck={false}
+            textContentType="none"
           />
 
           <View style={styles.modalButtons}>
-            <Button onPress={() => setEditModalVisible(false)} style={styles.modalButton}>
-              취소
-            </Button>
-            <Button mode="contained" onPress={handleSaveEdit} style={styles.modalButton}>
-              저장
-            </Button>
+            <Button onPress={() => setEditModalVisible(false)} style={styles.modalButton}>취소</Button>
+            <Button mode="contained" onPress={handleSaveEdit} style={styles.modalButton}>저장</Button>
           </View>
         </Modal>
       </Portal>
     </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  safeArea: {
     flex: 1,
     backgroundColor: '#f5f5f5',
+  },
+  container: {
+    flex: 1,
   },
   centered: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  monthSelector: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#fff',
+    paddingHorizontal: 8,
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
+  },
+  monthInfo: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  monthText: {
+    fontWeight: 'bold',
+  },
+  currentMonthButton: {
+    marginTop: 4,
   },
   filterContainer: {
     backgroundColor: '#fff',

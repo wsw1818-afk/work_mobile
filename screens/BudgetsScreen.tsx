@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
-import { View, ScrollView, StyleSheet, RefreshControl, Alert } from 'react-native';
-import { Text, Card, Button, Dialog, Portal, TextInput, ProgressBar, FAB, Chip } from 'react-native-paper';
+import { View, ScrollView, StyleSheet, RefreshControl, Alert, Modal, KeyboardAvoidingView, Platform, TouchableWithoutFeedback, Keyboard } from 'react-native';
+import { Text, Card, Button, TextInput, ProgressBar, FAB, Chip } from 'react-native-paper';
 import { useFocusEffect } from '@react-navigation/native';
 import { format } from 'date-fns';
 import { database, Budget, Category } from '../lib/db/database';
@@ -41,7 +41,8 @@ export default function BudgetsScreen() {
           const startDate = `${currentMonth}-01`;
           const endDate = `${currentMonth}-31`;
 
-          const transactions = await database.getTransactions(startDate, endDate);
+          // 제외 패턴이 적용된 거래만 가져오기 (includeExcluded = false)
+          const transactions = await database.getTransactions(startDate, endDate, false);
           const spent = transactions
             .filter(t => t.categoryId === budget.categoryId && t.type === 'expense')
             .reduce((sum, t) => sum + t.amount, 0);
@@ -161,13 +162,9 @@ export default function BudgetsScreen() {
     <View style={styles.container}>
       {/* 월 선택 */}
       <View style={styles.monthSelector}>
-        <Button mode="text" onPress={() => changeMonth('prev')}>
-          이전
-        </Button>
+        <Button mode="text" onPress={() => changeMonth('prev')}>이전</Button>
         <Text variant="titleLarge">{currentMonth}</Text>
-        <Button mode="text" onPress={() => changeMonth('next')}>
-          다음
-        </Button>
+        <Button mode="text" onPress={() => changeMonth('next')}>다음</Button>
       </View>
 
       {/* 전체 예산 요약 */}
@@ -175,8 +172,8 @@ export default function BudgetsScreen() {
         <Card.Content>
           <Text variant="titleMedium" style={styles.summaryTitle}>전체 예산 현황</Text>
           <View style={styles.summaryRow}>
-            <Text>예산: {totalBudget.toLocaleString()}원</Text>
-            <Text>사용: {totalSpent.toLocaleString()}원</Text>
+            <Text>예산: {Math.round(totalBudget).toLocaleString()}원</Text>
+            <Text>사용: {Math.round(totalSpent).toLocaleString()}원</Text>
           </View>
           <ProgressBar
             progress={Math.min(totalPercentage / 100, 1)}
@@ -206,20 +203,13 @@ export default function BudgetsScreen() {
               <Card.Content>
                 <View style={styles.budgetHeader}>
                   <Text variant="titleMedium">{budget.categoryName}</Text>
-                  <Chip
-                    mode="flat"
-                    style={{
-                      backgroundColor: budget.percentage >= 100 ? '#fee2e2' : budget.percentage >= 80 ? '#fef3c7' : '#d1fae5',
-                    }}
-                  >
-                    {budget.percentage.toFixed(0)}%
-                  </Chip>
+                  <Chip mode="flat" style={{ backgroundColor: budget.percentage >= 100 ? '#fee2e2' : budget.percentage >= 80 ? '#fef3c7' : '#d1fae5' }}>{budget.percentage.toFixed(0)}%</Chip>
                 </View>
 
                 <View style={styles.amountRow}>
-                  <Text>예산: {budget.limitAmount.toLocaleString()}원</Text>
+                  <Text>예산: {Math.round(budget.limitAmount).toLocaleString()}원</Text>
                   <Text style={{ color: budget.percentage >= 100 ? '#ef4444' : '#000' }}>
-                    사용: {budget.spent.toLocaleString()}원
+                    사용: {Math.round(budget.spent).toLocaleString()}원
                   </Text>
                 </View>
 
@@ -231,12 +221,12 @@ export default function BudgetsScreen() {
 
                 {budget.percentage >= 100 && (
                   <Text style={styles.warningText}>
-                    ⚠️ 예산을 {((budget.spent - budget.limitAmount)).toLocaleString()}원 초과했습니다!
+                    ⚠️ 예산을 {Math.round((budget.spent - budget.limitAmount)).toLocaleString()}원 초과했습니다!
                   </Text>
                 )}
                 {budget.percentage >= 80 && budget.percentage < 100 && (
                   <Text style={styles.cautionText}>
-                    주의: 남은 예산 {(budget.limitAmount - budget.spent).toLocaleString()}원
+                    주의: 남은 예산 {Math.round((budget.limitAmount - budget.spent)).toLocaleString()}원
                   </Text>
                 )}
               </Card.Content>
@@ -261,40 +251,53 @@ export default function BudgetsScreen() {
         }}
       />
 
-      {/* 예산 추가 다이얼로그 */}
-      <Portal>
-        <Dialog visible={addDialogVisible} onDismiss={() => setAddDialogVisible(false)}>
-          <Dialog.Title>예산 추가</Dialog.Title>
-          <Dialog.Content>
-            <Text style={styles.label}>카테고리</Text>
-            <View style={styles.pickerContainer}>
-              <Picker
-                selectedValue={selectedCategoryId}
-                onValueChange={(value) => setSelectedCategoryId(value)}
-              >
-                <Picker.Item label="카테고리 선택" value={null} />
-                {availableCategories.map((cat) => (
-                  <Picker.Item key={cat.id} label={cat.name} value={cat.id} />
-                ))}
-              </Picker>
-            </View>
+      {/* 예산 추가 모달 */}
+      <Modal visible={addDialogVisible} onRequestClose={() => setAddDialogVisible(false)} transparent animationType="fade">
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalContainer}>
+          <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+            <View style={styles.modalOverlay}>
+              <TouchableWithoutFeedback>
+                <View style={styles.modalContent}>
+                  <Text style={styles.modalTitle}>예산 추가</Text>
+                  <ScrollView style={styles.modalScrollView} keyboardShouldPersistTaps="handled">
+                    <Text style={styles.label}>카테고리</Text>
+                    <View style={styles.pickerContainer}>
+                      <Picker
+                        selectedValue={selectedCategoryId}
+                        onValueChange={(value) => setSelectedCategoryId(value)}
+                      >
+                        <Picker.Item label="카테고리 선택" value={null} />
+                        {availableCategories.map((cat) => (
+                          <Picker.Item key={cat.id} label={cat.name} value={cat.id} />
+                        ))}
+                      </Picker>
+                    </View>
 
-            <TextInput
-              label="예산 금액"
-              value={limitAmount}
-              onChangeText={setLimitAmount}
-              keyboardType="numeric"
-              mode="outlined"
-              style={styles.input}
-              right={<TextInput.Affix text="원" />}
-            />
-          </Dialog.Content>
-          <Dialog.Actions>
-            <Button onPress={() => setAddDialogVisible(false)}>취소</Button>
-            <Button onPress={handleAddBudget}>추가</Button>
-          </Dialog.Actions>
-        </Dialog>
-      </Portal>
+                    <TextInput
+                      label="예산 금액"
+                      value={limitAmount}
+                      onChangeText={setLimitAmount}
+                      keyboardType="numeric"
+                      mode="outlined"
+                      style={styles.input}
+                      right={<TextInput.Affix text="원" />}
+                      autoCorrect={false}
+                      autoComplete="off"
+                      autoCapitalize="none"
+                      spellCheck={false}
+                      textContentType="none"
+                    />
+                  </ScrollView>
+                  <View style={styles.modalActions}>
+                    <Button mode="outlined" onPress={() => setAddDialogVisible(false)} style={styles.modalButton}>취소</Button>
+                    <Button mode="contained" onPress={handleAddBudget} style={styles.modalButton}>추가</Button>
+                  </View>
+                </View>
+              </TouchableWithoutFeedback>
+            </View>
+          </TouchableWithoutFeedback>
+        </KeyboardAvoidingView>
+      </Modal>
     </View>
   );
 }
@@ -395,5 +398,38 @@ const styles = StyleSheet.create({
   },
   input: {
     marginBottom: 16,
+  },
+  modalContainer: {
+    flex: 1,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 20,
+    width: '90%',
+    maxHeight: '80%',
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 16,
+  },
+  modalScrollView: {
+    maxHeight: 400,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 8,
+    marginTop: 16,
+  },
+  modalButton: {
+    minWidth: 80,
   },
 });

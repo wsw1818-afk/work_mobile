@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
-import { View, ScrollView, StyleSheet, RefreshControl, Alert } from 'react-native';
-import { Text, Card, Button, Dialog, Portal, TextInput, FAB, Chip, IconButton } from 'react-native-paper';
+import { View, ScrollView, StyleSheet, RefreshControl, Alert, Modal, KeyboardAvoidingView, Platform, TouchableWithoutFeedback, Keyboard } from 'react-native';
+import { Text, Card, Button, TextInput, FAB, Chip, IconButton } from 'react-native-paper';
 import { useFocusEffect } from '@react-navigation/native';
 import { database, BankAccount } from '../lib/db/database';
 
@@ -116,7 +116,7 @@ export default function BankAccountsScreen() {
         <Card.Content>
           <Text variant="titleMedium" style={styles.summaryTitle}>총 자산</Text>
           <Text variant="headlineMedium" style={styles.totalAmount}>
-            {totalBalance.toLocaleString()}원
+            {Math.round(totalBalance).toLocaleString()}원
           </Text>
           <Text style={styles.accountCount}>
             활성 통장: {bankAccounts.filter(a => a.isActive).length}개
@@ -148,20 +148,16 @@ export default function BankAccountsScreen() {
                     )}
                   </View>
                   <View style={styles.accountActions}>
-                    <Chip mode="flat" style={{ backgroundColor: account.isActive ? '#d1fae5' : '#f3f4f6' }}>
-                      {account.isActive ? '활성' : '비활성'}
-                    </Chip>
+                    <Chip mode="flat" style={{ backgroundColor: account.isActive ? '#d1fae5' : '#f3f4f6' }}>{account.isActive ? '활성' : '비활성'}</Chip>
                   </View>
                 </View>
 
                 <Text variant="headlineSmall" style={styles.balance}>
-                  {account.balance.toLocaleString()}원
+                  {Math.round(account.balance).toLocaleString()}원
                 </Text>
               </Card.Content>
               <Card.Actions>
-                <Button onPress={() => handleToggleActive(account)}>
-                  {account.isActive ? '비활성화' : '활성화'}
-                </Button>
+                <Button onPress={() => handleToggleActive(account)}>{account.isActive ? '비활성화' : '활성화'}</Button>
                 <Button onPress={() => handleDeleteBankAccount(account)}>삭제</Button>
               </Card.Actions>
             </Card>
@@ -176,51 +172,96 @@ export default function BankAccountsScreen() {
         onPress={() => setAddDialogVisible(true)}
       />
 
-      {/* 통장 추가 다이얼로그 */}
-      <Portal>
-        <Dialog visible={addDialogVisible} onDismiss={() => setAddDialogVisible(false)}>
-          <Dialog.Title>통장 추가</Dialog.Title>
-          <Dialog.Content>
-            <TextInput
-              label="통장 이름"
-              value={name}
-              onChangeText={setName}
-              mode="outlined"
-              style={styles.input}
-              placeholder="예: 생활비 통장"
-            />
-            <TextInput
-              label="통장 종류"
-              value={accountType}
-              onChangeText={setAccountType}
-              mode="outlined"
-              style={styles.input}
-              placeholder="예: 생활비, 저축, 투자"
-            />
-            <TextInput
-              label="은행명 (선택)"
-              value={bankName}
-              onChangeText={setBankName}
-              mode="outlined"
-              style={styles.input}
-              placeholder="예: 신한은행"
-            />
-            <TextInput
-              label="현재 잔액"
-              value={balance}
-              onChangeText={setBalance}
-              keyboardType="numeric"
-              mode="outlined"
-              style={styles.input}
-              right={<TextInput.Affix text="원" />}
-            />
-          </Dialog.Content>
-          <Dialog.Actions>
-            <Button onPress={() => setAddDialogVisible(false)}>취소</Button>
-            <Button onPress={handleAddBankAccount}>추가</Button>
-          </Dialog.Actions>
-        </Dialog>
-      </Portal>
+      {/* 통장 추가 모달 */}
+      <Modal
+        visible={addDialogVisible}
+        onRequestClose={() => setAddDialogVisible(false)}
+        transparent
+        animationType="fade"
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.modalContainer}
+        >
+          <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+            <View style={styles.modalOverlay}>
+              <TouchableWithoutFeedback>
+                <View style={styles.modalContent}>
+                  <Text style={styles.modalTitle}>통장 추가</Text>
+
+                  <ScrollView style={styles.modalScrollView} keyboardShouldPersistTaps="handled">
+                    <TextInput
+                      label="통장 이름"
+                      value={name}
+                      onChangeText={setName}
+                      mode="outlined"
+                      style={styles.input}
+                      placeholder="예: 생활비 통장"
+                      autoCorrect={false}
+                      autoComplete="off"
+                      autoCapitalize="none"
+                      spellCheck={false}
+                      textContentType="none"
+                      keyboardType="default"
+                    />
+                    <TextInput
+                      label="통장 종류"
+                      value={accountType}
+                      onChangeText={setAccountType}
+                      mode="outlined"
+                      style={styles.input}
+                      placeholder="예: 생활비, 저축, 투자"
+                      autoCorrect={false}
+                      autoComplete="off"
+                      autoCapitalize="none"
+                      spellCheck={false}
+                      textContentType="none"
+                      keyboardType="default"
+                    />
+                    <TextInput
+                      label="은행명 (선택)"
+                      value={bankName}
+                      onChangeText={setBankName}
+                      mode="outlined"
+                      style={styles.input}
+                      placeholder="예: 신한은행"
+                      autoCorrect={false}
+                      autoComplete="off"
+                      autoCapitalize="none"
+                      spellCheck={false}
+                      textContentType="none"
+                      keyboardType="default"
+                    />
+                    <TextInput
+                      label="현재 잔액"
+                      value={balance}
+                      onChangeText={setBalance}
+                      keyboardType="numeric"
+                      mode="outlined"
+                      style={styles.input}
+                      right={<TextInput.Affix text="원" />}
+                      autoCorrect={false}
+                      autoComplete="off"
+                      autoCapitalize="none"
+                      spellCheck={false}
+                      textContentType="none"
+                    />
+                  </ScrollView>
+
+                  <View style={styles.modalActions}>
+                    <Button onPress={() => setAddDialogVisible(false)} mode="outlined" style={styles.modalButton}>
+                      취소
+                    </Button>
+                    <Button onPress={handleAddBankAccount} mode="contained" style={styles.modalButton}>
+                      추가
+                    </Button>
+                  </View>
+                </View>
+              </TouchableWithoutFeedback>
+            </View>
+          </TouchableWithoutFeedback>
+        </KeyboardAvoidingView>
+      </Modal>
     </View>
   );
 }
@@ -302,5 +343,38 @@ const styles = StyleSheet.create({
   },
   input: {
     marginBottom: 12,
+  },
+  modalContainer: {
+    flex: 1,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 20,
+    width: '90%',
+    maxHeight: '80%',
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 16,
+  },
+  modalScrollView: {
+    maxHeight: 400,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 8,
+    marginTop: 16,
+  },
+  modalButton: {
+    minWidth: 80,
   },
 });
