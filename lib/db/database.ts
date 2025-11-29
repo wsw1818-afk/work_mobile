@@ -695,26 +695,15 @@ class Database {
 
   async getTransactions(startDate?: string, endDate?: string, includeExcluded = true): Promise<Transaction[]> {
     const db = await this.init();
+
+    // 기본 쿼리 - 서브쿼리 제거로 성능 최적화
     let query = `
       SELECT
         t.id, t.amount, t.type as type, t.categoryId, t.accountId, t.description,
         t.merchant, t.memo, t.date, t.tags, t.isTransfer, t.fromBankAccountId,
         t.toBankAccountId, t.status, t.cardName, t.cardNumber, t.createdAt, t.updatedAt,
         c.name as categoryName, c.color as categoryColor, a.name as accountName,
-        CASE
-          WHEN t.status = 'excluded' THEN 1
-          WHEN EXISTS (
-            SELECT 1 FROM exclusion_patterns ep
-            WHERE ep.isActive = 1
-            AND (
-              (ep.type = 'merchant' AND t.merchant LIKE '%' || ep.pattern || '%')
-              OR (ep.type = 'memo' AND t.memo LIKE '%' || ep.pattern || '%')
-              OR (ep.type = 'both' AND (t.merchant LIKE '%' || ep.pattern || '%' OR t.memo LIKE '%' || ep.pattern || '%'))
-              OR (ep.type = 'account' AND a.name LIKE '%' || ep.pattern || '%')
-            )
-          ) THEN 1
-          ELSE 0
-        END as isExcluded
+        CASE WHEN t.status = 'excluded' THEN 1 ELSE 0 END as isExcluded
       FROM transactions t
       LEFT JOIN categories c ON t.categoryId = c.id
       LEFT JOIN accounts a ON t.accountId = a.id
@@ -735,17 +724,7 @@ class Database {
     }
 
     if (!includeExcluded) {
-      conditions.push('t.status != \'excluded\'');
-      conditions.push(`NOT EXISTS (
-        SELECT 1 FROM exclusion_patterns ep
-        WHERE ep.isActive = 1
-        AND (
-          (ep.type = 'merchant' AND t.merchant LIKE '%' || ep.pattern || '%')
-          OR (ep.type = 'memo' AND t.memo LIKE '%' || ep.pattern || '%')
-          OR (ep.type = 'both' AND (t.merchant LIKE '%' || ep.pattern || '%' OR t.memo LIKE '%' || ep.pattern || '%'))
-          OR (ep.type = 'account' AND a.name LIKE '%' || ep.pattern || '%')
-        )
-      )`);
+      conditions.push("t.status != 'excluded'");
     }
 
     if (conditions.length > 0) {
@@ -754,7 +733,44 @@ class Database {
 
     query += ' ORDER BY t.date DESC, t.createdAt DESC';
 
-    return await db.getAllAsync<Transaction>(query, params);
+    const transactions = await db.getAllAsync<Transaction>(query, params);
+
+    // 제외 패턴은 메모리에서 처리 (DB 쿼리 1회로 최적화)
+    if (!includeExcluded) {
+      const patterns = await this.getExclusionPatterns(true);
+      if (patterns.length > 0) {
+        return transactions.filter(tx => !this.matchesExclusionPattern(tx, patterns));
+      }
+    }
+
+    return transactions;
+  }
+
+  // 제외 패턴 매칭 헬퍼 함수 (메모리에서 처리)
+  private matchesExclusionPattern(tx: Transaction, patterns: ExclusionPattern[]): boolean {
+    const merchantLower = (tx.merchant || '').toLowerCase();
+    const memoLower = (tx.memo || '').toLowerCase();
+    const accountLower = (tx.accountName || '').toLowerCase();
+
+    for (const pattern of patterns) {
+      const patternLower = pattern.pattern.toLowerCase();
+
+      switch (pattern.type) {
+        case 'merchant':
+          if (merchantLower.includes(patternLower)) return true;
+          break;
+        case 'memo':
+          if (memoLower.includes(patternLower)) return true;
+          break;
+        case 'account':
+          if (accountLower.includes(patternLower)) return true;
+          break;
+        case 'both':
+          if (merchantLower.includes(patternLower) || memoLower.includes(patternLower)) return true;
+          break;
+      }
+    }
+    return false;
   }
 
   async getTransactionById(id: number): Promise<Transaction | null> {
@@ -866,30 +882,75 @@ class Database {
     const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
     const endDate = `${year}-${String(month).padStart(2, '0')}-31`;
 
-    const result = await db.getFirstAsync<{ income: number; expense: number }>(
-      `SELECT
-        COALESCE(SUM(CASE WHEN t.type = 'income' THEN t.amount ELSE 0 END), 0) as income,
-        COALESCE(SUM(CASE WHEN t.type = 'expense' THEN t.amount ELSE 0 END), 0) as expense
+    // 최적화: 서브쿼리 제거, 메모리에서 제외 패턴 처리
+    const transactions = await db.getAllAsync<{
+      type: string;
+      amount: number;
+      merchant: string | null;
+      memo: string | null;
+      accountName: string | null;
+      isTransfer: number;
+      status: string | null;
+    }>(
+      `SELECT t.type, t.amount, t.merchant, t.memo, a.name as accountName, t.isTransfer, t.status
        FROM transactions t
-       LEFT JOIN categories c ON t.categoryId = c.id
        LEFT JOIN accounts a ON t.accountId = a.id
        WHERE t.date >= ? AND t.date <= ?
        AND t.isTransfer = 0
-       AND t.status != 'excluded'
-       AND NOT EXISTS (
-         SELECT 1 FROM exclusion_patterns ep
-         WHERE ep.isActive = 1
-         AND (
-           (ep.type = 'merchant' AND t.merchant LIKE '%' || ep.pattern || '%')
-           OR (ep.type = 'memo' AND t.memo LIKE '%' || ep.pattern || '%')
-           OR (ep.type = 'both' AND (t.merchant LIKE '%' || ep.pattern || '%' OR t.memo LIKE '%' || ep.pattern || '%'))
-           OR (ep.type = 'account' AND a.name LIKE '%' || ep.pattern || '%')
-         )
-       )`,
+       AND (t.status IS NULL OR t.status != 'excluded')`,
       [startDate, endDate]
     );
 
-    return result || { income: 0, expense: 0 };
+    // 제외 패턴 로드 (1회만)
+    const patterns = await this.getExclusionPatterns(true);
+
+    let income = 0;
+    let expense = 0;
+
+    for (const tx of transactions) {
+      // 제외 패턴 체크
+      if (patterns.length > 0 && this.matchesExclusionPatternSimple(tx, patterns)) {
+        continue;
+      }
+
+      if (tx.type === 'income') {
+        income += tx.amount;
+      } else if (tx.type === 'expense') {
+        expense += tx.amount;
+      }
+    }
+
+    return { income, expense };
+  }
+
+  // 간단한 제외 패턴 매칭 (부분 데이터용)
+  private matchesExclusionPatternSimple(
+    tx: { merchant: string | null; memo: string | null; accountName: string | null },
+    patterns: ExclusionPattern[]
+  ): boolean {
+    const merchantLower = (tx.merchant || '').toLowerCase();
+    const memoLower = (tx.memo || '').toLowerCase();
+    const accountLower = (tx.accountName || '').toLowerCase();
+
+    for (const pattern of patterns) {
+      const patternLower = pattern.pattern.toLowerCase();
+
+      switch (pattern.type) {
+        case 'merchant':
+          if (merchantLower.includes(patternLower)) return true;
+          break;
+        case 'memo':
+          if (memoLower.includes(patternLower)) return true;
+          break;
+        case 'account':
+          if (accountLower.includes(patternLower)) return true;
+          break;
+        case 'both':
+          if (merchantLower.includes(patternLower) || memoLower.includes(patternLower)) return true;
+          break;
+      }
+    }
+    return false;
   }
 
   async getCategoryStats(year: number, month: number) {
@@ -897,42 +958,73 @@ class Database {
     const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
     const endDate = `${year}-${String(month).padStart(2, '0')}-31`;
 
-    const stats = await db.getAllAsync<{
+    // 최적화: 서브쿼리 제거, 개별 거래 로드 후 메모리에서 처리
+    const transactions = await db.getAllAsync<{
+      categoryId: number;
       categoryName: string;
       categoryColor: string;
-      categoryId: number;
-      total: number;
-      count: number;
       isFixedExpense: number;
+      amount: number;
+      merchant: string | null;
+      memo: string | null;
+      accountName: string | null;
     }>(
       `SELECT
+        c.id as categoryId,
         c.name as categoryName,
         c.color as categoryColor,
-        c.id as categoryId,
         c.isFixedExpense as isFixedExpense,
-        SUM(t.amount) as total,
-        COUNT(t.id) as count
+        t.amount,
+        t.merchant,
+        t.memo,
+        a.name as accountName
        FROM transactions t
        JOIN categories c ON t.categoryId = c.id
        LEFT JOIN accounts a ON t.accountId = a.id
        WHERE t.date >= ? AND t.date <= ?
        AND t.type = 'expense'
        AND t.isTransfer = 0
-       AND t.status != 'excluded'
-       AND NOT EXISTS (
-         SELECT 1 FROM exclusion_patterns ep
-         WHERE ep.isActive = 1
-         AND (
-           (ep.type = 'merchant' AND t.merchant LIKE '%' || ep.pattern || '%')
-           OR (ep.type = 'memo' AND t.memo LIKE '%' || ep.pattern || '%')
-           OR (ep.type = 'both' AND (t.merchant LIKE '%' || ep.pattern || '%' OR t.memo LIKE '%' || ep.pattern || '%'))
-           OR (ep.type = 'account' AND a.name LIKE '%' || ep.pattern || '%')
-         )
-       )
-       GROUP BY c.id
-       ORDER BY total DESC`,
+       AND (t.status IS NULL OR t.status != 'excluded')`,
       [startDate, endDate]
     );
+
+    // 제외 패턴 로드 (1회만)
+    const patterns = await this.getExclusionPatterns(true);
+
+    // 카테고리별 집계 (메모리에서 처리)
+    const categoryMap = new Map<number, {
+      categoryName: string;
+      categoryColor: string;
+      categoryId: number;
+      total: number;
+      count: number;
+      isFixedExpense: number;
+    }>();
+
+    for (const tx of transactions) {
+      // 제외 패턴 체크
+      if (patterns.length > 0 && this.matchesExclusionPatternSimple(tx, patterns)) {
+        continue;
+      }
+
+      const existing = categoryMap.get(tx.categoryId);
+      if (existing) {
+        existing.total += tx.amount;
+        existing.count += 1;
+      } else {
+        categoryMap.set(tx.categoryId, {
+          categoryId: tx.categoryId,
+          categoryName: tx.categoryName,
+          categoryColor: tx.categoryColor,
+          isFixedExpense: tx.isFixedExpense,
+          total: tx.amount,
+          count: 1,
+        });
+      }
+    }
+
+    // 배열로 변환 후 정렬
+    const stats = Array.from(categoryMap.values()).sort((a, b) => b.total - a.total);
 
     // 총 지출 계산 및 퍼센티지 추가
     const totalExpense = stats.reduce((sum, stat) => sum + stat.total, 0);

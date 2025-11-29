@@ -49,12 +49,17 @@ export default function DashboardScreen() {
 
   const loadData = useCallback(async () => {
     try {
-      // 이번 달 요약
-      const summary = await database.getMonthSummary(year, month);
-      setMonthSummary(summary);
+      const startDate = format(new Date(year, month - 1, 1), 'yyyy-MM-dd');
+      const endDate = format(new Date(year, month, 0), 'yyyy-MM-dd');
 
-      // 카테고리별 통계
-      const stats = await database.getCategoryStats(year, month);
+      // 최적화: 병렬로 데이터 로드
+      const [summary, stats, transactions] = await Promise.all([
+        database.getMonthSummary(year, month),
+        database.getCategoryStats(year, month),
+        database.getTransactions(startDate, endDate, false),
+      ]);
+
+      setMonthSummary(summary);
       setCategoryStats(stats);
 
       // 고정지출과 변동지출 계산
@@ -68,11 +73,8 @@ export default function DashboardScreen() {
       setFixedExpense(fixed);
       setVariableExpense(variable);
 
-      // 최근 거래 내역 (제외 패턴 적용)
-      const startDate = format(new Date(year, month - 1, 1), 'yyyy-MM-dd');
-      const endDate = format(new Date(year, month, 0), 'yyyy-MM-dd');
-      const transactions = await database.getTransactions(startDate, endDate, false);
-      setRecentTransactions(transactions.slice(0, 10)); // 최근 10개만
+      // 최근 10개만
+      setRecentTransactions(transactions.slice(0, 10));
     } catch (error) {
       console.error('Failed to load dashboard data:', error);
     } finally {

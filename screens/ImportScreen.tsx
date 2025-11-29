@@ -280,8 +280,15 @@ export default function ImportScreen({ navigation }: any) {
                 return;
               }
 
-              // 기존 거래 가져와서 중복 체크용 Set 생성
-              const existingTransactions = await database.getTransactions();
+              // 최적화: 가져올 거래의 날짜 범위만 조회 (전체 로드 대신)
+              const dates = allTransactions.map(tx => tx.date).filter(Boolean);
+              const minDate = dates.length > 0 ? dates.reduce((a, b) => a < b ? a : b) : null;
+              const maxDate = dates.length > 0 ? dates.reduce((a, b) => a > b ? a : b) : null;
+
+              // 해당 기간의 거래만 로드하여 중복 체크
+              const existingTransactions = minDate && maxDate
+                ? await database.getTransactions(minDate, maxDate)
+                : [];
               const existingKeys = new Set<string>();
               for (const tx of existingTransactions) {
                 const merchantKey = (tx.merchant || tx.description || '').toLowerCase().replace(/\s+/g, '');

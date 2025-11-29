@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   View,
   ScrollView,
@@ -27,12 +27,30 @@ import { format, addMonths, subMonths } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { database, Transaction, Category } from '../lib/db/database';
 
+// 검색 debounce 훅
+function useDebounce<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = useState<T>(value);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [value, delay]);
+
+  return debouncedValue;
+}
+
 export default function TransactionsScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [filteredTransactions, setFilteredTransactions] = useState<Transaction[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const debouncedSearchQuery = useDebounce(searchQuery, 300); // 300ms debounce
   const [filterType, setFilterType] = useState<'all' | 'income' | 'expense'>('all');
 
   // 월별 필터
@@ -72,47 +90,45 @@ export default function TransactionsScreen() {
 
       const allTransactions = await database.getTransactions(startDate, endDate);
       setTransactions(allTransactions);
-      applyFilters(allTransactions, searchQuery, filterType);
     } catch (error) {
       console.error('Failed to load transactions:', error);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [searchQuery, filterType, selectedDate]);
+  }, [selectedDate]); // searchQuery, filterType 제거 - 필터링은 useMemo에서 처리
 
   useEffect(() => {
     loadTransactions();
   }, [loadTransactions]);
 
-  const applyFilters = (
-    allTransactions: Transaction[],
-    search: string,
-    type: 'all' | 'income' | 'expense'
-  ) => {
-    let filtered = allTransactions;
+  // useMemo로 필터링 최적화 (debounced 검색어 사용)
+  const filteredTransactionsMemo = useMemo(() => {
+    let filtered = transactions;
 
     // 유형 필터
-    if (type !== 'all') {
-      filtered = filtered.filter((t) => t.type === type);
+    if (filterType !== 'all') {
+      filtered = filtered.filter((t) => t.type === filterType);
     }
 
-    // 검색 필터
-    if (search) {
-      const query = search.toLowerCase();
+    // 검색 필터 (debounced)
+    if (debouncedSearchQuery) {
+      const query = debouncedSearchQuery.toLowerCase();
       filtered = filtered.filter(
         (t) =>
           t.description?.toLowerCase().includes(query) ||
-          t.categoryName?.toLowerCase().includes(query)
+          t.categoryName?.toLowerCase().includes(query) ||
+          t.merchant?.toLowerCase().includes(query)
       );
     }
 
-    setFilteredTransactions(filtered);
-  };
+    return filtered;
+  }, [transactions, debouncedSearchQuery, filterType]);
 
+  // filteredTransactions 상태 업데이트
   useEffect(() => {
-    applyFilters(transactions, searchQuery, filterType);
-  }, [searchQuery, filterType, transactions]);
+    setFilteredTransactions(filteredTransactionsMemo);
+  }, [filteredTransactionsMemo]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
