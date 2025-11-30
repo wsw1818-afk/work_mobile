@@ -1,10 +1,19 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(npx expo prebuild:*)",
+      "Bash(timeout 30 powershell:*)",
+      "Bash(timeout 45 powershell:*)",
+      "Bash(cmd /c \"dir H:\\Claude_work\\gagyebu-native\\android\\app\\build\\outputs\\apk\\release\\*.apk\")",
+      "Bash(adb devices:*)",
+      "Bash(adb install:*)",
+      "Bash(adb shell am start:*)",
+      "Bash(adb shell pm list packages:*)",
+      "Bash(adb shell monkey:*)"
     ],
-    "defaultMode": "dontAsk",
     "deny": [],
-    "ask": []
+    "ask": [],
+    "defaultMode": "dontAsk"
   }
 }
