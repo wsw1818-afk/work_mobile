@@ -1,26 +1,17 @@
-// Google OAuth 인증 훅 - expo-auth-session 사용
+// Google OAuth 인증 훅 - expo-auth-session/providers/google 사용
 import { useState, useEffect, useCallback } from 'react';
-import * as AuthSession from 'expo-auth-session';
+import * as Google from 'expo-auth-session/providers/google';
 import * as WebBrowser from 'expo-web-browser';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // 웹 브라우저 세션 완료 처리
 WebBrowser.maybeCompleteAuthSession();
 
-// Google OAuth 설정
-// Google Cloud Console에서 발급받은 Web 클라이언트 ID (Android에서도 Web ID 사용)
-const GOOGLE_CLIENT_ID = '584528500804-tm95893irb80pjit981hhu87k9vphnet.apps.googleusercontent.com';
-
-// Expo Auth Proxy 사용 - 모든 플랫폼에서 동작
-const REDIRECT_URI = AuthSession.makeRedirectUri({
-  useProxy: true,
-});
-
-// Google Drive 접근 권한
-const SCOPES = [
-  'https://www.googleapis.com/auth/drive.file',
-  'https://www.googleapis.com/auth/drive.appdata',
-];
+// Google OAuth 클라이언트 ID (Google Cloud Console에서 발급)
+// Android 앱용 클라이언트 ID (패키지명 + SHA-1으로 생성)
+const ANDROID_CLIENT_ID = '584528500804-dh7chsh5j60mv495e55cor4bdrom60ib.apps.googleusercontent.com';
+// Web 클라이언트 ID (리디렉션 URI 필요)
+const WEB_CLIENT_ID = '584528500804-tm95893irb80pjit981hhu87k9vphnet.apps.googleusercontent.com';
 
 // 토큰 저장 키
 const TOKEN_STORAGE_KEY = 'google_access_token';
@@ -40,13 +31,40 @@ export function useGoogleAuth(): GoogleAuthResult {
   const [isLoading, setIsLoading] = useState(true);
   const [accessToken, setAccessToken] = useState<string | null>(null);
 
-  // OAuth Discovery 문서
-  const discovery = AuthSession.useAutoDiscovery('https://accounts.google.com');
+  // Google Auth Request 설정
+  // Google Drive 접근 권한 포함
+  const [request, response, promptAsync] = Google.useAuthRequest({
+    androidClientId: ANDROID_CLIENT_ID,
+    webClientId: WEB_CLIENT_ID,
+    scopes: [
+      'https://www.googleapis.com/auth/drive.file',
+      'https://www.googleapis.com/auth/drive.appdata',
+    ],
+  });
 
   // 저장된 토큰 로드
   useEffect(() => {
     loadStoredToken();
   }, []);
+
+  // 인증 응답 처리
+  useEffect(() => {
+    if (response?.type === 'success') {
+      const { authentication } = response;
+      if (authentication?.accessToken) {
+        console.log('Google 로그인 성공!');
+        setAccessToken(authentication.accessToken);
+        setIsLoggedIn(true);
+        saveToken(authentication.accessToken, authentication.expiresIn || 3600);
+      }
+    } else if (response?.type === 'error') {
+      console.error('Google 인증 오류:', response.error);
+    }
+
+    if (response) {
+      setIsLoading(false);
+    }
+  }, [response]);
 
   const loadStoredToken = async () => {
     try {
@@ -91,45 +109,21 @@ export function useGoogleAuth(): GoogleAuthResult {
 
   // 로그인 함수
   const login = useCallback(async () => {
-    if (!discovery) {
-      console.error('OAuth discovery 문서를 로드할 수 없습니다');
+    if (!request) {
+      console.error('Google Auth Request가 준비되지 않았습니다');
       return;
     }
 
     try {
       setIsLoading(true);
-
-      // Auth Request 생성 (Implicit Grant)
-      const request = new AuthSession.AuthRequest({
-        clientId: GOOGLE_CLIENT_ID,
-        scopes: SCOPES,
-        redirectUri: REDIRECT_URI,
-        responseType: AuthSession.ResponseType.Token,
-        usePKCE: false,
-      });
-
-      // 인증 시작
-      const result = await request.promptAsync(discovery);
-
-      console.log('Auth result type:', result.type);
-      console.log('Auth result:', JSON.stringify(result, null, 2));
-
-      if (result.type === 'success' && result.authentication) {
-        const { accessToken: newToken, expiresIn } = result.authentication;
-        if (newToken) {
-          setAccessToken(newToken);
-          setIsLoggedIn(true);
-          await saveToken(newToken, expiresIn || 3600);
-        }
-      } else if (result.type === 'error') {
-        console.error('인증 오류:', result.error);
-      }
+      console.log('Google 로그인 시작...');
+      await promptAsync();
+      // 응답은 useEffect에서 처리됨
     } catch (error) {
       console.error('로그인 오류:', error);
-    } finally {
       setIsLoading(false);
     }
-  }, [discovery]);
+  }, [request, promptAsync]);
 
   // 로그아웃 함수
   const logout = useCallback(async () => {

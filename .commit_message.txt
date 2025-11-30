@@ -1,1 +1,1 @@
-✨ Google Cloud Console OAuth 설정 완료 및 원클릭 로그인 구현
+🔧 Google OAuth를 expo-auth-session/providers/google로 변경 (useProxy deprecated 해결)
