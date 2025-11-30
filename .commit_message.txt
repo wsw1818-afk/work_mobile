@@ -1,1 +1,1 @@
-✨ expo-auth-session으로 Google Drive 원클릭 로그인 구현
+✨ Google Cloud Console OAuth 설정 완료 및 원클릭 로그인 구현
