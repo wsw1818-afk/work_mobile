@@ -45,24 +45,26 @@ export default function GoogleOAuthWebView({
     `&include_granted_scopes=true` +
     `&prompt=consent`;
 
-  // URL 변경 감지하여 토큰 추출
-  const handleNavigationStateChange = (navState: WebViewNavigation) => {
-    const { url } = navState;
+  // 토큰 추출 함수
+  const extractToken = (url: string): boolean => {
+    console.log('OAuth URL:', url);
 
-    // 리다이렉트 URL에서 액세스 토큰 추출
-    if (url.includes('#access_token=')) {
-      const tokenMatch = url.match(/access_token=([^&]+)/);
+    // 리다이렉트 URL에서 액세스 토큰 추출 (hash fragment)
+    if (url.includes('#access_token=') || url.includes('access_token=')) {
+      const tokenMatch = url.match(/access_token=([^&#]+)/);
       if (tokenMatch && tokenMatch[1]) {
         const accessToken = decodeURIComponent(tokenMatch[1]);
+        console.log('Token found!');
         onSuccess(accessToken);
         onClose();
+        return true;
       }
     }
 
     // 에러 처리
     if (url.includes('error=')) {
-      const errorMatch = url.match(/error=([^&]+)/);
-      const errorDesc = url.match(/error_description=([^&]+)/);
+      const errorMatch = url.match(/error=([^&#]+)/);
+      const errorDesc = url.match(/error_description=([^&#]+)/);
       const errorMessage = errorDesc
         ? decodeURIComponent(errorDesc[1].replace(/\+/g, ' '))
         : errorMatch
@@ -70,7 +72,24 @@ export default function GoogleOAuthWebView({
           : '인증 오류가 발생했습니다.';
       onError(errorMessage);
       onClose();
+      return true;
     }
+
+    return false;
+  };
+
+  // URL 변경 감지하여 토큰 추출
+  const handleNavigationStateChange = (navState: WebViewNavigation) => {
+    extractToken(navState.url);
+  };
+
+  // 네비게이션 요청 전 URL 체크 (hash fragment 감지용)
+  const handleShouldStartLoad = (event: any): boolean => {
+    const { url } = event;
+    if (extractToken(url)) {
+      return false; // 네비게이션 중단
+    }
+    return true;
   };
 
   // WebView 로드 완료
@@ -110,12 +129,15 @@ export default function GoogleOAuthWebView({
             ref={webViewRef}
             source={{ uri: authUrl }}
             onNavigationStateChange={handleNavigationStateChange}
+            onShouldStartLoadWithRequest={handleShouldStartLoad}
             onLoadStart={handleLoadStart}
             onLoadEnd={handleLoadEnd}
             javaScriptEnabled={true}
             domStorageEnabled={true}
             startInLoadingState={true}
             scalesPageToFit={true}
+            sharedCookiesEnabled={true}
+            thirdPartyCookiesEnabled={true}
             userAgent="Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.120 Mobile Safari/537.36"
             style={styles.webView}
           />
