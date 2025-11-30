@@ -16,10 +16,20 @@ import { database } from '../lib/db/database';
 import { backupManager } from '../lib/backup';
 import { googleDriveManager, GoogleDriveFile } from '../lib/googleDrive';
 import { useGoogleAuth } from '../lib/hooks/useGoogleAuth';
+import GoogleOAuthWebView from '../components/GoogleOAuthWebView';
 
 export default function SettingsScreen({ navigation }: any) {
-  // Google OAuth 훅 사용
-  const { isLoggedIn: isGoogleLoggedIn, isLoading: googleAuthLoading, accessToken, login: googleLogin, logout: googleLogout } = useGoogleAuth();
+  // Google OAuth 훅 사용 (WebView 기반)
+  const {
+    isLoggedIn: isGoogleLoggedIn,
+    isLoading: googleAuthLoading,
+    accessToken,
+    showWebView,
+    openLoginWebView,
+    closeLoginWebView,
+    handleTokenReceived,
+    logout: googleLogout,
+  } = useGoogleAuth();
 
   // AI 설정 상태
   const [aiProvider, setAiProvider] = useState<'openai' | 'gemini'>('gemini');
@@ -232,9 +242,20 @@ export default function SettingsScreen({ navigation }: any) {
         ]
       );
     } else {
-      // Google OAuth 로그인 (원클릭)
-      await googleLogin();
+      // Google OAuth 로그인 - WebView 열기
+      openLoginWebView();
     }
+  };
+
+  // WebView에서 토큰 받기 성공
+  const handleOAuthSuccess = async (token: string, expiresIn?: number) => {
+    await handleTokenReceived(token, expiresIn);
+    Alert.alert('성공', 'Google Drive에 연결되었습니다.');
+  };
+
+  // WebView에서 에러 발생
+  const handleOAuthError = (error: string) => {
+    Alert.alert('오류', `Google 로그인 실패: ${error}`);
   };
 
   // 복원 실행 (로컬 파일)
@@ -271,20 +292,6 @@ export default function SettingsScreen({ navigation }: any) {
     <View style={styles.container}>
       <ScrollView style={styles.scrollView}>
         <Text style={styles.sectionTitle}>설정</Text>
-
-        <Card style={styles.card}>
-          <Card.Content>
-            <Text variant="titleMedium" style={styles.cardTitle}>
-              서버 연결
-            </Text>
-            <List.Item
-              title="QR 코드 스캔"
-              description="QR 코드로 서버에 연결"
-              left={(props) => <List.Icon {...props} icon="qrcode-scan" />}
-              onPress={() => navigation.navigate('QRScanner')}
-            />
-          </Card.Content>
-        </Card>
 
         <Card style={styles.card}>
           <Card.Content>
@@ -536,6 +543,14 @@ export default function SettingsScreen({ navigation }: any) {
         </Dialog>
 
       </Portal>
+
+      {/* Google OAuth WebView */}
+      <GoogleOAuthWebView
+        visible={showWebView}
+        onClose={closeLoginWebView}
+        onSuccess={handleOAuthSuccess}
+        onError={handleOAuthError}
+      />
     </View>
   );
 }

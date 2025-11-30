@@ -1,1 +1,1 @@
-🔧 Google OAuth를 expo-auth-session/providers/google로 변경 (useProxy deprecated 해결)
+📦 코드 분석 완료 및 Release APK 빌드 (v1.0.0)

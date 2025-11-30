@@ -7,7 +7,7 @@ import { backupManager, BackupData, BackupResult, RestoreResult } from './backup
 const GOOGLE_DRIVE_API_KEY = 'AIzaSyBcsEnQadB53AM8JSMfj2PLs6s9xyUMDr4';
 const GOOGLE_DRIVE_UPLOAD_URL = 'https://www.googleapis.com/upload/drive/v3/files';
 const GOOGLE_DRIVE_API_URL = 'https://www.googleapis.com/drive/v3/files';
-const BACKUP_FOLDER_NAME = 'GagyebuBackups';
+const BACKUP_FOLDER_NAME = 'gagyebu-native';
 
 // Google Drive 결과 타입
 export interface GoogleDriveResult {
