@@ -10,14 +10,19 @@ export default function DashboardScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [monthSummary, setMonthSummary] = useState({ income: 0, expense: 0 });
-  const [fixedExpense, setFixedExpense] = useState(0);
-  const [variableExpense, setVariableExpense] = useState(0);
-  const [categoryStats, setCategoryStats] = useState<Array<{
-    categoryName: string;
-    categoryColor: string;
+  const [groupStats, setGroupStats] = useState<Array<{
+    groupId: number;
+    groupName: string;
+    groupColor: string;
+    groupIcon: string | null;
     total: number;
-    percentage: number;
-    isFixedExpense: boolean;
+    categories: Array<{
+      categoryId: number;
+      categoryName: string;
+      categoryColor: string;
+      total: number;
+      percentage: number;
+    }>;
   }>>([]);
   const [recentTransactions, setRecentTransactions] = useState<Transaction[]>([]);
 
@@ -28,7 +33,16 @@ export default function DashboardScreen() {
     color: string;
     total: number;
     transactions: Transaction[];
+    showCategoryGroups?: boolean;
+    categoryStats?: Array<{
+      categoryId: number;
+      categoryName: string;
+      categoryColor: string;
+      total: number;
+      percentage: number;
+    }>;
   } | null>(null);
+
 
   // 월별 선택 기능
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -52,26 +66,14 @@ export default function DashboardScreen() {
       const startDate = format(new Date(year, month - 1, 1), 'yyyy-MM-dd');
       const endDate = format(new Date(year, month, 0), 'yyyy-MM-dd');
 
-      // 최적화: 병렬로 데이터 로드
-      const [summary, stats, transactions] = await Promise.all([
-        database.getMonthSummary(year, month),
-        database.getCategoryStats(year, month),
+      // 최적화: 통합 함수로 한 번에 로드 + 최근 거래는 병렬
+      const [dashboardData, transactions] = await Promise.all([
+        database.getDashboardData(year, month),
         database.getTransactions(startDate, endDate, false),
       ]);
 
-      setMonthSummary(summary);
-      setCategoryStats(stats);
-
-      // 고정지출과 변동지출 계산
-      const fixed = stats
-        .filter(s => s.isFixedExpense)
-        .reduce((sum, s) => sum + s.total, 0);
-      const variable = stats
-        .filter(s => !s.isFixedExpense)
-        .reduce((sum, s) => sum + s.total, 0);
-
-      setFixedExpense(fixed);
-      setVariableExpense(variable);
+      setMonthSummary(dashboardData.summary);
+      setGroupStats(dashboardData.groupStats);
 
       // 최근 10개만
       setRecentTransactions(transactions.slice(0, 10));
@@ -103,15 +105,17 @@ export default function DashboardScreen() {
       const filteredTransactions = allTransactions.filter(tx => tx.type === type);
       const total = filteredTransactions.reduce((sum, tx) => sum + tx.amount, 0);
 
-      // 지출인 경우 카테고리별로 그룹화된 정보 전달
+      // 지출인 경우 그룹별로 정보 전달
       if (type === 'expense') {
+        // 그룹 통계에서 카테고리 통계 추출
+        const categoryStats = groupStats.flatMap(g => g.categories);
         setSelectedCategory({
           name: title,
           color: '#ef4444',
           total: total,
           transactions: filteredTransactions,
-          showCategoryGroups: true, // 카테고리별 그룹 표시 플래그
-          categoryStats: categoryStats, // 카테고리 통계 전달
+          showCategoryGroups: true,
+          categoryStats: categoryStats,
         });
       } else {
         setSelectedCategory({
@@ -127,54 +131,34 @@ export default function DashboardScreen() {
     }
   };
 
-  // 고정지출/변동지출 클릭 핸들러
-  const handleExpenseTypeClick = async (isFixed: boolean, title: string) => {
+  // 그룹 클릭 핸들러 (카테고리 목록과 거래 내역 함께 표시)
+  const handleGroupClick = async (groupId: number, groupName: string, groupColor: string, groupIcon?: string | null) => {
     try {
       const startDate = format(new Date(year, month - 1, 1), 'yyyy-MM-dd');
       const endDate = format(new Date(year, month, 0), 'yyyy-MM-dd');
       const allTransactions = await database.getTransactions(startDate, endDate, false);
 
-      // 고정/변동 지출 필터링
-      const expenseStats = categoryStats.filter(s => s.isFixedExpense === isFixed);
-      const categoryNames = expenseStats.map(s => s.categoryName);
+      // 해당 그룹의 카테고리 정보
+      const group = groupStats.find(g => g.groupId === groupId);
+      if (!group) return;
+
+      const categoryNames = group.categories.map(c => c.categoryName);
       const filteredTransactions = allTransactions.filter(
-        tx => tx.type === 'expense' && categoryNames.includes(tx.categoryName)
+        tx => tx.type === 'expense' && categoryNames.includes(tx.categoryName || '')
       );
       const total = filteredTransactions.reduce((sum, tx) => sum + tx.amount, 0);
 
       setSelectedCategory({
-        name: title,
-        color: isFixed ? '#f59e0b' : '#8b5cf6',
+        name: `${groupIcon || ''} ${groupName}`.trim(),
+        color: groupColor,
         total: total,
         transactions: filteredTransactions,
+        showCategoryGroups: true,
+        categoryStats: group.categories,
       });
       setModalVisible(true);
     } catch (error) {
-      console.error('Failed to load expense transactions:', error);
-    }
-  };
-
-  const handleCategoryClick = async (categoryName: string, categoryColor: string, total: number) => {
-    try {
-      // 해당 카테고리의 거래 내역 가져오기
-      const startDate = format(new Date(year, month - 1, 1), 'yyyy-MM-dd');
-      const endDate = format(new Date(year, month, 0), 'yyyy-MM-dd');
-      const allTransactions = await database.getTransactions(startDate, endDate, false);
-
-      // 카테고리별 필터링
-      const categoryTransactions = allTransactions.filter(
-        tx => tx.categoryName === categoryName
-      );
-
-      setSelectedCategory({
-        name: categoryName,
-        color: categoryColor,
-        total: total,
-        transactions: categoryTransactions,
-      });
-      setModalVisible(true);
-    } catch (error) {
-      console.error('Failed to load category transactions:', error);
+      console.error('Failed to load group transactions:', error);
     }
   };
 
@@ -182,6 +166,7 @@ export default function DashboardScreen() {
     Clipboard.setString(text);
     Alert.alert('복사 완료', `${label}이(가) 복사되었습니다.`);
   };
+
 
   if (loading) {
     return (
@@ -259,32 +244,28 @@ export default function DashboardScreen() {
             </Pressable>
           </View>
 
-          <View style={styles.expenseDetailRow}>
-            <Pressable
-              style={({ pressed }) => [
-                styles.expenseDetailItem,
-                pressed && styles.expenseDetailItemPressed
-              ]}
-              onPress={() => handleExpenseTypeClick(true, '고정지출')}
-            >
-              <Text variant="bodySmall" style={styles.expenseDetailLabel}>고정지출</Text>
-              <Text variant="bodyMedium" style={styles.fixedExpenseText}>
-                {Math.round(fixedExpense).toLocaleString()}원
-              </Text>
-            </Pressable>
-
-            <Pressable
-              style={({ pressed }) => [
-                styles.expenseDetailItem,
-                pressed && styles.expenseDetailItemPressed
-              ]}
-              onPress={() => handleExpenseTypeClick(false, '변동지출')}
-            >
-              <Text variant="bodySmall" style={styles.expenseDetailLabel}>변동지출</Text>
-              <Text variant="bodyMedium" style={styles.variableExpenseText}>
-                {Math.round(variableExpense).toLocaleString()}원
-              </Text>
-            </Pressable>
+          <View style={styles.expenseDetailContainer}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.groupChipsScroll}>
+              {groupStats.map((group) => (
+                <Pressable
+                  key={group.groupId}
+                  style={({ pressed }) => [
+                    styles.groupChip,
+                    { borderColor: group.groupColor },
+                    pressed && styles.groupChipPressed
+                  ]}
+                  onPress={() => handleGroupClick(group.groupId, group.groupName, group.groupColor, group.groupIcon)}
+                >
+                  <Text style={[styles.groupChipIcon]}>{group.groupIcon}</Text>
+                  <View style={styles.groupChipText}>
+                    <Text variant="bodySmall" style={styles.groupChipLabel}>{group.groupName}</Text>
+                    <Text variant="bodyMedium" style={[styles.groupChipAmount, { color: group.groupColor }]}>
+                      {Math.round(group.total).toLocaleString()}원
+                    </Text>
+                  </View>
+                </Pressable>
+              ))}
+            </ScrollView>
           </View>
 
           <View style={styles.balanceContainer}>
@@ -301,84 +282,6 @@ export default function DashboardScreen() {
           </View>
         </Card.Content>
       </Card>
-
-      {/* 고정지출 */}
-      {categoryStats.filter(s => s.isFixedExpense).length > 0 && (
-        <Card style={styles.card}>
-          <Card.Content>
-            <Text variant="titleMedium" style={styles.cardTitle}>
-              💰 고정지출
-            </Text>
-            {categoryStats.filter(s => s.isFixedExpense).map((stat, index) => (
-              <Pressable
-                key={index}
-                style={({ pressed }) => [
-                  styles.categoryItem,
-                  pressed && styles.categoryItemPressed
-                ]}
-                onPress={() => handleCategoryClick(stat.categoryName, stat.categoryColor, stat.total)}
-              >
-                <View style={styles.categoryLeft}>
-                  <View
-                    style={[
-                      styles.categoryDot,
-                      { backgroundColor: stat.categoryColor }
-                    ]}
-                  />
-                  <Text variant="bodyMedium">{stat.categoryName}</Text>
-                </View>
-                <View style={styles.categoryRight}>
-                  <Text variant="bodyMedium" style={styles.categoryAmount}>
-                    {Math.round(stat.total).toLocaleString()}원
-                  </Text>
-                  <Text variant="bodySmall" style={styles.categoryPercentage}>
-                    ({stat.percentage.toFixed(1)}%)
-                  </Text>
-                </View>
-              </Pressable>
-            ))}
-          </Card.Content>
-        </Card>
-      )}
-
-      {/* 변동지출 */}
-      {categoryStats.filter(s => !s.isFixedExpense).length > 0 && (
-        <Card style={styles.card}>
-          <Card.Content>
-            <Text variant="titleMedium" style={styles.cardTitle}>
-              📊 변동지출
-            </Text>
-            {categoryStats.filter(s => !s.isFixedExpense).slice(0, 10).map((stat, index) => (
-              <Pressable
-                key={index}
-                style={({ pressed }) => [
-                  styles.categoryItem,
-                  pressed && styles.categoryItemPressed
-                ]}
-                onPress={() => handleCategoryClick(stat.categoryName, stat.categoryColor, stat.total)}
-              >
-                <View style={styles.categoryLeft}>
-                  <View
-                    style={[
-                      styles.categoryDot,
-                      { backgroundColor: stat.categoryColor }
-                    ]}
-                  />
-                  <Text variant="bodyMedium">{stat.categoryName}</Text>
-                </View>
-                <View style={styles.categoryRight}>
-                  <Text variant="bodyMedium" style={styles.categoryAmount}>
-                    {Math.round(stat.total).toLocaleString()}원
-                  </Text>
-                  <Text variant="bodySmall" style={styles.categoryPercentage}>
-                    ({stat.percentage.toFixed(1)}%)
-                  </Text>
-                </View>
-              </Pressable>
-            ))}
-          </Card.Content>
-        </Card>
-      )}
 
       {/* 최근 거래 내역 */}
       {recentTransactions.length > 0 && (
@@ -426,7 +329,7 @@ export default function DashboardScreen() {
         </Card>
       )}
 
-      {recentTransactions.length === 0 && categoryStats.length === 0 && (
+      {recentTransactions.length === 0 && groupStats.length === 0 && (
         <View style={styles.emptyContainer}>
           <Text variant="bodyLarge" style={styles.emptyText}>
             거래 내역이 없습니다.
@@ -510,7 +413,7 @@ export default function DashboardScreen() {
                         <View key={transaction.id}>
                           <View style={styles.transactionRow}>
                             <Pressable
-                              style={styles.transactionLeft}
+                              style={styles.modalTransactionLeft}
                               onLongPress={() => {
                                 const text = `${transaction.description || transaction.merchant || '거래'}`;
                                 copyToClipboard(text, '거래 내용');
@@ -565,7 +468,7 @@ export default function DashboardScreen() {
                   <View key={transaction.id}>
                     <View style={styles.transactionRow}>
                       <Pressable
-                        style={styles.transactionLeft}
+                        style={styles.modalTransactionLeft}
                         onLongPress={() => {
                           const text = `${transaction.description || transaction.merchant || '거래'}`;
                           copyToClipboard(text, '거래 내용');
@@ -622,6 +525,7 @@ export default function DashboardScreen() {
             </ScrollView>
           )}
         </Modal>
+
       </Portal>
     </ScrollView>
     </SafeAreaView>
@@ -668,6 +572,16 @@ const styles = StyleSheet.create({
   cardTitle: {
     marginBottom: 16,
     fontWeight: 'bold',
+    flex: 1,
+  },
+  cardTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  settingsIcon: {
+    margin: 0,
   },
   summaryRow: {
     flexDirection: 'row',
@@ -696,13 +610,22 @@ const styles = StyleSheet.create({
     color: '#ef4444',
     fontWeight: 'bold',
   },
+  expenseDetailContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
   expenseDetailRow: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    marginBottom: 16,
+    flex: 1,
     paddingVertical: 12,
     backgroundColor: '#f9fafb',
     borderRadius: 8,
+  },
+  expenseSettingsIcon: {
+    margin: 0,
+    marginLeft: 4,
   },
   expenseDetailItem: {
     alignItems: 'center',
@@ -818,6 +741,7 @@ const styles = StyleSheet.create({
   },
   modalContent: {
     padding: 20,
+    paddingBottom: 32,
   },
   modalHeader: {
     marginBottom: 16,
@@ -853,7 +777,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     paddingVertical: 12,
   },
-  transactionLeft: {
+  modalTransactionLeft: {
     flex: 1,
     marginRight: 16,
   },
@@ -914,5 +838,209 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: '#6366f1',
     borderRadius: 8,
+  },
+  settingsDescription: {
+    color: '#6b7280',
+    marginTop: 8,
+  },
+  sectionLabel: {
+    fontWeight: 'bold',
+    marginBottom: 12,
+    color: '#374151',
+  },
+  categorySettingItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    borderRadius: 8,
+    backgroundColor: '#f9fafb',
+    marginBottom: 8,
+  },
+  categorySettingLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  settingsDivider: {
+    marginVertical: 16,
+  },
+  emptySettingsText: {
+    color: '#9ca3af',
+    fontStyle: 'italic',
+    marginBottom: 8,
+    paddingHorizontal: 8,
+  },
+  sectionHint: {
+    color: '#9ca3af',
+    marginBottom: 12,
+    fontSize: 12,
+  },
+  categorySettingRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  settingActionButton: {
+    margin: 0,
+    marginRight: 4,
+  },
+  excludeChip: {
+    height: 22,
+    backgroundColor: '#f3f4f6',
+    marginLeft: 8,
+  },
+  excludeChipText: {
+    fontSize: 10,
+    color: '#6b7280',
+    marginVertical: 0,
+  },
+  fixedChip: {
+    height: 22,
+    backgroundColor: '#fef3c7',
+    marginLeft: 8,
+  },
+  fixedChipText: {
+    fontSize: 10,
+    color: '#d97706',
+    marginVertical: 0,
+  },
+  settingsLegend: {
+    padding: 12,
+    backgroundColor: '#f9fafb',
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+  legendText: {
+    color: '#6b7280',
+    marginBottom: 4,
+  },
+  // 그룹 칩 스타일
+  groupChipsScroll: {
+    flex: 1,
+  },
+  groupChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    marginRight: 8,
+    backgroundColor: '#f9fafb',
+  },
+  groupChipPressed: {
+    backgroundColor: '#e5e7eb',
+  },
+  groupChipIcon: {
+    fontSize: 16,
+    marginRight: 6,
+  },
+  groupChipText: {
+    alignItems: 'flex-start',
+  },
+  groupChipLabel: {
+    color: '#6b7280',
+    fontSize: 11,
+  },
+  groupChipAmount: {
+    fontWeight: '600',
+    fontSize: 13,
+  },
+  // 카드 타이틀 그룹 스타일
+  cardTitlePressable: {
+    flex: 1,
+  },
+  groupTotalText: {
+    fontWeight: 'bold',
+    marginTop: 4,
+  },
+  // 그룹 관리 모달 스타일
+  addGroupButton: {
+    marginBottom: 16,
+  },
+  groupSection: {
+    marginBottom: 16,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
+  },
+  groupHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  groupHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  groupHeaderRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  groupIcon: {
+    fontSize: 18,
+    marginRight: 8,
+  },
+  groupTitle: {
+    fontWeight: 'bold',
+  },
+  groupActionButton: {
+    margin: 0,
+  },
+  // 그룹 추가/수정 모달 스타일
+  inputLabel: {
+    marginBottom: 8,
+    fontWeight: '600',
+  },
+  nativeInput: {
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    fontSize: 16,
+    backgroundColor: '#fff',
+    marginBottom: 16,
+    color: '#1f2937',
+  },
+  colorLabel: {
+    marginBottom: 8,
+    fontWeight: '600',
+  },
+  colorPicker: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 16,
+  },
+  colorOption: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+  },
+  colorOptionSelected: {
+    borderWidth: 3,
+    borderColor: '#1f2937',
+  },
+  groupModalContent: {
+    padding: 20,
+  },
+  groupModalButtons: {
+    flexDirection: 'row',
+    gap: 8,
+    justifyContent: 'flex-end',
+    marginTop: 16,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    gap: 8,
+    justifyContent: 'flex-end',
+    marginTop: 16,
+    marginBottom: 24,
+  },
+  modalButton: {
+    flex: 1,
   },
 });

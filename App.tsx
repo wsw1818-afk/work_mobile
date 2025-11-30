@@ -19,8 +19,8 @@ import TransactionsScreen from './screens/TransactionsScreen';
 import CategoriesScreen from './screens/CategoriesScreen';
 import BudgetsScreen from './screens/BudgetsScreen';
 import BankAccountsScreen from './screens/BankAccountsScreen';
-import AccountsScreen from './screens/AccountsScreen';
-import RecurringScreen from './screens/RecurringScreen';
+// AccountsScreen 제거됨 - 통장관리로 통합
+// RecurringScreen 제거됨 - 미완성 기능
 import RulesScreen from './screens/RulesScreen';
 import SettingsScreen from './screens/SettingsScreen';
 import ReceiptScreen from './screens/ReceiptScreen';
@@ -150,43 +150,19 @@ export default function App() {
             options={{
               title: '예산 관리',
               drawerIcon: ({ color, size }) => (
-                <Ionicons name="wallet" size={size} color={color} />
+                <Ionicons name="pie-chart" size={size} color={color} />
               ),
             }}
           />
 
-          {/* 통장 관리 */}
+          {/* 통장/결제수단 관리 */}
           <Drawer.Screen
             name="BankAccounts"
             component={BankAccountsScreen}
             options={{
-              title: '통장 관리',
+              title: '통장/결제수단',
               drawerIcon: ({ color, size }) => (
-                <Ionicons name="business" size={size} color={color} />
-              ),
-            }}
-          />
-
-          {/* 계좌 관리 */}
-          <Drawer.Screen
-            name="Accounts"
-            component={AccountsScreen}
-            options={{
-              title: '계좌 관리',
-              drawerIcon: ({ color, size }) => (
-                <Ionicons name="card" size={size} color={color} />
-              ),
-            }}
-          />
-
-          {/* 반복 거래 */}
-          <Drawer.Screen
-            name="Recurring"
-            component={RecurringScreen}
-            options={{
-              title: '반복 거래',
-              drawerIcon: ({ color, size }) => (
-                <Ionicons name="repeat" size={size} color={color} />
+                <Ionicons name="wallet" size={size} color={color} />
               ),
             }}
           />

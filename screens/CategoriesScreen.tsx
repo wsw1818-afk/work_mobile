@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { View, ScrollView, StyleSheet, RefreshControl, Alert } from 'react-native';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { View, ScrollView, StyleSheet, RefreshControl, Alert, TouchableOpacity } from 'react-native';
+import KoreanTextInput, { KoreanTextInputRef } from '../components/KoreanTextInput';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   Text,
@@ -9,12 +10,18 @@ import {
   FAB,
   Portal,
   Modal,
-  TextInput,
   Button,
   Switch,
   Chip,
+  Menu,
+  IconButton,
 } from 'react-native-paper';
-import { database, Category } from '../lib/db/database';
+import { database, Category, ExpenseGroup } from '../lib/db/database';
+
+const GROUP_COLORS = [
+  '#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#6366f1',
+  '#8b5cf6', '#ec4899', '#14b8a6',
+];
 
 const PRESET_COLORS = [
   '#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#6366f1',
@@ -27,17 +34,33 @@ export default function CategoriesScreen() {
   const [type, setType] = useState<'income' | 'expense'>('expense');
   const [categories, setCategories] = useState<Category[]>([]);
 
+  // 지출 그룹 관련
+  const [expenseGroups, setExpenseGroups] = useState<ExpenseGroup[]>([]);
+  const [selectedGroupId, setSelectedGroupId] = useState<number | null>(null);
+  const [groupMenuVisible, setGroupMenuVisible] = useState(false);
+
   // 추가 모달
   const [addModalVisible, setAddModalVisible] = useState(false);
-  const [newCategoryName, setNewCategoryName] = useState('');
   const [newCategoryColor, setNewCategoryColor] = useState(PRESET_COLORS[0]);
-  const [isFixedExpense, setIsFixedExpense] = useState(false);
   const [excludeFromStats, setExcludeFromStats] = useState(false);
+  const categoryNameRef = useRef<KoreanTextInputRef>(null);
+
+  // 그룹 관리 모달
+  const [groupManageVisible, setGroupManageVisible] = useState(false);
+  const [groupEditVisible, setGroupEditVisible] = useState(false);
+  const [editingGroup, setEditingGroup] = useState<ExpenseGroup | null>(null);
+  const [newGroupColor, setNewGroupColor] = useState(GROUP_COLORS[0]);
+  const groupNameRef = useRef<KoreanTextInputRef>(null);
+  const groupIconRef = useRef<KoreanTextInputRef>(null);
 
   const loadCategories = useCallback(async () => {
     try {
-      const cats = await database.getCategories(type);
+      const [cats, groups] = await Promise.all([
+        database.getCategories(type),
+        database.getExpenseGroups(),
+      ]);
       setCategories(cats);
+      setExpenseGroups(groups);
     } catch (error) {
       console.error('Failed to load categories:', error);
     } finally {
@@ -56,6 +79,8 @@ export default function CategoriesScreen() {
   }, [loadCategories]);
 
   const handleAddCategory = async () => {
+    const newCategoryName = categoryNameRef.current?.getValue() || '';
+
     if (!newCategoryName.trim()) {
       Alert.alert('오류', '카테고리 이름을 입력해주세요.');
       return;
@@ -67,13 +92,13 @@ export default function CategoriesScreen() {
         type,
         color: newCategoryColor,
         excludeFromStats: excludeFromStats,
-        isFixedExpense: isFixedExpense,
+        groupId: type === 'expense' ? selectedGroupId ?? undefined : undefined,
       });
 
       setAddModalVisible(false);
-      setNewCategoryName('');
+      if (categoryNameRef.current) categoryNameRef.current.clear();
       setNewCategoryColor(PRESET_COLORS[0]);
-      setIsFixedExpense(false);
+      setSelectedGroupId(null);
       setExcludeFromStats(false);
       loadCategories();
 
@@ -82,6 +107,103 @@ export default function CategoriesScreen() {
       console.error('Failed to add category:', error);
       Alert.alert('오류', error.message || '카테고리 추가에 실패했습니다.');
     }
+  };
+
+  // 그룹 추가/수정 모달 열기
+  const openAddGroup = () => {
+    setEditingGroup(null);
+    setNewGroupColor(GROUP_COLORS[0]);
+    setGroupEditVisible(true);
+    setTimeout(() => {
+      groupNameRef.current?.clear();
+      groupIconRef.current?.clear();
+    }, 100);
+  };
+
+  const openEditGroup = (group: ExpenseGroup) => {
+    setEditingGroup(group);
+    setNewGroupColor(group.color);
+    setGroupEditVisible(true);
+    setTimeout(() => {
+      groupNameRef.current?.setValue(group.name);
+      groupIconRef.current?.setValue(group.icon || '');
+    }, 100);
+  };
+
+  // 그룹 저장
+  const handleSaveGroup = async () => {
+    const name = groupNameRef.current?.getValue() || '';
+    const icon = groupIconRef.current?.getValue() || '';
+
+    if (!name.trim()) {
+      Alert.alert('오류', '그룹 이름을 입력해주세요.');
+      return;
+    }
+
+    try {
+      if (editingGroup) {
+        await database.updateExpenseGroup(editingGroup.id, {
+          name: name.trim(),
+          color: newGroupColor,
+          icon: icon || undefined,
+        });
+      } else {
+        await database.addExpenseGroup({
+          name: name.trim(),
+          color: newGroupColor,
+          icon: icon || undefined,
+          sortOrder: 0,
+          isDefault: false,
+        });
+      }
+
+      const groups = await database.getExpenseGroups();
+      setExpenseGroups(groups);
+      setGroupEditVisible(false);
+      Alert.alert('성공', editingGroup ? '그룹이 수정되었습니다.' : '그룹이 추가되었습니다.');
+    } catch (error: any) {
+      console.error('Failed to save group:', error);
+      Alert.alert('오류', error.message || '그룹 저장에 실패했습니다.');
+    }
+  };
+
+  // 대시보드 표시 여부 토글
+  const toggleShowOnDashboard = async (categoryId: number, currentValue: boolean | undefined) => {
+    try {
+      await database.updateCategory(categoryId, {
+        showOnDashboard: currentValue === false ? true : false
+      });
+      loadCategories();
+    } catch (error) {
+      console.error('Failed to update category:', error);
+      Alert.alert('오류', '설정 변경에 실패했습니다.');
+    }
+  };
+
+  // 그룹 삭제
+  const handleDeleteGroup = (group: ExpenseGroup) => {
+    Alert.alert(
+      '그룹 삭제',
+      `"${group.name}" 그룹을 삭제하시겠습니까?\n해당 그룹의 카테고리는 미분류로 이동합니다.`,
+      [
+        { text: '취소', style: 'cancel' },
+        {
+          text: '삭제',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await database.deleteExpenseGroup(group.id);
+              const groups = await database.getExpenseGroups();
+              setExpenseGroups(groups);
+              loadCategories();
+            } catch (error) {
+              console.error('Failed to delete group:', error);
+              Alert.alert('오류', '그룹 삭제에 실패했습니다.');
+            }
+          },
+        },
+      ]
+    );
   };
 
   if (loading) {
@@ -135,8 +257,14 @@ export default function CategoriesScreen() {
                           {category.name}
                         </Text>
                         <View style={styles.categoryBadges}>
-                          {category.isFixedExpense === true ? (
-                            <Chip compact style={styles.categoryChip} textStyle={styles.categoryChipText}>고정</Chip>
+                          {category.groupName ? (
+                            <Chip
+                              compact
+                              style={[styles.categoryChip, { backgroundColor: category.groupColor || '#f3f4f6' }]}
+                              textStyle={[styles.categoryChipText, { color: '#fff' }]}
+                            >
+                              {category.groupName}
+                            </Chip>
                           ) : null}
                           {category.excludeFromStats === true ? (
                             <Chip compact style={styles.categoryChip} textStyle={styles.categoryChipText}>집계제외</Chip>
@@ -144,27 +272,39 @@ export default function CategoriesScreen() {
                         </View>
                       </View>
                     </View>
-                    <View
-                      style={[
-                        styles.typeBadge,
-                        {
-                          backgroundColor:
-                            category.type === 'income' ? '#d1fae5' : '#fee2e2',
-                        },
-                      ]}
-                    >
-                      <Text
-                        variant="bodySmall"
+                    <View style={styles.categoryRight}>
+                      {/* 지출 카테고리일 때만 대시보드 표시 토글 아이콘 */}
+                      {category.type === 'expense' && (
+                        <IconButton
+                          icon={category.showOnDashboard === false ? 'eye-off' : 'eye'}
+                          size={20}
+                          iconColor={category.showOnDashboard === false ? '#9ca3af' : '#6366f1'}
+                          onPress={() => toggleShowOnDashboard(category.id, category.showOnDashboard)}
+                          style={styles.dashboardToggle}
+                        />
+                      )}
+                      <View
                         style={[
-                          styles.typeBadgeText,
+                          styles.typeBadge,
                           {
-                            color:
-                              category.type === 'income' ? '#059669' : '#dc2626',
+                            backgroundColor:
+                              category.type === 'income' ? '#d1fae5' : '#fee2e2',
                           },
                         ]}
                       >
-                        {category.type === 'income' ? '수입' : '지출'}
-                      </Text>
+                        <Text
+                          variant="bodySmall"
+                          style={[
+                            styles.typeBadgeText,
+                            {
+                              color:
+                                category.type === 'income' ? '#059669' : '#dc2626',
+                            },
+                          ]}
+                        >
+                          {category.type === 'income' ? '수입' : '지출'}
+                        </Text>
+                      </View>
                     </View>
                   </View>
                   {index < categories.length - 1 && <Divider style={styles.divider} />}
@@ -206,9 +346,9 @@ export default function CategoriesScreen() {
           visible={addModalVisible}
           onDismiss={() => {
             setAddModalVisible(false);
-            setNewCategoryName('');
+            if (categoryNameRef.current) categoryNameRef.current.clear();
             setNewCategoryColor(PRESET_COLORS[0]);
-            setIsFixedExpense(false);
+            setSelectedGroupId(null);
             setExcludeFromStats(false);
           }}
           contentContainerStyle={styles.modalContainer}
@@ -217,18 +357,13 @@ export default function CategoriesScreen() {
             카테고리 추가
           </Text>
 
-          <TextInput
-            label="카테고리 이름"
-            value={newCategoryName}
-            onChangeText={setNewCategoryName}
-            mode="outlined"
-            style={styles.input}
-            keyboardType="default"
-            autoCorrect={false}
-            autoComplete="off"
-            autoCapitalize="none"
-            spellCheck={false}
-            textContentType="none"
+          <Text variant="bodyMedium" style={styles.inputLabel}>
+            카테고리 이름
+          </Text>
+          <KoreanTextInput
+            ref={categoryNameRef}
+            style={styles.nativeInput}
+            placeholder="카테고리 이름 입력"
           />
 
           <Text variant="bodyMedium" style={styles.colorLabel}>
@@ -240,19 +375,75 @@ export default function CategoriesScreen() {
             ))}
           </View>
 
-          {/* 지출 카테고리인 경우에만 고정지출 스위치 표시 */}
+          {/* 지출 카테고리인 경우에만 그룹 선택 표시 */}
           {type === 'expense' && (
-            <View style={styles.switchRow}>
-              <View style={styles.switchLabelContainer}>
-                <Text variant="bodyMedium" style={styles.switchLabel}>
-                  고정지출
+            <>
+              <View style={styles.groupLabelRow}>
+                <Text variant="bodyMedium" style={styles.inputLabel}>
+                  지출 그룹
                 </Text>
-                <Text variant="bodySmall" style={styles.switchHint}>
-                  월세, 보험료 등 매달 고정적으로 나가는 지출
-                </Text>
+                <Button
+                  mode="text"
+                  compact
+                  onPress={() => setGroupManageVisible(true)}
+                  labelStyle={styles.groupManageButtonLabel}
+                >
+                  그룹 관리
+                </Button>
               </View>
-              <Switch value={isFixedExpense} onValueChange={setIsFixedExpense} />
-            </View>
+              <Menu
+                visible={groupMenuVisible}
+                onDismiss={() => setGroupMenuVisible(false)}
+                anchor={
+                  <TouchableOpacity
+                    style={styles.groupSelector}
+                    onPress={() => setGroupMenuVisible(true)}
+                  >
+                    {selectedGroupId ? (
+                      <View style={styles.selectedGroupRow}>
+                        <View
+                          style={[
+                            styles.groupDot,
+                            { backgroundColor: expenseGroups.find(g => g.id === selectedGroupId)?.color || '#6b7280' },
+                          ]}
+                        />
+                        <Text style={styles.selectedGroupText}>
+                          {expenseGroups.find(g => g.id === selectedGroupId)?.name || '그룹 선택'}
+                        </Text>
+                      </View>
+                    ) : (
+                      <Text style={styles.groupPlaceholder}>그룹 선택 (선택사항)</Text>
+                    )}
+                  </TouchableOpacity>
+                }
+              >
+                <Menu.Item
+                  onPress={() => {
+                    setSelectedGroupId(null);
+                    setGroupMenuVisible(false);
+                  }}
+                  title="선택 안함"
+                />
+                <Divider />
+                {expenseGroups.map((group) => (
+                  <Menu.Item
+                    key={group.id}
+                    onPress={() => {
+                      setSelectedGroupId(group.id);
+                      setGroupMenuVisible(false);
+                    }}
+                    title={
+                      <View style={styles.groupMenuItem}>
+                        <View
+                          style={[styles.groupDot, { backgroundColor: group.color }]}
+                        />
+                        <Text>{group.name}</Text>
+                      </View>
+                    }
+                  />
+                ))}
+              </Menu>
+            </>
           )}
 
           <View style={styles.switchRow}>
@@ -272,8 +463,131 @@ export default function CategoriesScreen() {
           </Text>
 
           <View style={styles.modalButtons}>
-            <Button mode="outlined" onPress={() => { setAddModalVisible(false); setNewCategoryName(''); setNewCategoryColor(PRESET_COLORS[0]); setIsFixedExpense(false); setExcludeFromStats(false); }} style={styles.modalButton}>취소</Button>
+            <Button mode="outlined" onPress={() => { setAddModalVisible(false); if (categoryNameRef.current) categoryNameRef.current.clear(); setNewCategoryColor(PRESET_COLORS[0]); setSelectedGroupId(null); setExcludeFromStats(false); }} style={styles.modalButton}>취소</Button>
             <Button mode="contained" onPress={handleAddCategory} style={styles.modalButton}>추가</Button>
+          </View>
+        </Modal>
+
+        {/* 그룹 관리 모달 */}
+        <Modal
+          visible={groupManageVisible}
+          onDismiss={() => setGroupManageVisible(false)}
+          contentContainerStyle={styles.groupManageModalContainer}
+        >
+          <ScrollView>
+            <Text variant="titleLarge" style={styles.modalTitle}>
+              지출 그룹 관리
+            </Text>
+
+            <Button
+              mode="outlined"
+              icon="plus"
+              onPress={openAddGroup}
+              style={styles.addGroupButton}
+            >
+              새 그룹 추가
+            </Button>
+
+            {expenseGroups.length === 0 ? (
+              <Text style={styles.emptyGroupText}>등록된 그룹이 없습니다.</Text>
+            ) : (
+              expenseGroups.map((group) => (
+                <View key={group.id} style={styles.groupListItem}>
+                  <View style={styles.groupListLeft}>
+                    <Text style={styles.groupListIcon}>{group.icon}</Text>
+                    <View style={[styles.groupListDot, { backgroundColor: group.color }]} />
+                    <Text style={styles.groupListName}>{group.name}</Text>
+                  </View>
+                  <View style={styles.groupListActions}>
+                    <IconButton
+                      icon="pencil"
+                      size={20}
+                      onPress={() => openEditGroup(group)}
+                    />
+                    {!group.isDefault && (
+                      <IconButton
+                        icon="delete"
+                        size={20}
+                        onPress={() => handleDeleteGroup(group)}
+                      />
+                    )}
+                  </View>
+                </View>
+              ))
+            )}
+
+            <Button
+              mode="contained"
+              onPress={() => setGroupManageVisible(false)}
+              style={styles.groupManageCloseButton}
+            >
+              닫기
+            </Button>
+          </ScrollView>
+        </Modal>
+
+        {/* 그룹 추가/수정 모달 */}
+        <Modal
+          visible={groupEditVisible}
+          onDismiss={() => setGroupEditVisible(false)}
+          contentContainerStyle={styles.modalContainer}
+        >
+          <Text variant="titleLarge" style={styles.modalTitle}>
+            {editingGroup ? '그룹 수정' : '새 그룹 추가'}
+          </Text>
+
+          <Text variant="bodyMedium" style={styles.inputLabel}>
+            그룹 이름
+          </Text>
+          <KoreanTextInput
+            ref={groupNameRef}
+            defaultValue={editingGroup?.name || ''}
+            style={styles.nativeInput}
+            placeholder="그룹 이름 입력"
+          />
+
+          <Text variant="bodyMedium" style={styles.inputLabel}>
+            아이콘 (이모지)
+          </Text>
+          <KoreanTextInput
+            ref={groupIconRef}
+            defaultValue={editingGroup?.icon || ''}
+            style={styles.nativeInput}
+            placeholder="예: 💰, 🎮, 🏠"
+          />
+
+          <Text variant="bodyMedium" style={styles.colorLabel}>
+            색상 선택
+          </Text>
+          <View style={styles.colorPicker}>
+            {GROUP_COLORS.map((color) => (
+              <TouchableOpacity
+                key={color}
+                style={[
+                  styles.groupColorOption,
+                  { backgroundColor: color },
+                  newGroupColor === color && styles.groupColorSelected
+                ]}
+                onPress={() => setNewGroupColor(color)}
+              />
+            ))}
+          </View>
+
+          <View style={styles.modalButtons}>
+            <Button
+              mode="outlined"
+              onPress={() => setGroupEditVisible(false)}
+              style={styles.modalButton}
+            >
+              취소
+            </Button>
+            <Button
+              mode="contained"
+              onPress={handleSaveGroup}
+              style={styles.modalButton}
+            >
+              {editingGroup ? '수정' : '추가'}
+            </Button>
           </View>
         </Modal>
       </Portal>
@@ -356,6 +670,14 @@ const styles = StyleSheet.create({
     color: '#374151',
     marginVertical: 0,
   },
+  categoryRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  dashboardToggle: {
+    margin: 0,
+    marginRight: 4,
+  },
   typeBadge: {
     paddingHorizontal: 12,
     paddingVertical: 4,
@@ -409,6 +731,21 @@ const styles = StyleSheet.create({
   input: {
     marginBottom: 16,
   },
+  inputLabel: {
+    marginBottom: 8,
+    fontWeight: '600',
+  },
+  nativeInput: {
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    fontSize: 16,
+    backgroundColor: '#fff',
+    marginBottom: 16,
+    color: '#1f2937',
+  },
   colorLabel: {
     marginBottom: 8,
     fontWeight: '600',
@@ -446,6 +783,107 @@ const styles = StyleSheet.create({
   switchHint: {
     color: '#6b7280',
     fontSize: 12,
+  },
+  groupSelector: {
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 14,
+    backgroundColor: '#fff',
+    marginBottom: 16,
+  },
+  selectedGroupRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  groupDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    marginRight: 8,
+  },
+  selectedGroupText: {
+    fontSize: 16,
+    color: '#1f2937',
+  },
+  groupPlaceholder: {
+    fontSize: 16,
+    color: '#9ca3af',
+  },
+  groupMenuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  groupLabelRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 0,
+  },
+  groupManageButtonLabel: {
+    fontSize: 12,
+    marginVertical: 0,
+  },
+  groupManageModalContainer: {
+    backgroundColor: 'white',
+    padding: 20,
+    margin: 20,
+    borderRadius: 8,
+    maxHeight: '70%',
+  },
+  addGroupButton: {
+    marginBottom: 16,
+  },
+  emptyGroupText: {
+    color: '#9ca3af',
+    textAlign: 'center',
+    paddingVertical: 20,
+  },
+  groupListItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 8,
+    backgroundColor: '#f9fafb',
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+  groupListLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  groupListIcon: {
+    fontSize: 18,
+    marginRight: 8,
+  },
+  groupListDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    marginRight: 8,
+  },
+  groupListName: {
+    fontSize: 15,
+    fontWeight: '500',
+  },
+  groupListActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  groupManageCloseButton: {
+    marginTop: 16,
+  },
+  groupColorOption: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+  },
+  groupColorSelected: {
+    borderWidth: 3,
+    borderColor: '#1f2937',
   },
   modalButtons: {
     flexDirection: 'row',

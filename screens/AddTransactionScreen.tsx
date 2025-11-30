@@ -201,7 +201,7 @@ export default function AddTransactionScreen() {
               ))}
             </Menu>
 
-            {/* 계좌 선택 */}
+            {/* 결제수단 선택 */}
             <Text variant="titleMedium" style={styles.label}>
               결제수단
             </Text>
@@ -215,7 +215,13 @@ export default function AddTransactionScreen() {
                   style={styles.categoryButton}
                   contentStyle={styles.categoryButtonContent}
                 >
-                  <Text>{selectedAccount ? selectedAccount.name : '계좌 선택'}</Text>
+                  <Text>
+                    {selectedAccount
+                      ? selectedAccount.bankAccountName
+                        ? `${selectedAccount.name} (${selectedAccount.bankAccountName})`
+                        : selectedAccount.name
+                      : '결제수단 선택'}
+                  </Text>
                 </Button>
               }
             >
@@ -226,7 +232,9 @@ export default function AddTransactionScreen() {
                     setSelectedAccount(account);
                     setAccountMenuVisible(false);
                   }}
-                  title={account.name}
+                  title={account.bankAccountName
+                    ? `${account.name} (${account.bankAccountName})`
+                    : account.name}
                 />
               ))}
             </Menu>

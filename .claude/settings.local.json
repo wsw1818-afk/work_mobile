@@ -1,20 +1,27 @@
 {
   "permissions": {
     "allow": [
-      "Bash",
-      "Edit",
-      "Read",
-      "Write",
-      "Glob",
-      "Grep",
-      "Task",
-      "NotebookEdit",
-      "SlashCommand",
-      "Skill",
-      "BashOutput",
-      "KillShell"
+      "Bash(.gradlew.bat assembleDebug:*)",
+      "Bash(cmd /c \"cd /d H:\\Claude_work\\gagyebu-native\\android && gradlew.bat assembleDebug\")",
+      "Bash(cmd /c \"cd /d H:\\Claude_work\\gagyebu-native\\android && .\\gradlew.bat assembleDebug 2>&1\")",
+      "Bash(powershell -Command \"Set-Location ''H:\\Claude_work\\gagyebu-native\\android''; .\\gradlew.bat assembleDebug\")",
+      "Bash(copy /Y \"H:\\Claude_work\\gagyebu-native\\android\\app\\build\\outputs\\apk\\debug\\app-debug.apk\" \"D:\\OneDrive\\코드작업\\결과물\\gagyebu-native-debug.apk\")",
+      "Bash(powershell -Command:*)",
+      "Bash(dir \"D:\\OneDrive\\코드작업\\결과물\\gagyebu-native-release.apk\")",
+      "Bash(cmd /c \"dir \"\"D:\\OneDrive\\코드작업\\결과물\\gagyebu-native-release.apk\"\"\")",
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$(cat <<''EOF''\n⚡ 성능 최적화: 데이터베이스 쿼리 및 UI 반응성 개선\n\n- database.ts: EXISTS 서브쿼리 제거, 배치 INSERT 최적화\n- TransactionsScreen: 검색 debounce 적용 (300ms)\n- DashboardScreen: Promise.all로 병렬 데이터 로딩\n- ImportScreen: 날짜 범위 최적화 쿼리 추가\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
+      "Bash(git push:*)",
+      "Bash(git pull:*)",
+      "Bash(git stash:*)",
+      "Bash(timeout 60 powershell:*)",
+      "Bash(cmd /c \"dir \"\"D:\\OneDrive\\코드작업\\결과물\\gagyebu-native-debug.apk\"\"\")",
+      "Bash(dir:*)",
+      "Bash(findstr:*)",
+      "Bash(cmd /c \"cd /d H:\\Claude_work\\gagyebu-native && dir /B\")",
+      "Bash(cmd /c \"dir H:\\Claude_work\\gagyebu-native\")",
+      "Bash(npx expo start:*)"
     ],
-    "deny": [],
-    "ask": []
+    "defaultMode": "dontAsk"
   }
 }

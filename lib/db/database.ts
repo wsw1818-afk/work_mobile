@@ -8,7 +8,11 @@ export interface Category {
   color: string;
   icon?: string;
   excludeFromStats?: boolean; // 통계 제외 여부
-  isFixedExpense?: boolean; // 고정 지출 여부
+  isFixedExpense?: boolean; // 고정 지출 여부 (하위 호환용)
+  groupId?: number; // 지출 그룹 ID
+  groupName?: string; // JOIN 결과
+  groupColor?: string; // JOIN 결과
+  showOnDashboard?: boolean; // 대시보드에 표시 여부 (기본: true)
 }
 
 export interface Account {
@@ -18,6 +22,8 @@ export interface Account {
   cardType?: 'credit' | 'debit';
   last4?: string;
   color?: string;
+  bankAccountId?: number; // 연결된 통장 ID
+  bankAccountName?: string; // JOIN 결과
   createdAt: string;
 }
 
@@ -121,6 +127,16 @@ export interface ExclusionPattern {
   createdAt: string;
 }
 
+export interface ExpenseGroup {
+  id: number;
+  name: string;
+  color: string;
+  icon?: string;
+  sortOrder: number;
+  isDefault: boolean; // 기본 그룹 여부 (고정지출, 변동지출)
+  createdAt: string;
+}
+
 class Database {
   private db: SQLite.SQLiteDatabase | null = null;
 
@@ -150,7 +166,9 @@ class Database {
         cardType TEXT CHECK(cardType IN ('credit', 'debit') OR cardType IS NULL),
         last4 TEXT,
         color TEXT,
-        createdAt TEXT NOT NULL
+        bankAccountId INTEGER,
+        createdAt TEXT NOT NULL,
+        FOREIGN KEY (bankAccountId) REFERENCES bank_accounts(id)
       );
 
       CREATE TABLE IF NOT EXISTS bank_accounts (
@@ -252,6 +270,16 @@ class Database {
         pattern TEXT NOT NULL,
         type TEXT NOT NULL CHECK(type IN ('merchant', 'memo', 'both', 'account')),
         isActive INTEGER DEFAULT 1,
+        createdAt TEXT NOT NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS expense_groups (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL UNIQUE,
+        color TEXT NOT NULL,
+        icon TEXT,
+        sortOrder INTEGER DEFAULT 0,
+        isDefault INTEGER DEFAULT 0,
         createdAt TEXT NOT NULL
       );
 
@@ -429,6 +457,38 @@ class Database {
         `);
         console.log('Successfully added updatedAt column');
       }
+
+      // accounts 테이블: bankAccountId 컬럼 추가
+      const accountsInfo = await this.db.getAllAsync('PRAGMA table_info(accounts)') as Array<{name: string}>;
+      const hasBankAccountId = accountsInfo.some(col => col.name === 'bankAccountId');
+      if (!hasBankAccountId) {
+        console.log('Adding bankAccountId column to accounts table...');
+        await this.db.execAsync(`
+          ALTER TABLE accounts ADD COLUMN bankAccountId INTEGER;
+        `);
+        console.log('Successfully added bankAccountId column');
+      }
+
+      // categories 테이블: groupId 컬럼 추가
+      const categoriesInfoRefresh = await this.db.getAllAsync('PRAGMA table_info(categories)') as Array<{name: string}>;
+      const hasGroupId = categoriesInfoRefresh.some(col => col.name === 'groupId');
+      if (!hasGroupId) {
+        console.log('Adding groupId column to categories table...');
+        await this.db.execAsync(`
+          ALTER TABLE categories ADD COLUMN groupId INTEGER;
+        `);
+        console.log('Successfully added groupId column');
+      }
+
+      // categories 테이블: showOnDashboard 컬럼 추가 (기본값 1 = true)
+      const hasShowOnDashboard = categoriesInfoRefresh.some(col => col.name === 'showOnDashboard');
+      if (!hasShowOnDashboard) {
+        console.log('Adding showOnDashboard column to categories table...');
+        await this.db.execAsync(`
+          ALTER TABLE categories ADD COLUMN showOnDashboard INTEGER DEFAULT 1;
+        `);
+        console.log('Successfully added showOnDashboard column');
+      }
     } catch (migrationError) {
       console.error('Migration error (non-fatal):', migrationError);
       // 마이그레이션 실패는 치명적이지 않음 (이미 컬럼이 있거나 새 DB인 경우)
@@ -474,15 +534,41 @@ class Database {
         ('신용카드', 'card', '#3b82f6', datetime('now'));
       `);
     }
+
+    // 지출 그룹 초기화
+    const expenseGroups = await db.getAllAsync<ExpenseGroup>('SELECT * FROM expense_groups LIMIT 1');
+    if (expenseGroups.length === 0) {
+      await db.execAsync(`
+        INSERT INTO expense_groups (name, color, icon, sortOrder, isDefault, createdAt) VALUES
+        ('고정지출', '#f59e0b', '💰', 0, 1, datetime('now')),
+        ('변동지출', '#8b5cf6', '📊', 1, 1, datetime('now'));
+      `);
+
+      // 기본 그룹 ID 조회 후 카테고리에 할당
+      const fixedGroup = await db.getFirstAsync<ExpenseGroup>('SELECT id FROM expense_groups WHERE name = ?', ['고정지출']);
+      const variableGroup = await db.getFirstAsync<ExpenseGroup>('SELECT id FROM expense_groups WHERE name = ?', ['변동지출']);
+
+      if (fixedGroup && variableGroup) {
+        // isFixedExpense가 true인 카테고리는 고정지출 그룹으로
+        await db.runAsync('UPDATE categories SET groupId = ? WHERE type = ? AND isFixedExpense = 1', [fixedGroup.id, 'expense']);
+        // isFixedExpense가 false인 지출 카테고리는 변동지출 그룹으로
+        await db.runAsync('UPDATE categories SET groupId = ? WHERE type = ? AND (isFixedExpense IS NULL OR isFixedExpense = 0) AND (excludeFromStats IS NULL OR excludeFromStats = 0)', [variableGroup.id, 'expense']);
+      }
+    }
   }
 
   // ===== 카테고리 관리 =====
 
   async getCategories(type?: 'income' | 'expense'): Promise<Category[]> {
     const db = await this.init();
+    const baseQuery = `
+      SELECT c.*, g.name as groupName, g.color as groupColor
+      FROM categories c
+      LEFT JOIN expense_groups g ON c.groupId = g.id
+    `;
     const query = type
-      ? 'SELECT * FROM categories WHERE categories.type = ? ORDER BY name'
-      : 'SELECT * FROM categories ORDER BY categories.type, name';
+      ? baseQuery + ' WHERE c.type = ? ORDER BY c.name'
+      : baseQuery + ' ORDER BY c.type, c.name';
 
     return type
       ? await db.getAllAsync<Category>(query, [type])
@@ -498,8 +584,8 @@ class Database {
   async addCategory(category: Omit<Category, 'id'>): Promise<number> {
     const db = await this.init();
     const result = await db.runAsync(
-      'INSERT INTO categories (name, type, color, icon, excludeFromStats, isFixedExpense) VALUES (?, ?, ?, ?, ?, ?)',
-      [category.name, category.type, category.color, category.icon || null, category.excludeFromStats ? 1 : 0, category.isFixedExpense ? 1 : 0]
+      'INSERT INTO categories (name, type, color, icon, excludeFromStats, isFixedExpense, groupId, showOnDashboard) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      [category.name, category.type, category.color, category.icon || null, category.excludeFromStats ? 1 : 0, category.isFixedExpense ? 1 : 0, category.groupId || null, category.showOnDashboard !== false ? 1 : 0]
     );
     return result.lastInsertRowId;
   }
@@ -529,6 +615,14 @@ class Database {
       fields.push('isFixedExpense = ?');
       values.push(updates.isFixedExpense ? 1 : 0);
     }
+    if (updates.groupId !== undefined) {
+      fields.push('groupId = ?');
+      values.push(updates.groupId);
+    }
+    if (updates.showOnDashboard !== undefined) {
+      fields.push('showOnDashboard = ?');
+      values.push(updates.showOnDashboard ? 1 : 0);
+    }
 
     if (fields.length > 0) {
       values.push(id);
@@ -543,9 +637,19 @@ class Database {
 
   // ===== 계좌 관리 =====
 
-  async getAccounts(): Promise<Account[]> {
+  async getAccounts(bankAccountId?: number): Promise<Account[]> {
     const db = await this.init();
-    return await db.getAllAsync<Account>('SELECT * FROM accounts ORDER BY name');
+    let query = `
+      SELECT a.*, b.name as bankAccountName
+      FROM accounts a
+      LEFT JOIN bank_accounts b ON a.bankAccountId = b.id
+    `;
+    if (bankAccountId !== undefined) {
+      query += ' WHERE a.bankAccountId = ? ORDER BY a.name';
+      return await db.getAllAsync<Account>(query, [bankAccountId]);
+    }
+    query += ' ORDER BY a.bankAccountId, a.name';
+    return await db.getAllAsync<Account>(query);
   }
 
   async getAccountById(id: number): Promise<Account | null> {
@@ -554,11 +658,11 @@ class Database {
     return result || null;
   }
 
-  async addAccount(account: Omit<Account, 'id' | 'createdAt'>): Promise<number> {
+  async addAccount(account: Omit<Account, 'id' | 'createdAt' | 'bankAccountName'>): Promise<number> {
     const db = await this.init();
     const result = await db.runAsync(
-      'INSERT INTO accounts (name, type, cardType, last4, color, createdAt) VALUES (?, ?, ?, ?, ?, datetime(\'now\'))',
-      [account.name, account.type, account.cardType || null, account.last4 || null, account.color || null]
+      'INSERT INTO accounts (name, type, cardType, last4, color, bankAccountId, createdAt) VALUES (?, ?, ?, ?, ?, ?, datetime(\'now\'))',
+      [account.name, account.type, account.cardType || null, account.last4 || null, account.color || null, account.bankAccountId || null]
     );
     return result.lastInsertRowId;
   }
@@ -584,11 +688,24 @@ class Database {
       fields.push('last4 = ?');
       values.push(updates.last4);
     }
+    if (updates.bankAccountId !== undefined) {
+      fields.push('bankAccountId = ?');
+      values.push(updates.bankAccountId);
+    }
 
     if (fields.length > 0) {
       values.push(id);
       await db.runAsync(`UPDATE accounts SET ${fields.join(', ')} WHERE id = ?`, values);
     }
+  }
+
+  async getAccountTransactionCount(id: number): Promise<number> {
+    const db = await this.init();
+    const result = await db.getFirstAsync<{ count: number }>(
+      'SELECT COUNT(*) as count FROM transactions WHERE accountId = ?',
+      [id]
+    );
+    return result?.count || 0;
   }
 
   async deleteAccount(id: number): Promise<void> {
@@ -659,6 +776,24 @@ class Database {
       values.push(id);
       await db.runAsync(`UPDATE bank_accounts SET ${fields.join(', ')} WHERE id = ?`, values);
     }
+  }
+
+  async getBankAccountTransactionCount(id: number): Promise<number> {
+    const db = await this.init();
+    const result = await db.getFirstAsync<{ count: number }>(
+      'SELECT COUNT(*) as count FROM transactions WHERE fromBankAccountId = ? OR toBankAccountId = ?',
+      [id, id]
+    );
+    return result?.count || 0;
+  }
+
+  async getBankAccountLinkedAccountCount(id: number): Promise<number> {
+    const db = await this.init();
+    const result = await db.getFirstAsync<{ count: number }>(
+      'SELECT COUNT(*) as count FROM accounts WHERE bankAccountId = ?',
+      [id]
+    );
+    return result?.count || 0;
   }
 
   async deleteBankAccount(id: number): Promise<void> {
@@ -883,6 +1018,7 @@ class Database {
     const endDate = `${year}-${String(month).padStart(2, '0')}-31`;
 
     // 최적화: 서브쿼리 제거, 메모리에서 제외 패턴 처리
+    // excludeFromStats=1인 카테고리의 거래는 제외
     const transactions = await db.getAllAsync<{
       type: string;
       amount: number;
@@ -895,9 +1031,11 @@ class Database {
       `SELECT t.type, t.amount, t.merchant, t.memo, a.name as accountName, t.isTransfer, t.status
        FROM transactions t
        LEFT JOIN accounts a ON t.accountId = a.id
+       LEFT JOIN categories c ON t.categoryId = c.id
        WHERE t.date >= ? AND t.date <= ?
        AND t.isTransfer = 0
-       AND (t.status IS NULL OR t.status != 'excluded')`,
+       AND (t.status IS NULL OR t.status != 'excluded')
+       AND (c.excludeFromStats IS NULL OR c.excludeFromStats = 0)`,
       [startDate, endDate]
     );
 
@@ -959,6 +1097,7 @@ class Database {
     const endDate = `${year}-${String(month).padStart(2, '0')}-31`;
 
     // 최적화: 서브쿼리 제거, 개별 거래 로드 후 메모리에서 처리
+    // excludeFromStats=1인 카테고리는 제외
     const transactions = await db.getAllAsync<{
       categoryId: number;
       categoryName: string;
@@ -984,7 +1123,8 @@ class Database {
        WHERE t.date >= ? AND t.date <= ?
        AND t.type = 'expense'
        AND t.isTransfer = 0
-       AND (t.status IS NULL OR t.status != 'excluded')`,
+       AND (t.status IS NULL OR t.status != 'excluded')
+       AND (c.excludeFromStats IS NULL OR c.excludeFromStats = 0)`,
       [startDate, endDate]
     );
 
@@ -1411,6 +1551,372 @@ class Database {
   async deleteExclusionPattern(id: number): Promise<void> {
     const db = await this.init();
     await db.runAsync('DELETE FROM exclusion_patterns WHERE id = ?', [id]);
+  }
+
+  // ===== 지출 그룹 관리 =====
+
+  async getExpenseGroups(): Promise<ExpenseGroup[]> {
+    const db = await this.init();
+    return await db.getAllAsync<ExpenseGroup>(
+      'SELECT * FROM expense_groups ORDER BY sortOrder, id'
+    );
+  }
+
+  async getExpenseGroupById(id: number): Promise<ExpenseGroup | null> {
+    const db = await this.init();
+    const result = await db.getFirstAsync<ExpenseGroup>('SELECT * FROM expense_groups WHERE id = ?', [id]);
+    return result || null;
+  }
+
+  async addExpenseGroup(group: Omit<ExpenseGroup, 'id' | 'createdAt'>): Promise<number> {
+    const db = await this.init();
+    // 새 그룹의 sortOrder는 기존 최대값 + 1
+    const maxOrder = await db.getFirstAsync<{ maxOrder: number }>('SELECT MAX(sortOrder) as maxOrder FROM expense_groups');
+    const newOrder = (maxOrder?.maxOrder || 0) + 1;
+
+    const result = await db.runAsync(
+      'INSERT INTO expense_groups (name, color, icon, sortOrder, isDefault, createdAt) VALUES (?, ?, ?, ?, ?, datetime(\'now\'))',
+      [group.name, group.color, group.icon || null, newOrder, group.isDefault ? 1 : 0]
+    );
+    return result.lastInsertRowId;
+  }
+
+  async updateExpenseGroup(id: number, updates: Partial<ExpenseGroup>): Promise<void> {
+    const db = await this.init();
+    const fields: string[] = [];
+    const values: any[] = [];
+
+    if (updates.name !== undefined) {
+      fields.push('name = ?');
+      values.push(updates.name);
+    }
+    if (updates.color !== undefined) {
+      fields.push('color = ?');
+      values.push(updates.color);
+    }
+    if (updates.icon !== undefined) {
+      fields.push('icon = ?');
+      values.push(updates.icon);
+    }
+    if (updates.sortOrder !== undefined) {
+      fields.push('sortOrder = ?');
+      values.push(updates.sortOrder);
+    }
+
+    if (fields.length > 0) {
+      values.push(id);
+      await db.runAsync(`UPDATE expense_groups SET ${fields.join(', ')} WHERE id = ?`, values);
+    }
+  }
+
+  async deleteExpenseGroup(id: number): Promise<void> {
+    const db = await this.init();
+    // 해당 그룹의 카테고리들의 groupId를 null로 설정
+    await db.runAsync('UPDATE categories SET groupId = NULL WHERE groupId = ?', [id]);
+    await db.runAsync('DELETE FROM expense_groups WHERE id = ? AND isDefault = 0', [id]);
+  }
+
+  async getExpenseGroupStats(year: number, month: number): Promise<Array<{
+    groupId: number;
+    groupName: string;
+    groupColor: string;
+    groupIcon: string | null;
+    total: number;
+    categories: Array<{
+      categoryId: number;
+      categoryName: string;
+      categoryColor: string;
+      total: number;
+      percentage: number;
+    }>;
+  }>> {
+    const db = await this.init();
+    const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
+    const endDate = `${year}-${String(month).padStart(2, '0')}-31`;
+
+    // 그룹 목록 조회
+    const groups = await this.getExpenseGroups();
+
+    // 카테고리별 통계 (excludeFromStats=0인 것만)
+    const transactions = await db.getAllAsync<{
+      categoryId: number;
+      categoryName: string;
+      categoryColor: string;
+      groupId: number | null;
+      amount: number;
+      merchant: string | null;
+      memo: string | null;
+      accountName: string | null;
+    }>(
+      `SELECT
+        c.id as categoryId,
+        c.name as categoryName,
+        c.color as categoryColor,
+        c.groupId,
+        t.amount,
+        t.merchant,
+        t.memo,
+        a.name as accountName
+       FROM transactions t
+       JOIN categories c ON t.categoryId = c.id
+       LEFT JOIN accounts a ON t.accountId = a.id
+       WHERE t.date >= ? AND t.date <= ?
+       AND t.type = 'expense'
+       AND t.isTransfer = 0
+       AND (t.status IS NULL OR t.status != 'excluded')
+       AND (c.excludeFromStats IS NULL OR c.excludeFromStats = 0)`,
+      [startDate, endDate]
+    );
+
+    // 제외 패턴 로드
+    const patterns = await this.getExclusionPatterns(true);
+
+    // 카테고리별 집계
+    const categoryMap = new Map<number, {
+      categoryId: number;
+      categoryName: string;
+      categoryColor: string;
+      groupId: number | null;
+      total: number;
+    }>();
+
+    for (const tx of transactions) {
+      if (patterns.length > 0 && this.matchesExclusionPatternSimple(tx, patterns)) {
+        continue;
+      }
+
+      const existing = categoryMap.get(tx.categoryId);
+      if (existing) {
+        existing.total += tx.amount;
+      } else {
+        categoryMap.set(tx.categoryId, {
+          categoryId: tx.categoryId,
+          categoryName: tx.categoryName,
+          categoryColor: tx.categoryColor,
+          groupId: tx.groupId,
+          total: tx.amount,
+        });
+      }
+    }
+
+    // 전체 지출 총액
+    const totalExpense = Array.from(categoryMap.values()).reduce((sum, cat) => sum + cat.total, 0);
+
+    // 그룹별로 정리
+    const result = groups.map(group => {
+      const groupCategories = Array.from(categoryMap.values())
+        .filter(cat => cat.groupId === group.id)
+        .sort((a, b) => b.total - a.total);
+
+      const groupTotal = groupCategories.reduce((sum, cat) => sum + cat.total, 0);
+
+      return {
+        groupId: group.id,
+        groupName: group.name,
+        groupColor: group.color,
+        groupIcon: group.icon || null,
+        total: groupTotal,
+        categories: groupCategories.map(cat => ({
+          categoryId: cat.categoryId,
+          categoryName: cat.categoryName,
+          categoryColor: cat.categoryColor,
+          total: cat.total,
+          percentage: totalExpense > 0 ? (cat.total / totalExpense) * 100 : 0,
+        })),
+      };
+    });
+
+    // 그룹에 속하지 않은 카테고리들 (미분류)
+    const uncategorizedCategories = Array.from(categoryMap.values())
+      .filter(cat => cat.groupId === null || cat.groupId === undefined)
+      .sort((a, b) => b.total - a.total);
+
+    if (uncategorizedCategories.length > 0) {
+      const uncategorizedTotal = uncategorizedCategories.reduce((sum, cat) => sum + cat.total, 0);
+      result.push({
+        groupId: 0,
+        groupName: '미분류',
+        groupColor: '#6b7280',
+        groupIcon: '📦',
+        total: uncategorizedTotal,
+        categories: uncategorizedCategories.map(cat => ({
+          categoryId: cat.categoryId,
+          categoryName: cat.categoryName,
+          categoryColor: cat.categoryColor,
+          total: cat.total,
+          percentage: totalExpense > 0 ? (cat.total / totalExpense) * 100 : 0,
+        })),
+      });
+    }
+
+    return result.filter(g => g.total > 0);
+  }
+
+  // ===== 대시보드 통합 데이터 로드 (최적화) =====
+  // 한 번의 쿼리로 월간 요약과 그룹별 통계를 동시에 계산
+  async getDashboardData(year: number, month: number): Promise<{
+    summary: { income: number; expense: number };
+    groupStats: Array<{
+      groupId: number;
+      groupName: string;
+      groupColor: string;
+      groupIcon: string | null;
+      total: number;
+      categories: Array<{
+        categoryId: number;
+        categoryName: string;
+        categoryColor: string;
+        total: number;
+        percentage: number;
+      }>;
+    }>;
+  }> {
+    const db = await this.init();
+    const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
+    const endDate = `${year}-${String(month).padStart(2, '0')}-31`;
+
+    // 병렬로 그룹 목록과 제외 패턴을 먼저 로드
+    const [groups, patterns] = await Promise.all([
+      db.getAllAsync<ExpenseGroup>('SELECT * FROM expense_groups ORDER BY sortOrder, id'),
+      this.getExclusionPatterns(true),
+    ]);
+
+    // 모든 거래를 한 번에 로드 (수입/지출 모두)
+    const transactions = await db.getAllAsync<{
+      type: string;
+      categoryId: number;
+      categoryName: string;
+      categoryColor: string;
+      groupId: number | null;
+      amount: number;
+      merchant: string | null;
+      memo: string | null;
+      accountName: string | null;
+      excludeFromStats: number | null;
+      showOnDashboard: number | null;
+    }>(
+      `SELECT
+        t.type,
+        c.id as categoryId,
+        c.name as categoryName,
+        c.color as categoryColor,
+        c.groupId,
+        t.amount,
+        t.merchant,
+        t.memo,
+        a.name as accountName,
+        c.excludeFromStats,
+        c.showOnDashboard
+       FROM transactions t
+       LEFT JOIN accounts a ON t.accountId = a.id
+       LEFT JOIN categories c ON t.categoryId = c.id
+       WHERE t.date >= ? AND t.date <= ?
+       AND t.isTransfer = 0
+       AND (t.status IS NULL OR t.status != 'excluded')`,
+      [startDate, endDate]
+    );
+
+    // 결과 계산
+    let income = 0;
+    let expense = 0;
+    const categoryMap = new Map<number, {
+      categoryId: number;
+      categoryName: string;
+      categoryColor: string;
+      groupId: number | null;
+      total: number;
+    }>();
+
+    for (const tx of transactions) {
+      // 제외 패턴 체크
+      if (patterns.length > 0 && this.matchesExclusionPatternSimple(tx, patterns)) {
+        continue;
+      }
+
+      // excludeFromStats인 카테고리는 통계에서 제외
+      const excluded = tx.excludeFromStats === 1;
+      // showOnDashboard가 0인 카테고리는 대시보드 카드에서 제외 (총액은 포함)
+      const hideOnDashboard = tx.showOnDashboard === 0;
+
+      if (tx.type === 'income') {
+        if (!excluded) income += tx.amount;
+      } else if (tx.type === 'expense') {
+        if (!excluded) {
+          expense += tx.amount;
+
+          // 카테고리별 집계 (지출만, 대시보드에 표시하는 카테고리만)
+          if (!hideOnDashboard) {
+            const existing = categoryMap.get(tx.categoryId);
+            if (existing) {
+              existing.total += tx.amount;
+            } else {
+              categoryMap.set(tx.categoryId, {
+                categoryId: tx.categoryId,
+                categoryName: tx.categoryName,
+                categoryColor: tx.categoryColor,
+                groupId: tx.groupId,
+                total: tx.amount,
+              });
+            }
+          }
+        }
+      }
+    }
+
+    // 전체 지출 총액
+    const totalExpense = Array.from(categoryMap.values()).reduce((sum, cat) => sum + cat.total, 0);
+
+    // 그룹별로 정리
+    const groupStats = groups.map(group => {
+      const groupCategories = Array.from(categoryMap.values())
+        .filter(cat => cat.groupId === group.id)
+        .sort((a, b) => b.total - a.total);
+
+      const groupTotal = groupCategories.reduce((sum, cat) => sum + cat.total, 0);
+
+      return {
+        groupId: group.id,
+        groupName: group.name,
+        groupColor: group.color,
+        groupIcon: group.icon || null,
+        total: groupTotal,
+        categories: groupCategories.map(cat => ({
+          categoryId: cat.categoryId,
+          categoryName: cat.categoryName,
+          categoryColor: cat.categoryColor,
+          total: cat.total,
+          percentage: totalExpense > 0 ? (cat.total / totalExpense) * 100 : 0,
+        })),
+      };
+    });
+
+    // 그룹에 속하지 않은 카테고리들 (미분류)
+    const uncategorizedCategories = Array.from(categoryMap.values())
+      .filter(cat => cat.groupId === null || cat.groupId === undefined)
+      .sort((a, b) => b.total - a.total);
+
+    if (uncategorizedCategories.length > 0) {
+      const uncategorizedTotal = uncategorizedCategories.reduce((sum, cat) => sum + cat.total, 0);
+      groupStats.push({
+        groupId: 0,
+        groupName: '미분류',
+        groupColor: '#6b7280',
+        groupIcon: '📦',
+        total: uncategorizedTotal,
+        categories: uncategorizedCategories.map(cat => ({
+          categoryId: cat.categoryId,
+          categoryName: cat.categoryName,
+          categoryColor: cat.categoryColor,
+          total: cat.total,
+          percentage: totalExpense > 0 ? (cat.total / totalExpense) * 100 : 0,
+        })),
+      });
+    }
+
+    return {
+      summary: { income, expense },
+      groupStats: groupStats.filter(g => g.total > 0),
+    };
   }
 }
 
