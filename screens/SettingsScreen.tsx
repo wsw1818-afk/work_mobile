@@ -536,14 +536,6 @@ export default function SettingsScreen({ navigation }: any) {
         </Dialog>
 
       </Portal>
-
-      {/* Google OAuth WebView */}
-      <GoogleOAuthWebView
-        visible={showGoogleOAuth}
-        onClose={() => setShowGoogleOAuth(false)}
-        onSuccess={handleGoogleOAuthSuccess}
-        onError={handleGoogleOAuthError}
-      />
     </View>
   );
 }
