@@ -1,24 +1,70 @@
 // Google OAuth WebView 컴포넌트
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import {
   View,
   Modal,
   StyleSheet,
   ActivityIndicator,
-  TouchableOpacity,
+  Alert,
 } from 'react-native';
 import { Text, IconButton } from 'react-native-paper';
-import { WebView, WebViewNavigation } from 'react-native-webview';
+import { WebView, WebViewNavigation, WebViewMessageEvent } from 'react-native-webview';
 
 // Google OAuth 설정
-// 주의: 실제 앱에서는 Google Cloud Console에서 OAuth 클라이언트 ID를 발급받아야 합니다.
-// 현재는 OAuth Playground의 클라이언트 ID를 사용합니다.
-const GOOGLE_CLIENT_ID = '407408718192.apps.googleusercontent.com'; // OAuth Playground 클라이언트 ID
+// OAuth Playground 클라이언트 ID 사용
+const GOOGLE_CLIENT_ID = '407408718192.apps.googleusercontent.com';
 const REDIRECT_URI = 'https://developers.google.com/oauthplayground';
 const SCOPES = [
   'https://www.googleapis.com/auth/drive.file',
   'https://www.googleapis.com/auth/drive.appdata',
 ].join(' ');
+
+// URL 해시에서 토큰을 추출하는 JavaScript 코드
+const INJECTED_JAVASCRIPT = `
+(function() {
+  // URL 해시 변경 감지
+  function checkForToken() {
+    var hash = window.location.hash;
+    var href = window.location.href;
+
+    if (hash && hash.includes('access_token=')) {
+      var match = hash.match(/access_token=([^&]+)/);
+      if (match && match[1]) {
+        window.ReactNativeWebView.postMessage(JSON.stringify({
+          type: 'token',
+          token: decodeURIComponent(match[1])
+        }));
+        return true;
+      }
+    }
+
+    if (href.includes('error=')) {
+      var errorMatch = href.match(/error=([^&#]+)/);
+      var errorDesc = href.match(/error_description=([^&#]+)/);
+      window.ReactNativeWebView.postMessage(JSON.stringify({
+        type: 'error',
+        error: errorDesc ? decodeURIComponent(errorDesc[1].replace(/\\+/g, ' ')) :
+               errorMatch ? decodeURIComponent(errorMatch[1]) : 'Unknown error'
+      }));
+      return true;
+    }
+
+    return false;
+  }
+
+  // 초기 체크
+  checkForToken();
+
+  // hashchange 이벤트 리스너
+  window.addEventListener('hashchange', function() {
+    checkForToken();
+  });
+
+  // 주기적 체크 (일부 리다이렉트에서 hashchange가 발생하지 않을 수 있음)
+  setInterval(checkForToken, 500);
+})();
+true;
+`;
 
 interface GoogleOAuthWebViewProps {
   visible: boolean;
@@ -34,6 +80,7 @@ export default function GoogleOAuthWebView({
   onError,
 }: GoogleOAuthWebViewProps) {
   const [loading, setLoading] = useState(true);
+  const [tokenReceived, setTokenReceived] = useState(false);
   const webViewRef = useRef<WebView>(null);
 
   // OAuth 인증 URL 생성
@@ -45,52 +92,42 @@ export default function GoogleOAuthWebView({
     `&include_granted_scopes=true` +
     `&prompt=consent`;
 
-  // 토큰 추출 함수
-  const extractToken = (url: string): boolean => {
-    console.log('OAuth URL:', url);
+  // JavaScript에서 메시지 수신
+  const handleMessage = useCallback((event: WebViewMessageEvent) => {
+    if (tokenReceived) return; // 이미 토큰을 받았으면 무시
 
-    // 리다이렉트 URL에서 액세스 토큰 추출 (hash fragment)
+    try {
+      const data = JSON.parse(event.nativeEvent.data);
+
+      if (data.type === 'token' && data.token) {
+        setTokenReceived(true);
+        onSuccess(data.token);
+        onClose();
+      } else if (data.type === 'error') {
+        setTokenReceived(true);
+        onError(data.error || '인증 오류가 발생했습니다.');
+        onClose();
+      }
+    } catch (e) {
+      console.log('Message parse error:', e);
+    }
+  }, [tokenReceived, onSuccess, onError, onClose]);
+
+  // URL 변경 감지 (백업용)
+  const handleNavigationStateChange = useCallback((navState: WebViewNavigation) => {
+    if (tokenReceived) return;
+
+    const { url } = navState;
+    // 리다이렉트 URL에서 액세스 토큰 추출
     if (url.includes('#access_token=') || url.includes('access_token=')) {
       const tokenMatch = url.match(/access_token=([^&#]+)/);
       if (tokenMatch && tokenMatch[1]) {
-        const accessToken = decodeURIComponent(tokenMatch[1]);
-        console.log('Token found!');
-        onSuccess(accessToken);
+        setTokenReceived(true);
+        onSuccess(decodeURIComponent(tokenMatch[1]));
         onClose();
-        return true;
       }
     }
-
-    // 에러 처리
-    if (url.includes('error=')) {
-      const errorMatch = url.match(/error=([^&#]+)/);
-      const errorDesc = url.match(/error_description=([^&#]+)/);
-      const errorMessage = errorDesc
-        ? decodeURIComponent(errorDesc[1].replace(/\+/g, ' '))
-        : errorMatch
-          ? decodeURIComponent(errorMatch[1])
-          : '인증 오류가 발생했습니다.';
-      onError(errorMessage);
-      onClose();
-      return true;
-    }
-
-    return false;
-  };
-
-  // URL 변경 감지하여 토큰 추출
-  const handleNavigationStateChange = (navState: WebViewNavigation) => {
-    extractToken(navState.url);
-  };
-
-  // 네비게이션 요청 전 URL 체크 (hash fragment 감지용)
-  const handleShouldStartLoad = (event: any): boolean => {
-    const { url } = event;
-    if (extractToken(url)) {
-      return false; // 네비게이션 중단
-    }
-    return true;
-  };
+  }, [tokenReceived, onSuccess, onClose]);
 
   // WebView 로드 완료
   const handleLoadEnd = () => {
@@ -102,11 +139,18 @@ export default function GoogleOAuthWebView({
     setLoading(true);
   };
 
+  // 모달이 닫힐 때 상태 초기화
+  const handleClose = () => {
+    setTokenReceived(false);
+    setLoading(true);
+    onClose();
+  };
+
   return (
     <Modal
       visible={visible}
       animationType="slide"
-      onRequestClose={onClose}
+      onRequestClose={handleClose}
       presentationStyle="fullScreen"
     >
       <View style={styles.container}>
@@ -115,7 +159,7 @@ export default function GoogleOAuthWebView({
           <IconButton
             icon="close"
             size={24}
-            onPress={onClose}
+            onPress={handleClose}
           />
           <Text variant="titleMedium" style={styles.headerTitle}>
             Google 로그인
@@ -129,7 +173,8 @@ export default function GoogleOAuthWebView({
             ref={webViewRef}
             source={{ uri: authUrl }}
             onNavigationStateChange={handleNavigationStateChange}
-            onShouldStartLoadWithRequest={handleShouldStartLoad}
+            onMessage={handleMessage}
+            injectedJavaScript={INJECTED_JAVASCRIPT}
             onLoadStart={handleLoadStart}
             onLoadEnd={handleLoadEnd}
             javaScriptEnabled={true}
