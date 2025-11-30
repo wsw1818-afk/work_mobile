@@ -20,7 +20,8 @@
       "Bash(findstr:*)",
       "Bash(cmd /c \"cd /d H:\\Claude_work\\gagyebu-native && dir /B\")",
       "Bash(cmd /c \"dir H:\\Claude_work\\gagyebu-native\")",
-      "Bash(npx expo start:*)"
+      "Bash(npx expo start:*)",
+      "Bash(ls -la \"H:\\Claude_work\\gagyebu-native\\lib\"\" | find \"H:Claude_workgagyebu-nativescreens\" -name \"*Screen.tsx \")"
     ],
     "defaultMode": "dontAsk"
   }
