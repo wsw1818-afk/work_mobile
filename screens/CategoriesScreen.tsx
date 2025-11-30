@@ -23,6 +23,24 @@ const GROUP_COLORS = [
   '#8b5cf6', '#ec4899', '#14b8a6',
 ];
 
+// 이모지 프리셋 (카테고리별로 정리)
+const EMOJI_PRESETS = [
+  // 돈/금융
+  '💰', '💵', '💳', '🏦', '💸', '🪙', '📈', '📊',
+  // 생활
+  '🏠', '🏡', '🚗', '🚌', '✈️', '🛒', '🛍️', '📦',
+  // 음식
+  '🍽️', '🍕', '🍔', '☕', '🍺', '🍷', '🥗', '🍱',
+  // 여가/취미
+  '🎮', '🎬', '🎵', '📚', '🎨', '⚽', '🏋️', '🎭',
+  // 건강/의료
+  '💊', '🏥', '💉', '🩺', '🧘', '❤️', '🏃', '🧴',
+  // 교육/업무
+  '📝', '💼', '🎓', '💻', '📱', '🖥️', '📞', '✏️',
+  // 기타
+  '⭐', '🔥', '💡', '🎁', '🔧', '🏷️', '📌', '🗂️',
+];
+
 const PRESET_COLORS = [
   '#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#6366f1',
   '#8b5cf6', '#ec4899', '#f43f5e', '#14b8a6', '#06b6d4',
@@ -50,8 +68,8 @@ export default function CategoriesScreen() {
   const [groupEditVisible, setGroupEditVisible] = useState(false);
   const [editingGroup, setEditingGroup] = useState<ExpenseGroup | null>(null);
   const [newGroupColor, setNewGroupColor] = useState(GROUP_COLORS[0]);
+  const [selectedEmoji, setSelectedEmoji] = useState<string>('');
   const groupNameRef = useRef<KoreanTextInputRef>(null);
-  const groupIconRef = useRef<KoreanTextInputRef>(null);
 
   const loadCategories = useCallback(async () => {
     try {
@@ -113,27 +131,26 @@ export default function CategoriesScreen() {
   const openAddGroup = () => {
     setEditingGroup(null);
     setNewGroupColor(GROUP_COLORS[0]);
+    setSelectedEmoji('');
     setGroupEditVisible(true);
     setTimeout(() => {
       groupNameRef.current?.clear();
-      groupIconRef.current?.clear();
     }, 100);
   };
 
   const openEditGroup = (group: ExpenseGroup) => {
     setEditingGroup(group);
     setNewGroupColor(group.color);
+    setSelectedEmoji(group.icon || '');
     setGroupEditVisible(true);
     setTimeout(() => {
       groupNameRef.current?.setValue(group.name);
-      groupIconRef.current?.setValue(group.icon || '');
     }, 100);
   };
 
   // 그룹 저장
   const handleSaveGroup = async () => {
     const name = groupNameRef.current?.getValue() || '';
-    const icon = groupIconRef.current?.getValue() || '';
 
     if (!name.trim()) {
       Alert.alert('오류', '그룹 이름을 입력해주세요.');
@@ -145,13 +162,13 @@ export default function CategoriesScreen() {
         await database.updateExpenseGroup(editingGroup.id, {
           name: name.trim(),
           color: newGroupColor,
-          icon: icon || undefined,
+          icon: selectedEmoji || undefined,
         });
       } else {
         await database.addExpenseGroup({
           name: name.trim(),
           color: newGroupColor,
-          icon: icon || undefined,
+          icon: selectedEmoji || undefined,
           sortOrder: 0,
           isDefault: false,
         });
@@ -549,12 +566,32 @@ export default function CategoriesScreen() {
           <Text variant="bodyMedium" style={styles.inputLabel}>
             아이콘 (이모지)
           </Text>
-          <KoreanTextInput
-            ref={groupIconRef}
-            defaultValue={editingGroup?.icon || ''}
-            style={styles.nativeInput}
-            placeholder="예: 💰, 🎮, 🏠"
-          />
+          <View style={styles.selectedEmojiContainer}>
+            <Text style={styles.selectedEmojiText}>
+              {selectedEmoji || '선택 안함'}
+            </Text>
+            {selectedEmoji && (
+              <TouchableOpacity onPress={() => setSelectedEmoji('')}>
+                <Text style={styles.clearEmojiText}>지우기</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.emojiScrollView}>
+            <View style={styles.emojiGrid}>
+              {EMOJI_PRESETS.map((emoji, index) => (
+                <TouchableOpacity
+                  key={index}
+                  style={[
+                    styles.emojiOption,
+                    selectedEmoji === emoji && styles.emojiOptionSelected
+                  ]}
+                  onPress={() => setSelectedEmoji(emoji)}
+                >
+                  <Text style={styles.emojiText}>{emoji}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </ScrollView>
 
           <Text variant="bodyMedium" style={styles.colorLabel}>
             색상 선택
@@ -884,6 +921,49 @@ const styles = StyleSheet.create({
   groupColorSelected: {
     borderWidth: 3,
     borderColor: '#1f2937',
+  },
+  // 이모지 선택 스타일
+  selectedEmojiContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    backgroundColor: '#f9fafb',
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+  selectedEmojiText: {
+    fontSize: 24,
+  },
+  clearEmojiText: {
+    color: '#6366f1',
+    fontSize: 14,
+  },
+  emojiScrollView: {
+    marginBottom: 16,
+  },
+  emojiGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    paddingVertical: 4,
+  },
+  emojiOption: {
+    width: 44,
+    height: 44,
+    borderRadius: 8,
+    backgroundColor: '#f3f4f6',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emojiOptionSelected: {
+    backgroundColor: '#e0e7ff',
+    borderWidth: 2,
+    borderColor: '#6366f1',
+  },
+  emojiText: {
+    fontSize: 22,
   },
   modalButtons: {
     flexDirection: 'row',
