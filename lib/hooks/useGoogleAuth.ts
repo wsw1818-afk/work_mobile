@@ -8,8 +8,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 WebBrowser.maybeCompleteAuthSession();
 
 // Google OAuth 설정
-// expo-auth-session의 Google provider 사용
-const GOOGLE_CLIENT_ID = '407408718192.apps.googleusercontent.com'; // Google OAuth Playground Client ID
+// Google Cloud Console에서 발급받은 Android 클라이언트 ID
+const GOOGLE_CLIENT_ID = '584528500804-dh7chsh5j60mv495e55cor4bdrom60ib.apps.googleusercontent.com';
 const REDIRECT_URI = AuthSession.makeRedirectUri({
   scheme: 'gagyebu',
   path: 'oauth2redirect/google',

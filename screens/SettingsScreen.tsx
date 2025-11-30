@@ -15,9 +15,12 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { database } from '../lib/db/database';
 import { backupManager } from '../lib/backup';
 import { googleDriveManager, GoogleDriveFile } from '../lib/googleDrive';
-import GoogleOAuthWebView from '../components/GoogleOAuthWebView';
+import { useGoogleAuth } from '../lib/hooks/useGoogleAuth';
 
 export default function SettingsScreen({ navigation }: any) {
+  // Google OAuth 훅 사용
+  const { isLoggedIn: isGoogleLoggedIn, isLoading: googleAuthLoading, accessToken, login: googleLogin, logout: googleLogout } = useGoogleAuth();
+
   // AI 설정 상태
   const [aiProvider, setAiProvider] = useState<'openai' | 'gemini'>('gemini');
   const [openaiApiKey, setOpenaiApiKey] = useState('');
@@ -32,21 +35,18 @@ export default function SettingsScreen({ navigation }: any) {
   const [showRestoreDialog, setShowRestoreDialog] = useState(false);
   const [driveBackups, setDriveBackups] = useState<GoogleDriveFile[]>([]);
   const [showDriveListDialog, setShowDriveListDialog] = useState(false);
-  const [isGoogleLoggedIn, setIsGoogleLoggedIn] = useState(false);
 
-  // Google OAuth WebView 상태
-  const [showGoogleOAuth, setShowGoogleOAuth] = useState(false);
+  // accessToken이 변경되면 googleDriveManager에 설정
+  useEffect(() => {
+    if (accessToken) {
+      googleDriveManager.setAccessToken(accessToken);
+    }
+  }, [accessToken]);
 
   // 초기 로드
   useEffect(() => {
     loadSettings();
-    checkGoogleLogin();
   }, []);
-
-  const checkGoogleLogin = async () => {
-    const loggedIn = await googleDriveManager.isLoggedIn();
-    setIsGoogleLoggedIn(loggedIn);
-  };
 
   const loadSettings = async () => {
     try {
@@ -224,29 +224,17 @@ export default function SettingsScreen({ navigation }: any) {
           {
             text: '해제',
             onPress: async () => {
+              await googleLogout();
               await googleDriveManager.logout();
-              setIsGoogleLoggedIn(false);
               Alert.alert('알림', 'Google Drive 연결이 해제되었습니다.');
             },
           },
         ]
       );
     } else {
-      // WebView OAuth 열기
-      setShowGoogleOAuth(true);
+      // Google OAuth 로그인 (원클릭)
+      await googleLogin();
     }
-  };
-
-  // Google OAuth 성공 처리
-  const handleGoogleOAuthSuccess = (accessToken: string) => {
-    googleDriveManager.setAccessToken(accessToken);
-    setIsGoogleLoggedIn(true);
-    Alert.alert('성공', 'Google Drive가 연결되었습니다.');
-  };
-
-  // Google OAuth 에러 처리
-  const handleGoogleOAuthError = (error: string) => {
-    Alert.alert('로그인 실패', error);
   };
 
   // 복원 실행 (로컬 파일)
