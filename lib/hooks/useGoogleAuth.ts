@@ -8,11 +8,12 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 WebBrowser.maybeCompleteAuthSession();
 
 // Google OAuth 설정
-// Google Cloud Console에서 발급받은 Android 클라이언트 ID
-const GOOGLE_CLIENT_ID = '584528500804-dh7chsh5j60mv495e55cor4bdrom60ib.apps.googleusercontent.com';
+// Google Cloud Console에서 발급받은 Web 클라이언트 ID (Android에서도 Web ID 사용)
+const GOOGLE_CLIENT_ID = '584528500804-tm95893irb80pjit981hhu87k9vphnet.apps.googleusercontent.com';
+
+// Expo Auth Proxy 사용 - 모든 플랫폼에서 동작
 const REDIRECT_URI = AuthSession.makeRedirectUri({
-  scheme: 'gagyebu',
-  path: 'oauth2redirect/google',
+  useProxy: true,
 });
 
 // Google Drive 접근 권한
