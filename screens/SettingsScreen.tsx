@@ -15,7 +15,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { database } from '../lib/db/database';
 import { backupManager } from '../lib/backup';
 import { googleDriveManager, GoogleDriveFile } from '../lib/googleDrive';
-import GoogleOAuthWebView from '../components/GoogleOAuthWebView';
+import { useGoogleAuth } from '../lib/hooks/useGoogleAuth';
 
 export default function SettingsScreen({ navigation }: any) {
   // AI 설정 상태
@@ -32,21 +32,27 @@ export default function SettingsScreen({ navigation }: any) {
   const [showRestoreDialog, setShowRestoreDialog] = useState(false);
   const [driveBackups, setDriveBackups] = useState<GoogleDriveFile[]>([]);
   const [showDriveListDialog, setShowDriveListDialog] = useState(false);
-  const [isGoogleLoggedIn, setIsGoogleLoggedIn] = useState(false);
 
-  // Google OAuth WebView 상태
-  const [showGoogleOAuth, setShowGoogleOAuth] = useState(false);
+  // Google Auth 훅 사용 (원클릭 로그인)
+  const {
+    isLoggedIn: isGoogleLoggedIn,
+    isLoading: googleAuthLoading,
+    accessToken: googleAccessToken,
+    login: googleLogin,
+    logout: googleLogout,
+  } = useGoogleAuth();
+
+  // Google 토큰이 변경되면 googleDriveManager에 전달
+  useEffect(() => {
+    if (googleAccessToken) {
+      googleDriveManager.setAccessToken(googleAccessToken);
+    }
+  }, [googleAccessToken]);
 
   // 초기 로드
   useEffect(() => {
     loadSettings();
-    checkGoogleLogin();
   }, []);
-
-  const checkGoogleLogin = async () => {
-    const loggedIn = await googleDriveManager.isLoggedIn();
-    setIsGoogleLoggedIn(loggedIn);
-  };
 
   const loadSettings = async () => {
     try {
@@ -212,7 +218,7 @@ export default function SettingsScreen({ navigation }: any) {
     );
   };
 
-  // Google 로그인/로그아웃 처리
+  // Google 로그인/로그아웃 처리 (원클릭!)
   const handleGoogleAuth = async () => {
     if (isGoogleLoggedIn) {
       // 로그아웃
@@ -224,29 +230,26 @@ export default function SettingsScreen({ navigation }: any) {
           {
             text: '해제',
             onPress: async () => {
+              await googleLogout();
               await googleDriveManager.logout();
-              setIsGoogleLoggedIn(false);
               Alert.alert('알림', 'Google Drive 연결이 해제되었습니다.');
             },
           },
         ]
       );
     } else {
-      // WebView OAuth 열기
-      setShowGoogleOAuth(true);
+      // 원클릭 Google 로그인 시작
+      try {
+        await googleLogin();
+        // 로그인 성공 시 useEffect에서 토큰을 googleDriveManager에 전달함
+        if (googleAccessToken) {
+          Alert.alert('성공', 'Google Drive가 연결되었습니다.');
+        }
+      } catch (error) {
+        console.error('Google 로그인 오류:', error);
+        Alert.alert('로그인 실패', 'Google 로그인에 실패했습니다.');
+      }
     }
-  };
-
-  // Google OAuth 성공 처리
-  const handleGoogleOAuthSuccess = (accessToken: string) => {
-    googleDriveManager.setAccessToken(accessToken);
-    setIsGoogleLoggedIn(true);
-    Alert.alert('성공', 'Google Drive가 연결되었습니다.');
-  };
-
-  // Google OAuth 에러 처리
-  const handleGoogleOAuthError = (error: string) => {
-    Alert.alert('로그인 실패', error);
   };
 
   // 복원 실행 (로컬 파일)
@@ -549,13 +552,13 @@ export default function SettingsScreen({ navigation }: any) {
 
       </Portal>
 
-      {/* Google OAuth WebView */}
-      <GoogleOAuthWebView
-        visible={showGoogleOAuth}
-        onClose={() => setShowGoogleOAuth(false)}
-        onSuccess={handleGoogleOAuthSuccess}
-        onError={handleGoogleOAuthError}
-      />
+      {/* Google Auth 로딩 표시 */}
+      {googleAuthLoading && (
+        <View style={styles.googleAuthLoading}>
+          <ActivityIndicator size="large" color="#6366f1" />
+          <Text style={styles.googleAuthLoadingText}>Google 로그인 중...</Text>
+        </View>
+      )}
     </View>
   );
 }
@@ -647,5 +650,22 @@ const styles = StyleSheet.create({
     marginTop: 12,
     color: '#6366f1',
     fontSize: 16,
+  },
+  googleAuthLoading: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 2000,
+  },
+  googleAuthLoadingText: {
+    marginTop: 16,
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '600',
   },
 });

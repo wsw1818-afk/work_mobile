@@ -3,6 +3,7 @@
     "name": "가계부",
     "slug": "gagyebu-native",
     "version": "1.0.0",
+    "scheme": "gagyebu",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",

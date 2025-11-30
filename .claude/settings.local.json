@@ -17,7 +17,8 @@
       "Bash(timeout 120 powershell:*)",
       "Bash(cmd /c \"dir H:\\Claude_work\\gagyebu-native\\android\\app\\build\\outputs\\apk\\release\\*.apk 2>nul\")",
       "Bash(adb -s RFCY70SZK9P install:*)",
-      "Bash(adb:*)"
+      "Bash(adb:*)",
+      "Bash(npx expo install:*)"
     ],
     "deny": [],
     "ask": [],

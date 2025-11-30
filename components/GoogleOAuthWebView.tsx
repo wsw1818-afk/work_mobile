@@ -1,67 +1,50 @@
-// Google OAuth WebView 컴포넌트
+// Google OAuth WebView 컴포넌트 - OAuth Playground 방식
 import React, { useState, useRef, useCallback } from 'react';
 import {
   View,
   Modal,
   StyleSheet,
   ActivityIndicator,
-  Alert,
+  Linking,
 } from 'react-native';
-import { Text, IconButton } from 'react-native-paper';
+import { Text, IconButton, Button } from 'react-native-paper';
 import { WebView, WebViewNavigation, WebViewMessageEvent } from 'react-native-webview';
 
-// Google OAuth 설정
-// OAuth Playground 클라이언트 ID 사용
-const GOOGLE_CLIENT_ID = '407408718192.apps.googleusercontent.com';
-const REDIRECT_URI = 'https://developers.google.com/oauthplayground';
-const SCOPES = [
-  'https://www.googleapis.com/auth/drive.file',
-  'https://www.googleapis.com/auth/drive.appdata',
-].join(' ');
+// OAuth Playground URL - 여기서 토큰을 발급받음
+const OAUTH_PLAYGROUND_URL = 'https://developers.google.com/oauthplayground';
 
-// URL 해시에서 토큰을 추출하는 JavaScript 코드
+// 토큰 추출용 JavaScript
 const INJECTED_JAVASCRIPT = `
 (function() {
-  // URL 해시 변경 감지
   function checkForToken() {
-    var hash = window.location.hash;
-    var href = window.location.href;
+    // OAuth Playground의 access token textarea 찾기
+    var tokenArea = document.querySelector('textarea#access_token');
+    if (tokenArea && tokenArea.value) {
+      window.ReactNativeWebView.postMessage(JSON.stringify({
+        type: 'token',
+        token: tokenArea.value
+      }));
+      return true;
+    }
 
-    if (hash && hash.includes('access_token=')) {
-      var match = hash.match(/access_token=([^&]+)/);
-      if (match && match[1]) {
+    // Step 2 완료 후 표시되는 토큰 영역 찾기
+    var tokenDisplay = document.querySelector('.token-response');
+    if (tokenDisplay) {
+      var accessTokenMatch = tokenDisplay.textContent.match(/"access_token"\\s*:\\s*"([^"]+)"/);
+      if (accessTokenMatch && accessTokenMatch[1]) {
         window.ReactNativeWebView.postMessage(JSON.stringify({
           type: 'token',
-          token: decodeURIComponent(match[1])
+          token: accessTokenMatch[1]
         }));
         return true;
       }
     }
 
-    if (href.includes('error=')) {
-      var errorMatch = href.match(/error=([^&#]+)/);
-      var errorDesc = href.match(/error_description=([^&#]+)/);
-      window.ReactNativeWebView.postMessage(JSON.stringify({
-        type: 'error',
-        error: errorDesc ? decodeURIComponent(errorDesc[1].replace(/\\+/g, ' ')) :
-               errorMatch ? decodeURIComponent(errorMatch[1]) : 'Unknown error'
-      }));
-      return true;
-    }
-
     return false;
   }
 
-  // 초기 체크
-  checkForToken();
-
-  // hashchange 이벤트 리스너
-  window.addEventListener('hashchange', function() {
-    checkForToken();
-  });
-
-  // 주기적 체크 (일부 리다이렉트에서 hashchange가 발생하지 않을 수 있음)
-  setInterval(checkForToken, 500);
+  // 주기적 체크
+  setInterval(checkForToken, 1000);
 })();
 true;
 `;
@@ -83,18 +66,9 @@ export default function GoogleOAuthWebView({
   const [tokenReceived, setTokenReceived] = useState(false);
   const webViewRef = useRef<WebView>(null);
 
-  // OAuth 인증 URL 생성
-  const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
-    `client_id=${encodeURIComponent(GOOGLE_CLIENT_ID)}` +
-    `&redirect_uri=${encodeURIComponent(REDIRECT_URI)}` +
-    `&response_type=token` +
-    `&scope=${encodeURIComponent(SCOPES)}` +
-    `&include_granted_scopes=true` +
-    `&prompt=consent`;
-
   // JavaScript에서 메시지 수신
   const handleMessage = useCallback((event: WebViewMessageEvent) => {
-    if (tokenReceived) return; // 이미 토큰을 받았으면 무시
+    if (tokenReceived) return;
 
     try {
       const data = JSON.parse(event.nativeEvent.data);
@@ -103,29 +77,9 @@ export default function GoogleOAuthWebView({
         setTokenReceived(true);
         onSuccess(data.token);
         onClose();
-      } else if (data.type === 'error') {
-        setTokenReceived(true);
-        onError(data.error || '인증 오류가 발생했습니다.');
-        onClose();
       }
     } catch (e) {
       console.log('Message parse error:', e);
-    }
-  }, [tokenReceived, onSuccess, onError, onClose]);
-
-  // URL 변경 감지 (백업용)
-  const handleNavigationStateChange = useCallback((navState: WebViewNavigation) => {
-    if (tokenReceived) return;
-
-    const { url } = navState;
-    // 리다이렉트 URL에서 액세스 토큰 추출
-    if (url.includes('#access_token=') || url.includes('access_token=')) {
-      const tokenMatch = url.match(/access_token=([^&#]+)/);
-      if (tokenMatch && tokenMatch[1]) {
-        setTokenReceived(true);
-        onSuccess(decodeURIComponent(tokenMatch[1]));
-        onClose();
-      }
     }
   }, [tokenReceived, onSuccess, onClose]);
 
@@ -162,17 +116,26 @@ export default function GoogleOAuthWebView({
             onPress={handleClose}
           />
           <Text variant="titleMedium" style={styles.headerTitle}>
-            Google 로그인
+            Google Drive 연결
           </Text>
           <View style={styles.headerRight} />
+        </View>
+
+        {/* 안내 */}
+        <View style={styles.instructionBox}>
+          <Text style={styles.instructionTitle}>토큰 발급 방법</Text>
+          <Text style={styles.instruction}>1. 왼쪽 목록에서 "Drive API v3" 선택</Text>
+          <Text style={styles.instruction}>2. "../drive.file"과 "../drive.appdata" 체크</Text>
+          <Text style={styles.instruction}>3. "Authorize APIs" 클릭 → Google 로그인</Text>
+          <Text style={styles.instruction}>4. "Exchange authorization code for tokens" 클릭</Text>
+          <Text style={styles.instruction}>5. 토큰이 자동으로 감지되어 연결됩니다</Text>
         </View>
 
         {/* WebView */}
         <View style={styles.webViewContainer}>
           <WebView
             ref={webViewRef}
-            source={{ uri: authUrl }}
-            onNavigationStateChange={handleNavigationStateChange}
+            source={{ uri: OAUTH_PLAYGROUND_URL }}
             onMessage={handleMessage}
             injectedJavaScript={INJECTED_JAVASCRIPT}
             onLoadStart={handleLoadStart}
@@ -183,7 +146,6 @@ export default function GoogleOAuthWebView({
             scalesPageToFit={true}
             sharedCookiesEnabled={true}
             thirdPartyCookiesEnabled={true}
-            userAgent="Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.120 Mobile Safari/537.36"
             style={styles.webView}
           />
 
@@ -194,13 +156,6 @@ export default function GoogleOAuthWebView({
               <Text style={styles.loadingText}>로딩 중...</Text>
             </View>
           )}
-        </View>
-
-        {/* 하단 안내 */}
-        <View style={styles.footer}>
-          <Text variant="bodySmall" style={styles.footerText}>
-            Google 계정으로 로그인하면 Google Drive에 백업할 수 있습니다.
-          </Text>
         </View>
       </View>
     </Modal>
@@ -227,6 +182,24 @@ const styles = StyleSheet.create({
   },
   headerRight: {
     width: 48,
+  },
+  instructionBox: {
+    padding: 12,
+    backgroundColor: '#f0f9ff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#bfdbfe',
+  },
+  instructionTitle: {
+    fontWeight: 'bold',
+    marginBottom: 8,
+    color: '#1e40af',
+    fontSize: 14,
+  },
+  instruction: {
+    fontSize: 12,
+    color: '#374151',
+    marginBottom: 4,
+    lineHeight: 18,
   },
   webViewContainer: {
     flex: 1,

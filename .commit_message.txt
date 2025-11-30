@@ -1,1 +1,1 @@
-✨ Google Drive WebView OAuth 자동 로그인 구현
+✨ expo-auth-session으로 Google Drive 원클릭 로그인 구현
