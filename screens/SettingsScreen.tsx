@@ -15,6 +15,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { database } from '../lib/db/database';
 import { backupManager } from '../lib/backup';
 import { googleDriveManager, GoogleDriveFile } from '../lib/googleDrive';
+import GoogleOAuthWebView from '../components/GoogleOAuthWebView';
 
 export default function SettingsScreen({ navigation }: any) {
   // AI 설정 상태
@@ -33,9 +34,8 @@ export default function SettingsScreen({ navigation }: any) {
   const [showDriveListDialog, setShowDriveListDialog] = useState(false);
   const [isGoogleLoggedIn, setIsGoogleLoggedIn] = useState(false);
 
-  // Google Drive 토큰 입력용 상태
-  const [showGoogleTokenDialog, setShowGoogleTokenDialog] = useState(false);
-  const [googleToken, setGoogleToken] = useState('');
+  // Google OAuth WebView 상태
+  const [showGoogleOAuth, setShowGoogleOAuth] = useState(false);
 
   // 초기 로드
   useEffect(() => {
@@ -232,23 +232,21 @@ export default function SettingsScreen({ navigation }: any) {
         ]
       );
     } else {
-      // 토큰 입력 다이얼로그 표시
-      setGoogleToken('');
-      setShowGoogleTokenDialog(true);
+      // WebView OAuth 열기
+      setShowGoogleOAuth(true);
     }
   };
 
-  // Google Drive 토큰 저장
-  const handleSaveGoogleToken = () => {
-    if (googleToken.trim()) {
-      googleDriveManager.setAccessToken(googleToken.trim());
-      setIsGoogleLoggedIn(true);
-      setShowGoogleTokenDialog(false);
-      setGoogleToken('');
-      Alert.alert('성공', 'Google Drive가 연결되었습니다.');
-    } else {
-      Alert.alert('오류', '토큰을 입력해주세요.');
-    }
+  // Google OAuth 성공 처리
+  const handleGoogleOAuthSuccess = (accessToken: string) => {
+    googleDriveManager.setAccessToken(accessToken);
+    setIsGoogleLoggedIn(true);
+    Alert.alert('성공', 'Google Drive가 연결되었습니다.');
+  };
+
+  // Google OAuth 에러 처리
+  const handleGoogleOAuthError = (error: string) => {
+    Alert.alert('로그인 실패', error);
   };
 
   // 복원 실행 (로컬 파일)
@@ -549,38 +547,15 @@ export default function SettingsScreen({ navigation }: any) {
           </Dialog.Actions>
         </Dialog>
 
-        {/* Google Drive 토큰 입력 다이얼로그 */}
-        <Dialog visible={showGoogleTokenDialog} onDismiss={() => setShowGoogleTokenDialog(false)}>
-          <Dialog.Title>Google Drive 연결</Dialog.Title>
-          <Dialog.ScrollArea>
-            <ScrollView style={styles.tokenDialogContent}>
-              <Text variant="bodyMedium" style={styles.tokenInstructions}>
-                Google OAuth Playground에서 액세스 토큰을 발급받아 입력하세요.{'\n\n'}
-                1. developers.google.com/oauthplayground 접속{'\n'}
-                2. Drive API v3 선택{'\n'}
-                3. "Authorize APIs" 클릭{'\n'}
-                4. Google 로그인{'\n'}
-                5. "Exchange authorization code for tokens" 클릭{'\n'}
-                6. 발급된 Access token 복사
-              </Text>
-              <TextInput
-                mode="outlined"
-                label="Access Token"
-                value={googleToken}
-                onChangeText={setGoogleToken}
-                placeholder="ya29..."
-                multiline
-                numberOfLines={3}
-                style={styles.tokenInput}
-              />
-            </ScrollView>
-          </Dialog.ScrollArea>
-          <Dialog.Actions>
-            <Button onPress={() => setShowGoogleTokenDialog(false)}>취소</Button>
-            <Button onPress={handleSaveGoogleToken}>연결</Button>
-          </Dialog.Actions>
-        </Dialog>
       </Portal>
+
+      {/* Google OAuth WebView */}
+      <GoogleOAuthWebView
+        visible={showGoogleOAuth}
+        onClose={() => setShowGoogleOAuth(false)}
+        onSuccess={handleGoogleOAuthSuccess}
+        onError={handleGoogleOAuthError}
+      />
     </View>
   );
 }
@@ -672,16 +647,5 @@ const styles = StyleSheet.create({
     marginTop: 12,
     color: '#6366f1',
     fontSize: 16,
-  },
-  tokenDialogContent: {
-    padding: 16,
-  },
-  tokenInstructions: {
-    color: '#666',
-    lineHeight: 20,
-    marginBottom: 16,
-  },
-  tokenInput: {
-    marginTop: 8,
   },
 });

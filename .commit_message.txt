@@ -1,1 +1,1 @@
-✨ 백업 자동 저장 폴더 + Google OAuth 로그인 구현
+✨ Google Drive WebView OAuth 자동 로그인 구현
