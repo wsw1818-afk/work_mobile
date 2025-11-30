@@ -1,0 +1,506 @@
+﻿--------- beginning of main
+11-30 21:57:58.154  2537  3807 D SemInsManager: {"bssid": "ae27bb3f2447","rssi": -46.0,"latency": 0.0,"outage_count": 0,"lq_callback_triggered": false,"outage_log": "Unreliable statistics: -46.0 / 8 / 655 / 78 / 1 || ae27bb3f2447: 0.000 / 0.000 / @ || N N / 0 0 / N 2.0 / N O 9 / 125060256 0 || 2025-11-30 21:57:57  / 0: 1 1 1 1 1 1 / 0: 0 0 0 0 0 0 / 0: 0 0 0 0 0 0""Magnetic Sensor Events size": "0""Pressure Sensor Events size": "0"}
+--------- beginning of system
+11-30 21:57:58.189  1017  1017 D io_stats: !@   8,0 r 33412413 824366572 w 6067854 257923712 d 954735 300310816 f 98130 479504 iot 2567700 0 th 0 0 0 pt 0 inp 0 0 125060.298
+11-30 21:57:58.708  1786  2860 I thermal_core: pivot(AP) : 356, skin : 366
+11-30 21:57:58.708  1786  2860 I vendor.samsung.hardware.thermal-service: index = -9.600000
+11-30 21:57:58.708  1786  2860 I vendor.samsung.hardware.thermal-service: 1 / 2
+11-30 21:57:58.796  1746  5964 I vendor.qti.bluetooth@1.0-ibs_handler: ProcessIbsCmd: Received IBS_WAKE_IND: 0xFD
+11-30 21:57:58.796  1746  5964 D vendor.qti.bluetooth@1.0-ibs_handler: SerialClockVote: vote for UART CLK ON
+11-30 21:57:58.796  1746  5964 D vendor.qti.bluetooth@1.0-wake_lock: Acquire wakelock is acquired 
+11-30 21:57:58.796  1746  5964 I vendor.qti.bluetooth@1.0-ibs_handler: ProcessIbsCmd: Writing IBS_WAKE_ACK
+11-30 21:57:58.802  2537  2750 D RestrictionPolicy: isAirplaneModeAllowed : true
+11-30 21:57:58.806  4374  6021 I ScanController: onScanResult to scannerId: 6- eventType=0x1b, addressType=0, address=XX:XX:XX:XX:F0:9B, primaryPhy=1, secondaryPhy=0, advertisingSid=0xff, txPower=127, rssi=-93, periodicAdvInt=0x0
+11-30 21:57:58.806  4374  6021 I ScanController: onScanResult to scannerId: 6- eventType=0x1b, addressType=0, address=XX:XX:XX:XX:F0:9B, primaryPhy=1, secondaryPhy=0, advertisingSid=0xff, txPower=127, rssi=-93, periodicAdvInt=0x0
+11-30 21:57:58.847  1746  5964 I vendor.qti.bluetooth@1.0-ibs_handler: ProcessIbsCmd: Received IBS_SLEEP_IND: 0xFE
+11-30 21:57:58.847  1746  5964 D vendor.qti.bluetooth@1.0-ibs_handler: SerialClockVote: vote for UART CLK OFF
+11-30 21:57:58.997  1746  4894 D vendor.qti.bluetooth@1.0-wake_lock: Release wakelock is released 
+11-30 21:57:59.207  1782  1903 E BatteryDump: !@new_battery_dump : 4398,351,500,3100,100,340,333,354,340,0,367,354,331,Full,NO_CHARGING,Additional,Good,PDIC,0,Normal,0,0,10460,0x8000,0x10010000,0x0,0,0,146,v0004,0,1/1-5000-0-3000,0000,0000,00000000,4398,4440,0,137,214,0,75,0,958,953,0,
+11-30 21:57:59.208  1786  1786 I seh_thermal_service: getTemperaturesWithType SehTemperatureType: 3
+11-30 21:57:59.208  1782  1782 I sehhealth-service: updateLrpSysfs: write: 366
+11-30 21:57:59.437  1751 27251 I sensors-hal: handle_sns_client_event:379, [0][930] accel_sample [ 2.909, -1.200,  9.041] 214126933326925
+11-30 21:57:59.612  2537  2750 D RestrictionPolicy: isAirplaneModeAllowed : true
+11-30 21:57:59.710  1786  2860 I thermal_core: pivot(AP) : 355, skin : 366
+11-30 21:57:59.710  1786  2860 I vendor.samsung.hardware.thermal-service: index = -10.000000
+11-30 21:57:59.710  1786  2860 I vendor.samsung.hardware.thermal-service: 2 / 2
+11-30 21:57:59.754  1754 18663 D AHAL_ModulePrimary_QTI: getVendorParameters: id count: 1
+11-30 21:57:59.754  1754 18663 I PAL: ResourceManager: getActiveStream_l: 6569: no active streams found for device 3 ret -2
+11-30 21:57:59.754  1754 18663 D AHAL_SecModulePrimary: onGetSECGenericParameters get temperature for g_hw_speaker_amp_temp_rcv: 0
+11-30 21:57:59.754  1754  4761 D AHAL_ModulePrimary_QTI: getVendorParameters: id count: 1
+11-30 21:57:59.754  1754  4761 I PAL: ResourceManager: getActiveStream_l: 6569: no active streams found for device 3 ret -2
+11-30 21:57:59.755  1754  4761 D AHAL_SecModulePrimary: onGetSECGenericParameters get temperature for g_hw_speaker_amp_temp_spk: 0
+11-30 21:57:59.756  7108  7874 I SDHMS:x : SIOP:: AP:355 BAT:340 USB:333 CHG:354 PA:357 CP:355 WIFI:358 CF:358 BLK:0 SUBBAT:331 LRPTHM:349 SKIN:357 SKINF:359 SKINB:366 LRP:357 LRF:359 LRB:366 APT:359 APR:366 RCV:308 SPK:306 CAPR:357 CRCV:307 CSPK:311 CAMT:362 UPSPK:332 DNSPK:332 VAP02:365 VAP05:360 AMB2:288 HIGH:0 AVGCUR:277 AVGSYS:192 POWER:1216
+11-30 21:57:59.756  7108  7874 I AudioManager: setParameters keyValuePairs = g_hw_speaker_amp_temp_spk=31
+11-30 21:57:59.758  1813  5155 D AudioFlinger: setParameters: filtered dev setParameters keyvalue g_hw_speaker_amp_temp_spk=31
+11-30 21:57:59.758  1754  4761 D AHAL_HFP_QTI: hfp_set_parameters enter
+11-30 21:57:59.758  1754  4761 D AHAL_HFP_QTI: hfp_set_parameters Exit
+11-30 21:57:59.758  1754  4761 D AHAL_SecModulePrimary: processSetVendorParameters: configured g_hw_speaker_amp_temp_spk
+11-30 21:57:59.758  1754  4761 D AHAL_SecModulePrimary: processSetVendorParameters: handler set on Feature:0
+11-30 21:57:59.759  1754  4761 D AHAL_SecModulePrimary: onSetSECGenericParameters set temperature for g_hw_speaker_amp_temp_spk: 31
+11-30 21:57:59.759  1754  4761 I PAL: API: pal_set_param: 1377: Enter: param id 3002
+11-30 21:57:59.759  1754  4761 I PAL: ResourceManager: getActiveStream_l: 6569: no active streams found for device 3 ret -2
+11-30 21:57:59.759  1813  5155 E ConversionHelperAidl: Function: parseAndSetVendorParameters Line: 94 Failed 
+11-30 21:57:59.759  1813  5155 E ConversionHelperAidl: Function: parseAndSetVendorParameters Line: 94 Failed 
+11-30 21:57:59.760  7108  7874 I AudioManager: setParameters keyValuePairs = g_hw_speaker_amp_temp_rcv=31
+11-30 21:57:59.760  1813  1972 D AudioFlinger: setParameters: filtered dev setParameters keyvalue g_hw_speaker_amp_temp_rcv=31
+11-30 21:57:59.761  1754  4761 D AHAL_HFP_QTI: hfp_set_parameters enter
+11-30 21:57:59.761  1754  4761 D AHAL_HFP_QTI: hfp_set_parameters Exit
+11-30 21:57:59.761  1754  4761 D AHAL_SecModulePrimary: processSetVendorParameters: configured g_hw_speaker_amp_temp_rcv
+11-30 21:57:59.761  1754  4761 D AHAL_SecModulePrimary: processSetVendorParameters: handler set on Feature:0
+11-30 21:57:59.761  1754  4761 D AHAL_SecModulePrimary: onSetSECGenericParameters set temperature for g_hw_speaker_amp_temp_rcv: 31
+11-30 21:57:59.761  1754  4761 I PAL: API: pal_set_param: 1377: Enter: param id 3001
+11-30 21:57:59.761  1754  4761 I PAL: ResourceManager: getActiveStream_l: 6569: no active streams found for device 3 ret -2
+11-30 21:57:59.761  1813  1972 E ConversionHelperAidl: Function: parseAndSetVendorParameters Line: 94 Failed 
+11-30 21:57:59.762  1813  1972 E ConversionHelperAidl: Function: parseAndSetVendorParameters Line: 94 Failed 
+11-30 21:58:00.004  4045  4702 I DateTimeView: updateAll - getTimeFormat
+11-30 21:58:00.005  4045  4045 D ClockFaceEvents: onTimeTick. callers : com.android.keyguard.ClockEventController$keyguardUpdateMonitorCallback$1.refreshTime:19
+11-30 21:58:00.005  4045  4045 D ClockFaceEvents: com.android.keyguard.ClockEventController$keyguardUpdateMonitorCallback$1.onTimeChanged:1
+11-30 21:58:00.005  4045  4045 D ClockFaceEvents: com.android.keyguard.KeyguardUpdateMonitor$16.handleMessage:732
+11-30 21:58:00.005  2537  2537 I EyeComfortSolutionService: action  :  android.intent.action.TIME_TICK
+11-30 21:58:00.005  4045  4045 D ClockFaceEvents: onTimeTick. callers : com.android.keyguard.ClockEventController$keyguardUpdateMonitorCallback$1.refreshTime:38
+11-30 21:58:00.005  4045  4045 D ClockFaceEvents: com.android.keyguard.ClockEventController$keyguardUpdateMonitorCallback$1.onTimeChanged:1
+11-30 21:58:00.005  4045  4045 D ClockFaceEvents: com.android.keyguard.KeyguardUpdateMonitor$16.handleMessage:732
+11-30 21:58:00.006  4045  4045 D FaceWidgetPagesController: onTimeChanged()
+11-30 21:58:00.006  4045  4702 D QSClockBellTower: onReceive(android.intent.action.TIME_TICK) mTimeZoneString:Asia/Seoul
+11-30 21:58:00.007  4045  4045 D QSClockBellTower: He is ready to ring the bell. (((QSClockBellSound - TimeText:9:58, TimeContentDescription:?ㅽ썑 9:58, DateText:11??30???쇱슂?? ShortDateText:11??30??(??, Demo:false)))
+11-30 21:58:00.007  4045  4045 D QSClock : StatusBar clock=9:58 notifyTimeChanged(QSClockBellSound - TimeText:9:58, TimeContentDescription:?ㅽ썑 9:58, DateText:11??30???쇱슂?? ShortDateText:11??30??(??, Demo:false) clockVisibleByPolicy=true, clockVisibleByUser=true, visible=true, parent=android.widget.LinearLayout{ee9b342 V.E...... ......ID 82,0-163,63 #7f0a0697 app:id/left_clock_container} caller=com.android.systemui.statusbar.phone.fragment.CollapsedStatusBarFragment.animateShow:52 com.android.systemui.statusbar.phone.fragment.CollapsedStatusBarFragment.updateStatusBarVisibilitiesInner:227 com.android.systemui.statusbar.phone.fragment.CollapsedStatusBarFragment.updateStatusBarVisibilities:65 com.android.systemui.statusbar.phone.ongoingactivity.OngoingActivityController.updateParentViewVisibility:65 com.android.systemui.statusbar.phone.ongoingactivity.OngoingActivityController.add$1:10  
+11-30 21:58:00.008  4045  4045 D QSClockBellTower: Everyone heard the bell. run(currentTime:1764507480006, getTime():Sun Nov 30 21:58:00 GMT+09:00 2025, getTimeZone():libcore.util.ZoneInfo[mDstSavings=0,mUseDst=false,mDelegate=[id="Asia/Seoul",mRawOffset=32400000,mEarliestRawOffset=30472000,transitions=29]])
+11-30 21:58:00.014  4045  4045 D {OngoingChipAdapter}: updateEnableMaxWidth : 281 -:> 278
+11-30 21:58:00.014  4045  4045 W View    : requestLayout() improperly called by androidx.recyclerview.widget.RecyclerView{e337287 V.ED..... ......I. 0,5-213,58 #7f0a0285 app:id/capsule_recyclerview} during layout: running second layout pass
+11-30 21:58:00.015  4045  4045 I {OngoingChipAdapter}: onBindViewHolder() notificationArrayList.position = 0
+11-30 21:58:00.016  4045  4045 D {OngoingChipAdapter}: hasAvailableSpaceToExpand - enableMax:278 totalWidth280 call:false
+11-30 21:58:00.016  4045  4045 D {OngoingChipAdapter}: getChipAvailableSpace - enableMax: 210 
+11-30 21:58:00.016  1872  1978 I VSyncReactor: Current= 120, Period= 120, Distance= 0
+11-30 21:58:00.016  4045  4045 W Paint   : The elegant text height cannot be turned off.
+11-30 21:58:00.016  4045  4045 I {OngoingChipAdapter}: OA chip marqueeIfNeeded it.second.mNeedMarquee:false, isKeyguardGoneNow:false, removeMarqueeRunnable false
+11-30 21:58:00.019  4045  4045 W RefactorFlag: New code path expects SceneContainerFlag to be enabled.
+11-30 21:58:00.024  1872  1978 I VSyncReactor: Current= 120, Period= 120, Distance= 121
+11-30 21:58:00.030  1872  1872 I SurfaceFlinger: SFWD update time=125062138859686
+11-30 21:58:00.105  1774  2290 I SDM     : DisplayBase::CommitThread: Received idle timeout, panel: cmd, timeout: 70000 us
+11-30 21:58:00.190  1017  1017 D io_stats: !@ Read_top(KB): kworker/u17:0:/(13161) 256 hbox:interactor:high(6376) 220
+11-30 21:58:00.190  1017  1017 D io_stats: !@ Write_top(KB): kworker/u17:3:/(2668) 1516 vendor.samsung.:normal(1782) 8
+11-30 21:58:00.190  1017  1017 D io_stats: !@ fuse-log: WORST (10492 1 0 2 0) TOTAL_LATENCY (10492 0 1 0 2) TOTAL_CNT (10492 2 1 2) 
+11-30 21:58:00.280  2537  3804 I SemWifiServiceDetector: Service det. suspended: T / T / 27621
+11-30 21:58:00.300  2537  5254 I NSLocationMonitor: getGPSUsingApps() called
+11-30 21:58:00.300  5255  5299 I NSLocationManager_FLP: getGPSUsingApps, No change
+11-30 21:58:00.303  2537  5254 D FreecessHandler: freeze com.samsung.knox.securefolder(15010145) result : 2
+11-30 21:58:00.423  2537  3729 D RestrictionPolicy: isAirplaneModeAllowed : true
+11-30 21:58:00.526  2537  3729 D NetdEventListenerService: CSC Feature value: true
+11-30 21:58:00.526  2537  3729 D NetdEventListenerService: CSC Feature value: true
+11-30 21:58:00.526  2537  3913 D NetdEventListenerService: DNS Requested by 114, 10492(com.lgt.tmoney), SUCCESS, 0ms
+11-30 21:58:00.757  1786  2860 I thermal_core: pivot(AP) : 355, skin : 366
+11-30 21:58:00.757  1786  2860 I vendor.samsung.hardware.thermal-service: index = -10.400000
+11-30 21:58:00.757  1786  2860 I vendor.samsung.hardware.thermal-service: 1 / 2
+11-30 21:58:00.883 16757 16806 I Finsky  : [187] Stats for Executor: BlockingExecutor ula@4a7ff9a[Running, pool size = 0, active threads = 0, queued tasks = 0, completed tasks = 23]
+11-30 21:58:00.884 16757 16806 I Finsky  : [187] Stats for Executor: LightweightExecutor ula@684f0cb[Running, pool size = 4, active threads = 0, queued tasks = 0, completed tasks = 147]
+11-30 21:58:00.892 16757 16806 I Finsky  : [187] Stats for Executor: bgExecutor ula@ffa90a8[Running, pool size = 4, active threads = 0, queued tasks = 0, completed tasks = 121]
+11-30 21:58:00.975 16850 16961 I Finsky:background: [187] Stats for Executor: bgExecutor ula@1d58f7d[Running, pool size = 4, active threads = 0, queued tasks = 0, completed tasks = 23]
+11-30 21:58:00.975 16850 16961 I Finsky:background: [187] Stats for Executor: LightweightExecutor ula@1545e72[Running, pool size = 4, active threads = 0, queued tasks = 0, completed tasks = 17]
+11-30 21:58:00.983 16850 16961 I Finsky:background: [187] Stats for Executor: BlockingExecutor ula@3df22c3[Running, pool size = 0, active threads = 0, queued tasks = 0, completed tasks = 5]
+11-30 21:58:01.169  2537  3620 E WifiStaIfaceAidlImpl: getCachedScanData failed with service-specific exception: android.os.ServiceSpecificException:  (code 4)
+11-30 21:58:01.173  2537 25405 D SemWifiUsabilityStatsMonitor: onWifiUsabilityStats - seqNum 28509, isSameBssidAndFreq true
+11-30 21:58:01.176  2537  3807 D InsDataManager: onOutageCountUpdate() - Outage Data: 0, LQ : N. Outage Triggered: false
+11-30 21:58:01.176  2537  3807 D SemInsManager: {"bssid": "ae27bb3f2447","rssi": -47.0,"latency": 0.0,"outage_count": 0,"lq_callback_triggered": false,"outage_log": "Unreliable statistics: -47.0 / 15 / 547 / 33 / 1 || ae27bb3f2447: 0.000 / 0.000 / @ || N N / 0 0 / N 2.0 / N O 9 / 125063281 0 || 2025-11-30 21:58:00  / 0: 1 1 1 1 1 1 / 0: 0 0 0 0 0 0 / 0: 0 0 0 0 0 0""Magnetic Sensor Events size": "0""Pressure Sensor Events size": "0"}
+11-30 21:58:01.220 26373 26373 I wpa_supplicant: Heartbeat 6280
+11-30 21:58:01.234  2537  3729 D RestrictionPolicy: isAirplaneModeAllowed : true
+11-30 21:58:01.359  7108  7108 I SDHMS:LOAD: type: LoadsFreqs, value: 0:0:0:1017600:1017600:1017600:710400:2745600:556800:222:222:222
+11-30 21:58:01.478  1751 27251 I sensors-hal: handle_sns_client_event:379, [0][960] accel_sample [ 2.987, -1.212,  9.024] 214128974616404
+11-30 21:58:01.730  1751  6834 I sensors-hal: handle_sns_std_sensor_event:127, [SSC_LIGHT] A: 4(4),c:143,b:143,m:37,cl:68,l:2,s:4,l0:8896,l1:0,s0:750,s1:0,acl:3,opr:0.41,f(r):111,u(bl):112,if:111,wi:0,si:0,0(N:1)
+11-30 21:58:01.760  1786  2860 I thermal_core: pivot(AP) : 355, skin : 366
+11-30 21:58:01.760  1786  2860 I vendor.samsung.hardware.thermal-service: index = -10.600000
+11-30 21:58:01.760  1786  2860 I vendor.samsung.hardware.thermal-service: 2 / 2
+11-30 21:58:01.801  1754 18663 D AHAL_ModulePrimary_QTI: getVendorParameters: id count: 1
+11-30 21:58:01.802  1754 18663 I PAL: ResourceManager: getActiveStream_l: 6569: no active streams found for device 3 ret -2
+11-30 21:58:01.802  1754 18663 D AHAL_SecModulePrimary: onGetSECGenericParameters get temperature for g_hw_speaker_amp_temp_rcv: 0
+11-30 21:58:01.802  1754  4761 D AHAL_ModulePrimary_QTI: getVendorParameters: id count: 1
+11-30 21:58:01.802  1754  4761 I PAL: ResourceManager: getActiveStream_l: 6569: no active streams found for device 3 ret -2
+11-30 21:58:01.802  1754  4761 D AHAL_SecModulePrimary: onGetSECGenericParameters get temperature for g_hw_speaker_amp_temp_spk: 0
+11-30 21:58:01.804  7108  7874 I SDHMS:x : SIOP:: AP:355 BAT:340 USB:333 CHG:354 PA:356 CP:355 WIFI:358 CF:358 BLK:0 SUBBAT:331 LRPTHM:348 SKIN:356 SKINF:359 SKINB:365 LRP:356 LRF:359 LRB:365 APT:359 APR:365 RCV:308 SPK:306 CAPR:356 CRCV:307 CSPK:311 CAMT:362 UPSPK:332 DNSPK:332 VAP02:364 VAP05:360 AMB2:288 HIGH:0 AVGCUR:306 AVGSYS:161 POWER:1343
+11-30 21:58:01.804  7108  7874 I AudioManager: setParameters keyValuePairs = g_hw_speaker_amp_temp_spk=31
+11-30 21:58:01.805  1813  1972 D AudioFlinger: setParameters: filtered dev setParameters keyvalue g_hw_speaker_amp_temp_spk=31
+11-30 21:58:01.805  1754  4761 D AHAL_HFP_QTI: hfp_set_parameters enter
+11-30 21:58:01.805  1754  4761 D AHAL_HFP_QTI: hfp_set_parameters Exit
+11-30 21:58:01.805  1754  4761 D AHAL_SecModulePrimary: processSetVendorParameters: configured g_hw_speaker_amp_temp_spk
+11-30 21:58:01.806  1754  4761 D AHAL_SecModulePrimary: processSetVendorParameters: handler set on Feature:0
+11-30 21:58:01.806  1754  4761 D AHAL_SecModulePrimary: onSetSECGenericParameters set temperature for g_hw_speaker_amp_temp_spk: 31
+11-30 21:58:01.806  1754  4761 I PAL: API: pal_set_param: 1377: Enter: param id 3002
+11-30 21:58:01.806  1754  4761 I PAL: ResourceManager: getActiveStream_l: 6569: no active streams found for device 3 ret -2
+11-30 21:58:01.806  1813  1972 E ConversionHelperAidl: Function: parseAndSetVendorParameters Line: 94 Failed 
+11-30 21:58:01.806  1813  1972 E ConversionHelperAidl: Function: parseAndSetVendorParameters Line: 94 Failed 
+11-30 21:58:01.807  7108  7874 I AudioManager: setParameters keyValuePairs = g_hw_speaker_amp_temp_rcv=31
+11-30 21:58:01.807  1813 20582 D AudioFlinger: setParameters: filtered dev setParameters keyvalue g_hw_speaker_amp_temp_rcv=31
+11-30 21:58:01.808  1754 18663 D AHAL_HFP_QTI: hfp_set_parameters enter
+11-30 21:58:01.808  1754 18663 D AHAL_HFP_QTI: hfp_set_parameters Exit
+11-30 21:58:01.808  1754 18663 D AHAL_SecModulePrimary: processSetVendorParameters: configured g_hw_speaker_amp_temp_rcv
+11-30 21:58:01.808  1754 18663 D AHAL_SecModulePrimary: processSetVendorParameters: handler set on Feature:0
+11-30 21:58:01.808  1754 18663 D AHAL_SecModulePrimary: onSetSECGenericParameters set temperature for g_hw_speaker_amp_temp_rcv: 31
+11-30 21:58:01.808  1754 18663 I PAL: API: pal_set_param: 1377: Enter: param id 3001
+11-30 21:58:01.808  1754 18663 I PAL: ResourceManager: getActiveStream_l: 6569: no active streams found for device 3 ret -2
+11-30 21:58:01.808  1813 20582 E ConversionHelperAidl: Function: parseAndSetVendorParameters Line: 94 Failed 
+11-30 21:58:01.809  1813 20582 E ConversionHelperAidl: Function: parseAndSetVendorParameters Line: 94 Failed 
+11-30 21:58:01.854  2537  3536 D ActivityManager: freezing 31901 com.samsung.android.dqagent
+11-30 21:58:02.046  2537  2750 D RestrictionPolicy: isAirplaneModeAllowed : true
+11-30 21:58:02.170  3997  4356 D SatelliteController: isInCarrierRoamingNbIotNtn: satellite is disabled
+11-30 21:58:02.191  1017  1017 D io_stats: !@   8,0 r 33412413 824366572 w 6067877 257925460 d 954743 300329124 f 98132 479507 iot 2567712 0 th 0 0 0 pt 0 inp 0 0 125064.299
+11-30 21:58:02.334  1746  5964 I vendor.qti.bluetooth@1.0-ibs_handler: ProcessIbsCmd: Received IBS_WAKE_IND: 0xFD
+11-30 21:58:02.334  1746  5964 D vendor.qti.bluetooth@1.0-ibs_handler: SerialClockVote: vote for UART CLK ON
+11-30 21:58:02.334  1746  5964 D vendor.qti.bluetooth@1.0-wake_lock: Acquire wakelock is acquired 
+11-30 21:58:02.334  1746  5964 I vendor.qti.bluetooth@1.0-ibs_handler: ProcessIbsCmd: Writing IBS_WAKE_ACK
+11-30 21:58:02.344  4374  6021 I ScanController: onScanResult to scannerId: 6- eventType=0x1b, addressType=0, address=XX:XX:XX:XX:F0:9B, primaryPhy=1, secondaryPhy=0, advertisingSid=0xff, txPower=127, rssi=-97, periodicAdvInt=0x0
+11-30 21:58:02.385  1746  5964 I vendor.qti.bluetooth@1.0-ibs_handler: ProcessIbsCmd: Received IBS_SLEEP_IND: 0xFE
+11-30 21:58:02.385  1746  5964 D vendor.qti.bluetooth@1.0-ibs_handler: SerialClockVote: vote for UART CLK OFF
+11-30 21:58:02.535  1746  4894 D vendor.qti.bluetooth@1.0-wake_lock: Release wakelock is released 
+11-30 21:58:02.781  2537  3836 D WifiConnectivityMonitor.NetworkStatsAnalyzer: Backhaul result - RSSI:-46, CE:33, PE:33, TI:45, PTI:45, TW:3, PTW:5, Tx:34, Rx:44, TxS:28, RxS:27, RESULT:true, IC:0, ICT:5, WC:0, WCT:5, R:2, RC:0, IE:0, EC:0
+11-30 21:58:02.805  1786  2860 I thermal_core: pivot(AP) : 355, skin : 365
+11-30 21:58:02.805  1786  2860 I vendor.samsung.hardware.thermal-service: index = -10.600000
+11-30 21:58:02.805  1786  2860 I vendor.samsung.hardware.thermal-service: 1 / 2
+11-30 21:58:02.861  2537  3729 D RestrictionPolicy: isAirplaneModeAllowed : true
+11-30 21:58:03.116 16035 27724 I NearbyMediums: No BLE Fast/GATT advertisements found in the latest cycle.
+11-30 21:58:03.116 16035 27724 I NearbyMediums: Current Tracked Scanning Clients are : {NearbyConnections.EnvironmentMonitor, NearbySharing, NearbyConnections.TxAdvertisement}
+11-30 21:58:03.284  2537  3804 I SemWifiServiceDetector: Service det. resumed: T / T / 27621
+11-30 21:58:03.455  3997  4356 D SatelliteController: isInCarrierRoamingNbIotNtn: satellite is disabled
+11-30 21:58:03.521  1751 27251 I sensors-hal: handle_sns_client_event:379, [0][990] accel_sample [ 3.060, -1.209,  8.940] 214131015903540
+11-30 21:58:03.672  2537  2761 D RestrictionPolicy: isAirplaneModeAllowed : true
+11-30 21:58:03.807  1786  2860 I thermal_core: pivot(AP) : 355, skin : 365
+11-30 21:58:03.808  1786  2860 I vendor.samsung.hardware.thermal-service: index = -10.600000
+11-30 21:58:03.808  1786  2860 I vendor.samsung.hardware.thermal-service: 2 / 2
+11-30 21:58:03.853  1754  4761 D AHAL_ModulePrimary_QTI: getVendorParameters: id count: 1
+11-30 21:58:03.854  1754  4761 I PAL: ResourceManager: getActiveStream_l: 6569: no active streams found for device 3 ret -2
+11-30 21:58:03.854  1754  4761 D AHAL_SecModulePrimary: onGetSECGenericParameters get temperature for g_hw_speaker_amp_temp_rcv: 0
+11-30 21:58:03.854  1754 18663 D AHAL_ModulePrimary_QTI: getVendorParameters: id count: 1
+11-30 21:58:03.854  1754 18663 I PAL: ResourceManager: getActiveStream_l: 6569: no active streams found for device 3 ret -2
+11-30 21:58:03.854  1754 18663 D AHAL_SecModulePrimary: onGetSECGenericParameters get temperature for g_hw_speaker_amp_temp_spk: 0
+11-30 21:58:03.855  7108  7874 I SDHMS:x : SIOP:: AP:355 BAT:340 USB:333 CHG:354 PA:356 CP:355 WIFI:359 CF:357 BLK:0 SUBBAT:331 LRPTHM:348 SKIN:356 SKINF:359 SKINB:365 LRP:356 LRF:359 LRB:365 APT:359 APR:365 RCV:308 SPK:306 CAPR:356 CRCV:307 CSPK:311 CAMT:362 UPSPK:332 DNSPK:332 VAP02:364 VAP05:359 AMB2:288 HIGH:0 AVGCUR:306 AVGSYS:161 POWER:1343
+11-30 21:58:03.856  7108  7874 I AudioManager: setParameters keyValuePairs = g_hw_speaker_amp_temp_spk=31
+11-30 21:58:03.856  1813 20582 D AudioFlinger: setParameters: filtered dev setParameters keyvalue g_hw_speaker_amp_temp_spk=31
+11-30 21:58:03.857  1754 18663 D AHAL_HFP_QTI: hfp_set_parameters enter
+11-30 21:58:03.857  1754 18663 D AHAL_HFP_QTI: hfp_set_parameters Exit
+11-30 21:58:03.857  1754 18663 D AHAL_SecModulePrimary: processSetVendorParameters: configured g_hw_speaker_amp_temp_spk
+11-30 21:58:03.857  1754 18663 D AHAL_SecModulePrimary: processSetVendorParameters: handler set on Feature:0
+11-30 21:58:03.857  1754 18663 D AHAL_SecModulePrimary: onSetSECGenericParameters set temperature for g_hw_speaker_amp_temp_spk: 31
+11-30 21:58:03.857  1754 18663 I PAL: API: pal_set_param: 1377: Enter: param id 3002
+11-30 21:58:03.857  1754 18663 I PAL: ResourceManager: getActiveStream_l: 6569: no active streams found for device 3 ret -2
+11-30 21:58:03.858  1813 20582 E ConversionHelperAidl: Function: parseAndSetVendorParameters Line: 94 Failed 
+11-30 21:58:03.858  1813 20582 E ConversionHelperAidl: Function: parseAndSetVendorParameters Line: 94 Failed 
+11-30 21:58:03.858  7108  7874 I AudioManager: setParameters keyValuePairs = g_hw_speaker_amp_temp_rcv=31
+11-30 21:58:03.859  1813  1972 D AudioFlinger: setParameters: filtered dev setParameters keyvalue g_hw_speaker_amp_temp_rcv=31
+11-30 21:58:03.859  1754  4761 D AHAL_HFP_QTI: hfp_set_parameters enter
+11-30 21:58:03.859  1754  4761 D AHAL_HFP_QTI: hfp_set_parameters Exit
+11-30 21:58:03.859  1754  4761 D AHAL_SecModulePrimary: processSetVendorParameters: configured g_hw_speaker_amp_temp_rcv
+11-30 21:58:03.859  1754  4761 D AHAL_SecModulePrimary: processSetVendorParameters: handler set on Feature:0
+11-30 21:58:03.859  1754  4761 D AHAL_SecModulePrimary: onSetSECGenericParameters set temperature for g_hw_speaker_amp_temp_rcv: 31
+11-30 21:58:03.859  1754  4761 I PAL: API: pal_set_param: 1377: Enter: param id 3001
+11-30 21:58:03.859  1754  4761 I PAL: ResourceManager: getActiveStream_l: 6569: no active streams found for device 3 ret -2
+11-30 21:58:03.859  1813  1972 E ConversionHelperAidl: Function: parseAndSetVendorParameters Line: 94 Failed 
+11-30 21:58:03.860  1813  1972 E ConversionHelperAidl: Function: parseAndSetVendorParameters Line: 94 Failed 
+11-30 21:58:04.187  2537  3620 E WifiStaIfaceAidlImpl: getCachedScanData failed with service-specific exception: android.os.ServiceSpecificException:  (code 4)
+11-30 21:58:04.189  2537 25405 D SemWifiUsabilityStatsMonitor: onWifiUsabilityStats - seqNum 28510, isSameBssidAndFreq true
+11-30 21:58:04.192  1017  1017 D io_stats: !@ Write_top(KB): kworker/u17:3:/(2668) 1696 soft.appmanager:low(7736) 32 kworker/3:0:/(26044) 8
+11-30 21:58:04.192  1017  1017 D io_stats: !@ fuse-log: WORST (10492 1 0 2 0) TOTAL_LATENCY (10492 0 1 0 2) TOTAL_CNT (10492 2 1 2) 
+11-30 21:58:04.196  2537  3807 D InsDataManager: onOutageCountUpdate() - Outage Data: 0, LQ : N. Outage Triggered: false
+11-30 21:58:04.196  2537  3807 D SemInsManager: {"bssid": "ae27bb3f2447","rssi": -47.0,"latency": 0.0,"outage_count": 0,"lq_callback_triggered": false,"outage_log": "Unreliable statistics: -47.0 / 30 / 1145 / 156 / 1 || ae27bb3f2447: 0.000 / 0.000 / @ || N N / 0 0 / N 2.0 / N O 9 / 125066298 0 || 2025-11-30 21:58:03  / 0: 1 1 1 1 1 1 / 0: 0 0 0 0 0 0 / 0: 0 0 0 0 0 0""Magnetic Sensor Events size": "0""Pressure Sensor Events size": "0"}
+11-30 21:58:04.347  1751  6834 I sensors-hal: handle_sns_client_event:208, auto_rotation_debug_2 mode,255,last,255, type,3,0 main,2.838,-1.220,8.997 sub,-2.972,-1.187,-9.212, ar,0, h_ic,1, s,3, ver,12, pedo,1,e,1,i,3
+11-30 21:58:04.403  2537 10167 I AfterimageCompensationService: AfcThread mLuminance_sub : 236 , AfpcPeriodCount_sub : 256 , rotation : 0 , AOD : false
+11-30 21:58:04.404  2537 10167 I SurfaceComposerClient: captureDisplay:Display-4630946872173396372
+11-30 21:58:04.405  1773  2026 I SnapAlloc: Using graphics libs for alignment calculations
+11-30 21:58:04.406  1872  1978 I SurfaceFlinger: Capture layer list: 	 com.anonymous.gagyebunative/com.anonymous.gagyebunative.MainActivity$_27218#95666(seamlessTransition:0)
+11-30 21:58:04.406  1872  1978 I SurfaceFlinger: Capture layer list: 	 com.anonymous.gagyebunative/com.anonymous.gagyebunative.MainActivity$_27218#95679(seamlessTransition:0)
+11-30 21:58:04.406  1872  1978 I SurfaceFlinger: Capture layer list: 	 StatusBar$_4045#117(seamlessTransition:0)
+11-30 21:58:04.406  1872  1978 I SurfaceFlinger: Capture layer list: 	 com.sec.android.app.launcher/com.samsung.app.honeyspace.edge.edgepanel.app.CocktailBarService$_4642#95321(seamlessTransition:0)
+11-30 21:58:04.406  1872  1978 I SurfaceFlinger: Capture layer list: 	 NavigationBar0$_4045#113(seamlessTransition:0)
+11-30 21:58:04.407  1872  1978 E HwcComposer: getLuts failed Status(-129, EX_TRANSACTION_FAILED): 'UNKNOWN_TRANSACTION: '
+11-30 21:58:04.408  1872  2024 D RenderEngine: [SEC_SF_EFFECTS] drawLayersInternal,1483, Rendering layer ScreenCaptureFillLayer at index 0
+11-30 21:58:04.408  1872  2024 D RenderEngine: [SEC_SF_EFFECTS] drawLayersInternal,1483, Rendering layer com.anonymous.gagyebunative/com.anonymous.gagyebunative.MainActivity$_27218#95679 at index 1
+11-30 21:58:04.408  1872  2024 D RenderEngine: [SEC_SF_EFFECTS] drawLayersInternal,1483, Rendering layer StatusBar$_4045#117 at index 2
+11-30 21:58:04.408  1872  2024 D RenderEngine: [SEC_SF_EFFECTS] drawLayersInternal,1483, Rendering layer com.sec.android.app.launcher/com.samsung.app.honeyspace.edge.edgepanel.app.CocktailBarService$_4642#95321 at index 3
+11-30 21:58:04.408  1872  2024 D RenderEngine: [SEC_SF_EFFECTS] drawLayersInternal,1483, Rendering layer NavigationBar0$_4045#113 at index 4
+11-30 21:58:04.424  2537 10167 D system_server: mAFPC_SUB_Read - w = 1080, h = 2520, s = 8, f = 4, s_size = 10967040, luminance = 236, count = 256, captureOrientation = 0
+11-30 21:58:04.482  2537  3729 D RestrictionPolicy: isAirplaneModeAllowed : true
+11-30 21:58:04.617  2537  3913 D NetdEventListenerService: DNS Requested by 114, 10492(com.lgt.tmoney), SUCCESS, 0ms
+11-30 21:58:04.857  1786  2860 I thermal_core: pivot(AP) : 355, skin : 365
+11-30 21:58:04.857  1786  2860 I vendor.samsung.hardware.thermal-service: index = -10.400000
+11-30 21:58:04.857  1786  2860 I vendor.samsung.hardware.thermal-service: 1 / 2
+11-30 21:58:05.153  2402  2402 I CNSS    : /sys/wifi/max_chipset_log_size doesn't exist
+11-30 21:58:05.291  2537  2761 D RestrictionPolicy: isAirplaneModeAllowed : true
+11-30 21:58:05.507  2537  3804 I SemWifiServiceDetector: NSD results: [0, 1, 2, 0, 0, 0, 2, 1, 0] Traff. type 1 Thr 0
+11-30 21:58:05.564  1751 27251 I sensors-hal: handle_sns_client_event:379, [0][1020] accel_sample [ 2.986, -1.195,  8.987] 214133057189923
+11-30 21:58:05.859  1786  2860 I thermal_core: pivot(AP) : 355, skin : 365
+11-30 21:58:05.860  1786  2860 I vendor.samsung.hardware.thermal-service: index = -10.200000
+11-30 21:58:05.860  1786  2860 I vendor.samsung.hardware.thermal-service: 2 / 2
+11-30 21:58:05.905  1754  4761 D AHAL_ModulePrimary_QTI: getVendorParameters: id count: 1
+11-30 21:58:05.905  1754  4761 I PAL: ResourceManager: getActiveStream_l: 6569: no active streams found for device 3 ret -2
+11-30 21:58:05.905  1754  4761 D AHAL_SecModulePrimary: onGetSECGenericParameters get temperature for g_hw_speaker_amp_temp_rcv: 0
+11-30 21:58:05.906  1754 18663 D AHAL_ModulePrimary_QTI: getVendorParameters: id count: 1
+11-30 21:58:05.906  1754 18663 I PAL: ResourceManager: getActiveStream_l: 6569: no active streams found for device 3 ret -2
+11-30 21:58:05.906  1754 18663 D AHAL_SecModulePrimary: onGetSECGenericParameters get temperature for g_hw_speaker_amp_temp_spk: 0
+11-30 21:58:05.908  7108  7874 I SDHMS:x : SIOP:: AP:354 BAT:339 USB:333 CHG:353 PA:356 CP:354 WIFI:357 CF:357 BLK:0 SUBBAT:331 LRPTHM:348 SKIN:356 SKINF:358 SKINB:365 LRP:356 LRF:358 LRB:365 APT:358 APR:365 RCV:308 SPK:306 CAPR:356 CRCV:307 CSPK:311 CAMT:362 UPSPK:332 DNSPK:332 VAP02:364 VAP05:359 AMB2:288 HIGH:0 AVGCUR:306 AVGSYS:161 POWER:1343
+11-30 21:58:05.908  7108  7874 I AudioManager: setParameters keyValuePairs = g_hw_speaker_amp_temp_spk=31
+11-30 21:58:05.909  1813  1972 D AudioFlinger: setParameters: filtered dev setParameters keyvalue g_hw_speaker_amp_temp_spk=31
+11-30 21:58:05.910  1754 18663 D AHAL_HFP_QTI: hfp_set_parameters enter
+11-30 21:58:05.910  1754 18663 D AHAL_HFP_QTI: hfp_set_parameters Exit
+11-30 21:58:05.910  1754 18663 D AHAL_SecModulePrimary: processSetVendorParameters: configured g_hw_speaker_amp_temp_spk
+11-30 21:58:05.910  1754 18663 D AHAL_SecModulePrimary: processSetVendorParameters: handler set on Feature:0
+11-30 21:58:05.910  1754 18663 D AHAL_SecModulePrimary: onSetSECGenericParameters set temperature for g_hw_speaker_amp_temp_spk: 31
+11-30 21:58:05.911  1754 18663 I PAL: API: pal_set_param: 1377: Enter: param id 3002
+11-30 21:58:05.911  1754 18663 I PAL: ResourceManager: getActiveStream_l: 6569: no active streams found for device 3 ret -2
+11-30 21:58:05.911  1813  1972 E ConversionHelperAidl: Function: parseAndSetVendorParameters Line: 94 Failed 
+11-30 21:58:05.911  1813  1972 E ConversionHelperAidl: Function: parseAndSetVendorParameters Line: 94 Failed 
+11-30 21:58:05.912  7108  7874 I AudioManager: setParameters keyValuePairs = g_hw_speaker_amp_temp_rcv=31
+11-30 21:58:05.912  1813  1972 D AudioFlinger: setParameters: filtered dev setParameters keyvalue g_hw_speaker_amp_temp_rcv=31
+11-30 21:58:05.912  1754 18663 D AHAL_HFP_QTI: hfp_set_parameters enter
+11-30 21:58:05.913  1754 18663 D AHAL_HFP_QTI: hfp_set_parameters Exit
+11-30 21:58:05.913  1754 18663 D AHAL_SecModulePrimary: processSetVendorParameters: configured g_hw_speaker_amp_temp_rcv
+11-30 21:58:05.913  1754 18663 D AHAL_SecModulePrimary: processSetVendorParameters: handler set on Feature:0
+11-30 21:58:05.913  1754 18663 D AHAL_SecModulePrimary: onSetSECGenericParameters set temperature for g_hw_speaker_amp_temp_rcv: 31
+11-30 21:58:05.913  1754 18663 I PAL: API: pal_set_param: 1377: Enter: param id 3001
+11-30 21:58:05.913  1754 18663 I PAL: ResourceManager: getActiveStream_l: 6569: no active streams found for device 3 ret -2
+11-30 21:58:05.913  1813  1972 E ConversionHelperAidl: Function: parseAndSetVendorParameters Line: 94 Failed 
+11-30 21:58:05.913  1813  1972 E ConversionHelperAidl: Function: parseAndSetVendorParameters Line: 94 Failed 
+11-30 21:58:06.107  2537  2761 D RestrictionPolicy: isAirplaneModeAllowed : true
+11-30 21:58:06.310  2537  5254 I NSLocationMonitor: getGPSUsingApps() called
+11-30 21:58:06.310  5255  5299 I NSLocationManager_FLP: getGPSUsingApps, No change
+11-30 21:58:06.316  2537  5254 D FreecessHandler: freeze com.samsung.knox.securefolder(15010145) result : 2
+11-30 21:58:06.550  1751  6834 I sensors-hal: handle_sns_std_sensor_event:127, [SSC_LIGHT] A: 5(5),c:143,b:143,m:37,cl:68,l:2,s:4,l0:8960,l1:0,s0:750,s1:0,acl:3,opr:0.41,f(r):111,u(bl):112,if:111,wi:0,si:0,0(N:1)
+11-30 21:58:06.909  1786  2860 I thermal_core: pivot(AP) : 354, skin : 365
+11-30 21:58:06.909  1786  2860 I vendor.samsung.hardware.thermal-service: index = -10.200000
+11-30 21:58:06.909  1786  2860 I vendor.samsung.hardware.thermal-service: 1 / 2
+11-30 21:58:06.919  2537  2761 D RestrictionPolicy: isAirplaneModeAllowed : true
+11-30 21:58:07.206  2537  3620 E WifiStaIfaceAidlImpl: getCachedScanData failed with service-specific exception: android.os.ServiceSpecificException:  (code 4)
+11-30 21:58:07.209  2537 25405 D SemWifiUsabilityStatsMonitor: onWifiUsabilityStats - seqNum 28511, isSameBssidAndFreq true
+11-30 21:58:07.214  2537  3807 D InsDataManager: onOutageCountUpdate() - Outage Data: 0, LQ : N. Outage Triggered: false
+11-30 21:58:07.214  2537  3807 D SemInsManager: {"bssid": "ae27bb3f2447","rssi": -48.0,"latency": 0.0,"outage_count": 0,"lq_callback_triggered": false,"outage_log": "Unreliable statistics: -48.0 / 16 / 459 / 33 / 0 || ae27bb3f2447: 0.000 / 0.000 / @ || N N / 0 0 / N 2.0 / N O 9 / 125069317 0 || 2025-11-30 21:58:06  / 0: 1 1 1 1 1 1 / 0: 0 0 0 0 0 0 / 0: 0 0 0 0 0 0""Magnetic Sensor Events size": "0""Pressure Sensor Events size": "0"}
+11-30 21:58:07.290  3997  4356 D SatelliteController: isInCarrierRoamingNbIotNtn: satellite is disabled
+11-30 21:58:07.425  2537  2921 D BatteryExternalStatsWorker: update stats : procstate-change (10)
+11-30 21:58:07.425  2537  2921 D BatteryExternalStatsWorker: Fetch WiFi data
+11-30 21:58:07.425  2537  2921 D BatteryExternalStatsWorker: Update Rail Energy data
+11-30 21:58:07.434  2537  3620 E WifiStaIfaceAidlImpl: getCachedScanData failed with service-specific exception: android.os.ServiceSpecificException:  (code 4)
+11-30 21:58:07.435  2537  2921 D BatteryExternalStatsWorker: mStats lock released
+11-30 21:58:07.450  2537  2921 D BatteryExternalStatsWorker: Update wifi state
+11-30 21:58:07.450  2537  2921 D BatteryExternalStatsWorker: done updateExternalStatsLocked
+11-30 21:58:07.452  1746  1783 D vendor.qti.bluetooth@1.0-ibs_handler: SerialClockVote: vote for UART CLK ON
+11-30 21:58:07.453  1746  1783 D vendor.qti.bluetooth@1.0-wake_lock: Acquire wakelock is acquired 
+11-30 21:58:07.453  1746  1783 I vendor.qti.bluetooth@1.0-ibs_handler: DeviceWakeUp: Writing IBS_WAKE_IND
+11-30 21:58:07.459  1746  5964 I vendor.qti.bluetooth@1.0-ibs_handler: ProcessIbsCmd: Received IBS_WAKE_ACK: 0xFC
+11-30 21:58:07.459  1746  5964 I vendor.qti.bluetooth@1.0-ibs_handler: ProcessIbsCmd: Signal wack_cond_
+11-30 21:58:07.459  1746  1783 D vendor.qti.bluetooth@1.0-ibs_handler: DeviceWakeUp: Unblocked from waiting for FC, pthread_cond_timedwait ret = 0
+11-30 21:58:07.460  1746  5964 I vendor.qti.bluetooth@1.0-ibs_handler: ProcessIbsCmd: Received IBS_WAKE_IND: 0xFD
+11-30 21:58:07.460  1746  5964 I vendor.qti.bluetooth@1.0-ibs_handler: ProcessIbsCmd: Writing IBS_WAKE_ACK
+11-30 21:58:07.510  1746  5964 I vendor.qti.bluetooth@1.0-ibs_handler: ProcessIbsCmd: Received IBS_SLEEP_IND: 0xFE
+11-30 21:58:07.605  1751 27251 I sensors-hal: handle_sns_client_event:379, [0][1050] accel_sample [ 2.930, -1.187,  9.027] 214135098474558
+11-30 21:58:07.709  1746  5981 I vendor.qti.bluetooth@1.0-ibs_handler: DeviceSleep: TX Awake, Sending SLEEP_IND
+11-30 21:58:07.710  1746  5981 D vendor.qti.bluetooth@1.0-ibs_handler: SerialClockVote: vote for UART CLK OFF
+11-30 21:58:07.729  2537  3729 D RestrictionPolicy: isAirplaneModeAllowed : true
+11-30 21:58:07.854  1746  5964 I vendor.qti.bluetooth@1.0-ibs_handler: ProcessIbsCmd: Received IBS_WAKE_IND: 0xFD
+11-30 21:58:07.854  1746  5964 D vendor.qti.bluetooth@1.0-ibs_handler: SerialClockVote: vote for UART CLK ON
+11-30 21:58:07.854  1746  5964 I vendor.qti.bluetooth@1.0-ibs_handler: ProcessIbsCmd: Writing IBS_WAKE_ACK
+11-30 21:58:07.864  4374  6021 I ScanController: onScanResult to scannerId: 6- eventType=0x1b, addressType=0, address=XX:XX:XX:XX:F0:9B, primaryPhy=1, secondaryPhy=0, advertisingSid=0xff, txPower=127, rssi=-94, periodicAdvInt=0x0
+11-30 21:58:07.911  1786  2860 I thermal_core: pivot(AP) : 354, skin : 365
+11-30 21:58:07.911  1786  2860 I vendor.samsung.hardware.thermal-service: index = -10.400000
+11-30 21:58:07.911  1786  2860 I vendor.samsung.hardware.thermal-service: 2 / 2
+11-30 21:58:07.933  1746  5964 I vendor.qti.bluetooth@1.0-ibs_handler: ProcessIbsCmd: Received IBS_SLEEP_IND: 0xFE
+11-30 21:58:07.933  1746  5964 D vendor.qti.bluetooth@1.0-ibs_handler: SerialClockVote: vote for UART CLK OFF
+11-30 21:58:07.960  1754 18663 D AHAL_ModulePrimary_QTI: getVendorParameters: id count: 1
+11-30 21:58:07.961  1754 18663 I PAL: ResourceManager: getActiveStream_l: 6569: no active streams found for device 3 ret -2
+11-30 21:58:07.961  1754 18663 D AHAL_SecModulePrimary: onGetSECGenericParameters get temperature for g_hw_speaker_amp_temp_rcv: 0
+11-30 21:58:07.961  1754  4761 D AHAL_ModulePrimary_QTI: getVendorParameters: id count: 1
+11-30 21:58:07.961  1754  4761 I PAL: ResourceManager: getActiveStream_l: 6569: no active streams found for device 3 ret -2
+11-30 21:58:07.961  1754  4761 D AHAL_SecModulePrimary: onGetSECGenericParameters get temperature for g_hw_speaker_amp_temp_spk: 0
+11-30 21:58:07.963  7108  7874 I SDHMS:x : SIOP:: AP:354 BAT:340 USB:333 CHG:353 PA:356 CP:354 WIFI:357 CF:357 BLK:0 SUBBAT:331 LRPTHM:348 SKIN:355 SKINF:358 SKINB:365 LRP:355 LRF:358 LRB:365 APT:358 APR:365 RCV:308 SPK:306 CAPR:355 CRCV:307 CSPK:311 CAMT:362 UPSPK:332 DNSPK:332 VAP02:363 VAP05:358 AMB2:288 HIGH:0 AVGCUR:306 AVGSYS:161 POWER:1343
+11-30 21:58:07.964  7108  7874 I AudioManager: setParameters keyValuePairs = g_hw_speaker_amp_temp_spk=31
+11-30 21:58:07.964  1813  1972 D AudioFlinger: setParameters: filtered dev setParameters keyvalue g_hw_speaker_amp_temp_spk=31
+11-30 21:58:07.965  1754  4761 D AHAL_HFP_QTI: hfp_set_parameters enter
+11-30 21:58:07.965  1754  4761 D AHAL_HFP_QTI: hfp_set_parameters Exit
+11-30 21:58:07.965  1754  4761 D AHAL_SecModulePrimary: processSetVendorParameters: configured g_hw_speaker_amp_temp_spk
+11-30 21:58:07.965  1754  4761 D AHAL_SecModulePrimary: processSetVendorParameters: handler set on Feature:0
+11-30 21:58:07.965  1754  4761 D AHAL_SecModulePrimary: onSetSECGenericParameters set temperature for g_hw_speaker_amp_temp_spk: 31
+11-30 21:58:07.965  1754  4761 I PAL: API: pal_set_param: 1377: Enter: param id 3002
+11-30 21:58:07.965  1754  4761 I PAL: ResourceManager: getActiveStream_l: 6569: no active streams found for device 3 ret -2
+11-30 21:58:07.965  1813  1972 E ConversionHelperAidl: Function: parseAndSetVendorParameters Line: 94 Failed 
+11-30 21:58:07.965  1813  1972 E ConversionHelperAidl: Function: parseAndSetVendorParameters Line: 94 Failed 
+11-30 21:58:07.966  7108  7874 I AudioManager: setParameters keyValuePairs = g_hw_speaker_amp_temp_rcv=31
+11-30 21:58:07.966  1813  1972 D AudioFlinger: setParameters: filtered dev setParameters keyvalue g_hw_speaker_amp_temp_rcv=31
+11-30 21:58:07.966  1754  4761 D AHAL_HFP_QTI: hfp_set_parameters enter
+11-30 21:58:07.966  1754  4761 D AHAL_HFP_QTI: hfp_set_parameters Exit
+11-30 21:58:07.966  1754  4761 D AHAL_SecModulePrimary: processSetVendorParameters: configured g_hw_speaker_amp_temp_rcv
+11-30 21:58:07.966  1754  4761 D AHAL_SecModulePrimary: processSetVendorParameters: handler set on Feature:0
+11-30 21:58:07.966  1754  4761 D AHAL_SecModulePrimary: onSetSECGenericParameters set temperature for g_hw_speaker_amp_temp_rcv: 31
+11-30 21:58:07.966  1754  4761 I PAL: API: pal_set_param: 1377: Enter: param id 3001
+11-30 21:58:07.966  1754  4761 I PAL: ResourceManager: getActiveStream_l: 6569: no active streams found for device 3 ret -2
+11-30 21:58:07.967  1813  1972 E ConversionHelperAidl: Function: parseAndSetVendorParameters Line: 94 Failed 
+11-30 21:58:07.967  1813  1972 E ConversionHelperAidl: Function: parseAndSetVendorParameters Line: 94 Failed 
+11-30 21:58:08.084  1746  4894 D vendor.qti.bluetooth@1.0-wake_lock: Release wakelock is released 
+11-30 21:58:08.196  1017  1017 D io_stats: !@   8,0 r 33412413 824366572 w 6067882 257927224 d 954743 300329124 f 98132 479507 iot 2567720 0 th 0 0 0 pt 0 inp 0 0 125070.304
+11-30 21:58:08.196  1017  1017 D io_stats: !@ Write_top(KB): kworker/u17:0:/(13161) 1764
+11-30 21:58:08.196  1017  1017 D io_stats: !@ fuse-log: WORST (10492 1 0 2 0) TOTAL_LATENCY (10492 0 1 0 2) TOTAL_CNT (10492 2 1 2) 
+11-30 21:58:08.339  2537  2905 E Watchdog: !@Sync: 4168 heap(MB): 223 / 236 FD: 1465 [2025-11-30 21:58:08.339]
+11-30 21:58:08.539  2537  2750 D RestrictionPolicy: isAirplaneModeAllowed : true
+11-30 21:58:08.703  2537  3913 D NetdEventListenerService: DNS Requested by 114, 10492(com.lgt.tmoney), SUCCESS, 0ms
+11-30 21:58:08.964  1786  2860 I thermal_core: pivot(AP) : 354, skin : 365
+11-30 21:58:08.964  1786  2860 I vendor.samsung.hardware.thermal-service: index = -10.600000
+11-30 21:58:08.964  1786  2860 I vendor.samsung.hardware.thermal-service: 1 / 2
+11-30 21:58:09.292  2537  3804 I SemWifiServiceDetector: Service det. suspended: T / T / 27621
+11-30 21:58:09.294  2402  2402 I CNSS    : cnss_open_log_file: directory /data/vendor/log/wifi/ created
+11-30 21:58:09.349  2537  2761 D RestrictionPolicy: isAirplaneModeAllowed : true
+11-30 21:58:09.404  1782  1903 E BatteryDump: !@new_battery_dump : 4399,354,500,3100,100,339,332,353,340,0,366,353,332,Full,NO_CHARGING,Additional,Good,PDIC,0,Normal,0,0,10460,0x8000,0x10010000,0x0,0,0,256,v0004,0,1/1-5000-0-3000,0000,0000,00000000,4399,4440,0,144,210,0,75,0,958,953,0,
+11-30 21:58:09.406  1786  1786 I seh_thermal_service: getTemperaturesWithType SehTemperatureType: 3
+11-30 21:58:09.406  1782  1782 I sehhealth-service: updateLrpSysfs: write: 365
+11-30 21:58:09.644  1751 27251 I sensors-hal: handle_sns_client_event:379, [0][1080] accel_sample [ 2.907, -1.175,  9.087] 214137139756642
+11-30 21:58:09.966  1786  2860 I thermal_core: pivot(AP) : 355, skin : 365
+11-30 21:58:09.966  1786  2860 I vendor.samsung.hardware.thermal-service: index = -10.600000
+11-30 21:58:09.966  1786  2860 I vendor.samsung.hardware.thermal-service: 2 / 2
+11-30 21:58:10.008  1754 18663 D AHAL_ModulePrimary_QTI: getVendorParameters: id count: 1
+11-30 21:58:10.008  1754 18663 I PAL: ResourceManager: getActiveStream_l: 6569: no active streams found for device 3 ret -2
+11-30 21:58:10.008  1754 18663 D AHAL_SecModulePrimary: onGetSECGenericParameters get temperature for g_hw_speaker_amp_temp_rcv: 0
+11-30 21:58:10.009  1754  4761 D AHAL_ModulePrimary_QTI: getVendorParameters: id count: 1
+11-30 21:58:10.009  1754  4761 I PAL: ResourceManager: getActiveStream_l: 6569: no active streams found for device 3 ret -2
+11-30 21:58:10.009  1754  4761 D AHAL_SecModulePrimary: onGetSECGenericParameters get temperature for g_hw_speaker_amp_temp_spk: 0
+11-30 21:58:10.010  7108  7874 I SDHMS:x : SIOP:: AP:355 BAT:339 USB:332 CHG:353 PA:356 CP:354 WIFI:357 CF:357 BLK:0 SUBBAT:331 LRPTHM:348 SKIN:355 SKINF:358 SKINB:365 LRP:355 LRF:358 LRB:365 APT:358 APR:365 RCV:308 SPK:306 CAPR:355 CRCV:308 CSPK:312 CAMT:361 UPSPK:332 DNSPK:332 VAP02:363 VAP05:358 AMB2:287 HIGH:0 AVGCUR:306 AVGSYS:161 POWER:1343
+11-30 21:58:10.012  7108  7874 I AudioManager: setParameters keyValuePairs = g_hw_speaker_amp_temp_spk=31
+11-30 21:58:10.013  1813  1972 D AudioFlinger: setParameters: filtered dev setParameters keyvalue g_hw_speaker_amp_temp_spk=31
+11-30 21:58:10.013  1754  4761 D AHAL_HFP_QTI: hfp_set_parameters enter
+11-30 21:58:10.013  1754  4761 D AHAL_HFP_QTI: hfp_set_parameters Exit
+11-30 21:58:10.013  1754  4761 D AHAL_SecModulePrimary: processSetVendorParameters: configured g_hw_speaker_amp_temp_spk
+11-30 21:58:10.013  1754  4761 D AHAL_SecModulePrimary: processSetVendorParameters: handler set on Feature:0
+11-30 21:58:10.013  1754  4761 D AHAL_SecModulePrimary: onSetSECGenericParameters set temperature for g_hw_speaker_amp_temp_spk: 31
+11-30 21:58:10.014  1754  4761 I PAL: API: pal_set_param: 1377: Enter: param id 3002
+11-30 21:58:10.014  1754  4761 I PAL: ResourceManager: getActiveStream_l: 6569: no active streams found for device 3 ret -2
+11-30 21:58:10.014  1813  1972 E ConversionHelperAidl: Function: parseAndSetVendorParameters Line: 94 Failed 
+11-30 21:58:10.014  1813  1972 E ConversionHelperAidl: Function: parseAndSetVendorParameters Line: 94 Failed 
+11-30 21:58:10.015  7108  7874 I AudioManager: setParameters keyValuePairs = g_hw_speaker_amp_temp_rcv=31
+11-30 21:58:10.015  1813 20582 D AudioFlinger: setParameters: filtered dev setParameters keyvalue g_hw_speaker_amp_temp_rcv=31
+11-30 21:58:10.015  1754 18663 D AHAL_HFP_QTI: hfp_set_parameters enter
+11-30 21:58:10.015  1754 18663 D AHAL_HFP_QTI: hfp_set_parameters Exit
+11-30 21:58:10.015  1754 18663 D AHAL_SecModulePrimary: processSetVendorParameters: configured g_hw_speaker_amp_temp_rcv
+11-30 21:58:10.015  1754 18663 D AHAL_SecModulePrimary: processSetVendorParameters: handler set on Feature:0
+11-30 21:58:10.015  1754 18663 D AHAL_SecModulePrimary: onSetSECGenericParameters set temperature for g_hw_speaker_amp_temp_rcv: 31
+11-30 21:58:10.015  1754 18663 I PAL: API: pal_set_param: 1377: Enter: param id 3001
+11-30 21:58:10.015  1754 18663 I PAL: ResourceManager: getActiveStream_l: 6569: no active streams found for device 3 ret -2
+11-30 21:58:10.016  1813 20582 E ConversionHelperAidl: Function: parseAndSetVendorParameters Line: 94 Failed 
+11-30 21:58:10.016  1813 20582 E ConversionHelperAidl: Function: parseAndSetVendorParameters Line: 94 Failed 
+11-30 21:58:10.160  2537  2761 D RestrictionPolicy: isAirplaneModeAllowed : true
+11-30 21:58:10.197  1017  1017 D io_stats: !@   8,0 r 33412422 824366608 w 6067884 257927232 d 954743 300329124 f 98132 479507 iot 2567728 0 th 0 0 0 pt 0 inp 0 0 125072.305
+11-30 21:58:10.221  2537  3620 E WifiStaIfaceAidlImpl: getCachedScanData failed with service-specific exception: android.os.ServiceSpecificException:  (code 4)
+11-30 21:58:10.226  2537 25405 D SemWifiUsabilityStatsMonitor: onWifiUsabilityStats - seqNum 28512, isSameBssidAndFreq true
+11-30 21:58:10.233  2537  3806 I SemWifiLinkQualityMonitor: Link stat: 948 / 74 / 1.50 (15) / 154 / -46.0 || 100.0 : 154.00 / 0.5 : 0.67 / 0.55 : 0.08 / B (G) || ae27bb3f2447: 0.338 / 23.656 / N || N N / 0 0 / N 2.0 / N O 9 / 125072334 0 || 2025-11-30 21:58:09  / 0: 1 1 1 1 1 1 / 0: 0 0 0 0 0 0 / 0: 0 0 0 0 0 0
+11-30 21:58:10.233  2537  3807 D InsDataManager: onOutageCountUpdate() - Outage Data: 0, LQ : N. Outage Triggered: false
+11-30 21:58:10.234  2537  3807 D SemInsManager: {"bssid": "ae27bb3f2447","rssi": -46.0,"latency": 0.3381844334155547,"outage_count": 0,"lq_callback_triggered": false,"outage_log": "Link stat: 948 / 74 / 1.50 (15) / 154 / -46.0 || 100.0 : 154.00 / 0.5 : 0.67 / 0.55 : 0.08 / B (G) || ae27bb3f2447: 0.338 / 23.656 / N || N N / 0 0 / N 2.0 / N O 9 / 125072334 0 || 2025-11-30 21:58:09  / 0: 1 1 1 1 1 1 / 0: 0 0 0 0 0 0 / 0: 0 0 0 0 0 0""Magnetic Sensor Events size": "0""Pressure Sensor Events size": "0"}
+11-30 21:58:10.272  2537  2761 E BatteryStatsService: Invalid uid for waking network packet: -1
+11-30 21:58:10.970  2537  2761 D RestrictionPolicy: isAirplaneModeAllowed : true
+11-30 21:58:11.012  1786  2860 I thermal_core: pivot(AP) : 354, skin : 365
+11-30 21:58:11.012  1786  2860 I vendor.samsung.hardware.thermal-service: index = -10.800000
+11-30 21:58:11.012  1786  2860 I vendor.samsung.hardware.thermal-service: 1 / 2
+11-30 21:58:11.221 26373 26373 I wpa_supplicant: Heartbeat 6281
+11-30 21:58:11.466  7108  7108 I SDHMS:LOAD: type: LoadsFreqs, value: 0:0:0:1017600:1017600:1017600:597504:1996800:556800:222:222:222
+11-30 21:58:11.652  1751  6834 I sensors-hal: handle_sns_std_sensor_event:127, [SSC_LIGHT] A: 6(6),c:143,b:143,m:37,cl:68,l:2,s:6,l0:8960,l1:0,s0:1000,s1:0,acl:3,opr:0.41,f(r):111,u(bl):112,if:111,wi:0,si:0,0(N:1)
+11-30 21:58:11.688  1751 27251 I sensors-hal: handle_sns_client_event:379, [0][1110] accel_sample [ 2.896, -1.191,  9.039] 214139181038152
+11-30 21:58:11.699  2537  3716 W DeviceStorageMonitorService: updateBroadcasts(/data) oldLevel:0, newLevel:0, seq:1
+11-30 21:58:11.700  2537  3716 D DeviceStorageMonitorService: Available File Node Number is [11401210]
+11-30 21:58:11.700  2537  3716 W DeviceStorageMonitorService: updateBroadcasts_filenode(/data) fn_oldLevel:0, fn_newLevel:0, seq:1
+11-30 21:58:11.774  3997  4356 D SatelliteController: isInCarrierRoamingNbIotNtn: satellite is disabled
+11-30 21:58:11.782  2537  2750 D RestrictionPolicy: isAirplaneModeAllowed : true
+11-30 21:58:12.020  1786  2860 I thermal_core: pivot(AP) : 353, skin : 365
+11-30 21:58:12.020  1786  2860 I vendor.samsung.hardware.thermal-service: index = -11.000000
+11-30 21:58:12.020  1786  2860 I vendor.samsung.hardware.thermal-service: 2 / 2
+11-30 21:58:12.060  1754 18663 D AHAL_ModulePrimary_QTI: getVendorParameters: id count: 1
+11-30 21:58:12.060  1754 18663 I PAL: ResourceManager: getActiveStream_l: 6569: no active streams found for device 3 ret -2
+11-30 21:58:12.060  1754 18663 D AHAL_SecModulePrimary: onGetSECGenericParameters get temperature for g_hw_speaker_amp_temp_rcv: 0
+11-30 21:58:12.061  1754  4761 D AHAL_ModulePrimary_QTI: getVendorParameters: id count: 1
+11-30 21:58:12.061  1754  4761 I PAL: ResourceManager: getActiveStream_l: 6569: no active streams found for device 3 ret -2
+11-30 21:58:12.061  1754  4761 D AHAL_SecModulePrimary: onGetSECGenericParameters get temperature for g_hw_speaker_amp_temp_spk: 0
+11-30 21:58:12.062  7108  7874 I SDHMS:x : SIOP:: AP:353 BAT:339 USB:332 CHG:353 PA:355 CP:354 WIFI:356 CF:356 BLK:0 SUBBAT:331 LRPTHM:348 SKIN:355 SKINF:358 SKINB:365 LRP:355 LRF:358 LRB:365 APT:358 APR:365 RCV:308 SPK:305 CAPR:355 CRCV:307 CSPK:311 CAMT:361 UPSPK:332 DNSPK:331 VAP02:362 VAP05:357 AMB2:287 HIGH:0 AVGCUR:315 AVGSYS:167 POWER:1383
+11-30 21:58:12.063  7108  7874 I AudioManager: setParameters keyValuePairs = g_hw_speaker_amp_temp_spk=31
+11-30 21:58:12.063  1813 20582 D AudioFlinger: setParameters: filtered dev setParameters keyvalue g_hw_speaker_amp_temp_spk=31
+11-30 21:58:12.064  1754  4761 D AHAL_HFP_QTI: hfp_set_parameters enter
+11-30 21:58:12.064  1754  4761 D AHAL_HFP_QTI: hfp_set_parameters Exit
+11-30 21:58:12.064  1754  4761 D AHAL_SecModulePrimary: processSetVendorParameters: configured g_hw_speaker_amp_temp_spk
+11-30 21:58:12.064  1754  4761 D AHAL_SecModulePrimary: processSetVendorParameters: handler set on Feature:0
+11-30 21:58:12.064  1754  4761 D AHAL_SecModulePrimary: onSetSECGenericParameters set temperature for g_hw_speaker_amp_temp_spk: 31
+11-30 21:58:12.064  1754  4761 I PAL: API: pal_set_param: 1377: Enter: param id 3002
+11-30 21:58:12.064  1754  4761 I PAL: ResourceManager: getActiveStream_l: 6569: no active streams found for device 3 ret -2
+11-30 21:58:12.065  1813 20582 E ConversionHelperAidl: Function: parseAndSetVendorParameters Line: 94 Failed 
+11-30 21:58:12.065  1813 20582 E ConversionHelperAidl: Function: parseAndSetVendorParameters Line: 94 Failed 
+11-30 21:58:12.065  7108  7874 I AudioManager: setParameters keyValuePairs = g_hw_speaker_amp_temp_rcv=31
+11-30 21:58:12.066  1813  1972 D AudioFlinger: setParameters: filtered dev setParameters keyvalue g_hw_speaker_amp_temp_rcv=31
+11-30 21:58:12.066  1754  4761 D AHAL_HFP_QTI: hfp_set_parameters enter
+11-30 21:58:12.066  1754  4761 D AHAL_HFP_QTI: hfp_set_parameters Exit
+11-30 21:58:12.066  1754  4761 D AHAL_SecModulePrimary: processSetVendorParameters: configured g_hw_speaker_amp_temp_rcv
+11-30 21:58:12.066  1754  4761 D AHAL_SecModulePrimary: processSetVendorParameters: handler set on Feature:0
+11-30 21:58:12.066  1754  4761 D AHAL_SecModulePrimary: onSetSECGenericParameters set temperature for g_hw_speaker_amp_temp_rcv: 31
+11-30 21:58:12.066  1754  4761 I PAL: API: pal_set_param: 1377: Enter: param id 3001
+11-30 21:58:12.066  1754  4761 I PAL: ResourceManager: getActiveStream_l: 6569: no active streams found for device 3 ret -2
+11-30 21:58:12.066  1813  1972 E ConversionHelperAidl: Function: parseAndSetVendorParameters Line: 94 Failed 
+11-30 21:58:12.066  1813  1972 E ConversionHelperAidl: Function: parseAndSetVendorParameters Line: 94 Failed 
+11-30 21:58:12.198  1017  1017 D io_stats: !@   8,0 r 33412422 824366608 w 6067896 257927268 d 954743 300329124 f 98133 479510 iot 2567732 0 th 0 0 0 pt 0 inp 0 0 125074.306
+11-30 21:58:12.198  1017  1017 D io_stats: !@ Read_top(KB): kworker/u17:3:/(2668) 28 cnss_diag:normal(2402) 8
+11-30 21:58:12.198  1017  1017 D io_stats: !@ Write_top(KB): soft.appmanager:low(7736) 24 kworker/2:0:/(16495) 12 vendor.samsung.:normal(1782) 8
+11-30 21:58:12.198  1017  1017 D io_stats: !@ fuse-log: WORST (10492 1 0 2 0) TOTAL_LATENCY (10492 0 1 0 2) TOTAL_CNT (10492 2 1 2) 
+11-30 21:58:12.321  2537  5254 I NSLocationMonitor: getGPSUsingApps() called
+11-30 21:58:12.322  5255  5299 I NSLocationManager_FLP: getGPSUsingApps, No change
+11-30 21:58:12.326  2537  5254 D FreecessHandler: freeze com.samsung.knox.securefolder(15010145) result : 2
+11-30 21:58:12.593  2537  3729 D RestrictionPolicy: isAirplaneModeAllowed : true
+11-30 21:58:12.753 27218 27620 I System.out: [java.net.SocketTimeoutException: failed to connect to myicpuu-anonymous-8081.exp.direct/54.65.101.67 (port 8097) from /192.168.45.115 (port 49366) after 10000ms, java.net.SocketTimeoutException: failed to connect to myicpuu-anonymous-8081.exp.direct/18.177.60.68 (port 8097) from /192.168.45.115 (port 38054) after 10000ms, java.net.SocketTimeoutException: failed to connect to myicpuu-anonymous-8081.exp.direct/3.114.93.84 (port 8097) from /192.168.45.115 (port 41414) after 10000ms, java.net.SocketTimeoutException: failed to connect to myicpuu-anonymous-8081.exp.direct/13.114.174.247 (port 8097) from /192.168.45.115 (port 57182) after 10000ms]
+11-30 21:58:12.784  2537  3836 D WifiConnectivityMonitor.NetworkStatsAnalyzer: Backhaul result - RSSI:-47, CE:33, PE:33, TI:44, PTI:45, TW:1, PTW:3, Tx:31, Rx:37, TxS:25, RxS:26, RESULT:true, IC:0, ICT:5, WC:0, WCT:5, R:2, RC:0, IE:0, EC:0
+11-30 21:58:12.805  2537  3913 D NetdEventListenerService: DNS Requested by 114, 10492(com.lgt.tmoney), SUCCESS, 0ms
+11-30 21:58:13.065  1786  2860 I thermal_core: pivot(AP) : 353, skin : 365
+11-30 21:58:13.065  1786  2860 I vendor.samsung.hardware.thermal-service: index = -11.200000
+11-30 21:58:13.065  1786  2860 I vendor.samsung.hardware.thermal-service: 1 / 2
+11-30 21:58:13.117 16035 27724 I NearbyMediums: No BLE Fast/GATT advertisements found in the latest cycle.
+11-30 21:58:13.117 16035 27724 I NearbyMediums: Current Tracked Scanning Clients are : {NearbyConnections.EnvironmentMonitor, NearbySharing, NearbyConnections.TxAdvertisement}
+11-30 21:58:13.235  2537  3620 E WifiStaIfaceAidlImpl: getCachedScanData failed with service-specific exception: android.os.ServiceSpecificException:  (code 4)
+11-30 21:58:13.238  2537 25405 D SemWifiUsabilityStatsMonitor: onWifiUsabilityStats - seqNum 28513, isSameBssidAndFreq true
+11-30 21:58:13.244  2537  3807 D InsDataManager: onOutageCountUpdate() - Outage Data: 0, LQ : N. Outage Triggered: false
+11-30 21:58:13.245  2537  3807 D SemInsManager: {"bssid": "ae27bb3f2447","rssi": -46.0,"latency": 0.0,"outage_count": 0,"lq_callback_triggered": false,"outage_log": "Unreliable statistics: -46.0 / 16 / 550 / 47 / 0 || ae27bb3f2447: 0.000 / 0.000 / @ || N N / 0 0 / N 2.0 / N O 9 / 125075347 0 || 2025-11-30 21:58:12  / 0: 1 1 1 1 1 1 / 0: 0 0 0 0 0 0 / 0: 0 0 0 0 0 0""Magnetic Sensor Events size": "0""Pressure Sensor Events size": "0"}
+11-30 21:58:13.396  1746  5964 I vendor.qti.bluetooth@1.0-ibs_handler: ProcessIbsCmd: Received IBS_WAKE_IND: 0xFD
+11-30 21:58:13.396  1746  5964 D vendor.qti.bluetooth@1.0-ibs_handler: SerialClockVote: vote for UART CLK ON
+11-30 21:58:13.396  1746  5964 D vendor.qti.bluetooth@1.0-wake_lock: Acquire wakelock is acquired 
+11-30 21:58:13.396  1746  5964 I vendor.qti.bluetooth@1.0-ibs_handler: ProcessIbsCmd: Writing IBS_WAKE_ACK
+11-30 21:58:13.404  2537  2750 D RestrictionPolicy: isAirplaneModeAllowed : true
+11-30 21:58:13.448  1746  5964 I vendor.qti.bluetooth@1.0-ibs_handler: ProcessIbsCmd: Received IBS_SLEEP_IND: 0xFE
+11-30 21:58:13.448  1746  5964 D vendor.qti.bluetooth@1.0-ibs_handler: SerialClockVote: vote for UART CLK OFF
+11-30 21:58:13.450  1746  5964 I vendor.qti.bluetooth@1.0-ibs_handler: ProcessIbsCmd: Received IBS_WAKE_IND: 0xFD
+11-30 21:58:13.450  1746  5964 D vendor.qti.bluetooth@1.0-ibs_handler: SerialClockVote: vote for UART CLK ON
+11-30 21:58:13.450  1746  5964 I vendor.qti.bluetooth@1.0-ibs_handler: ProcessIbsCmd: Writing IBS_WAKE_ACK
+11-30 21:58:13.491  1746  5964 I vendor.qti.bluetooth@1.0-ibs_handler: ProcessIbsCmd: Received IBS_SLEEP_IND: 0xFE
+11-30 21:58:13.491  1746  5964 D vendor.qti.bluetooth@1.0-ibs_handler: SerialClockVote: vote for UART CLK OFF
+11-30 21:58:13.644  1746  4894 D vendor.qti.bluetooth@1.0-wake_lock: Release wakelock is released 
+11-30 21:58:13.690  3997  4356 D SatelliteController: isInCarrierRoamingNbIotNtn: satellite is disabled
+11-30 21:58:13.727  1751 27251 I sensors-hal: handle_sns_client_event:379, [0][1140] accel_sample [ 2.922, -1.223,  9.030] 214141222318256
+11-30 21:58:14.067  1786  2860 I thermal_core: pivot(AP) : 353, skin : 365
+11-30 21:58:14.068  1786  2860 I vendor.samsung.hardware.thermal-service: index = -11.400000
+11-30 21:58:14.068  1786  2860 I vendor.samsung.hardware.thermal-service: 2 / 2
+11-30 21:58:14.112  1754  4761 D AHAL_ModulePrimary_QTI: getVendorParameters: id count: 1
+11-30 21:58:14.112  1754  4761 I PAL: ResourceManager: getActiveStream_l: 6569: no active streams found for device 3 ret -2
+11-30 21:58:14.112  1754  4761 D AHAL_SecModulePrimary: onGetSECGenericParameters get temperature for g_hw_speaker_amp_temp_rcv: 0
+11-30 21:58:14.113  1754  1754 D AHAL_ModulePrimary_QTI: getVendorParameters: id count: 1
+11-30 21:58:14.113  1754  1754 I PAL: ResourceManager: getActiveStream_l: 6569: no active streams found for device 3 ret -2
+11-30 21:58:14.113  1754  1754 D AHAL_SecModulePrimary: onGetSECGenericParameters get temperature for g_hw_speaker_amp_temp_spk: 0
+11-30 21:58:14.114  7108  7874 I SDHMS:x : SIOP:: AP:353 BAT:339 USB:332 CHG:352 PA:355 CP:353 WIFI:357 CF:356 BLK:0 SUBBAT:331 LRPTHM:348 SKIN:355 SKINF:358 SKINB:365 LRP:355 LRF:358 LRB:365 APT:358 APR:365 RCV:308 SPK:305 CAPR:355 CRCV:307 CSPK:311 CAMT:361 UPSPK:332 DNSPK:331 VAP02:362 VAP05:357 AMB2:287 HIGH:0 AVGCUR:315 AVGSYS:167 POWER:1383
+11-30 21:58:14.114  7108  7874 I AudioManager: setParameters keyValuePairs = g_hw_speaker_amp_temp_spk=31
+11-30 21:58:14.116  1813 20582 D AudioFlinger: setParameters: filtered dev setParameters keyvalue g_hw_speaker_amp_temp_spk=31
+11-30 21:58:14.116  1754  4761 D AHAL_HFP_QTI: hfp_set_parameters enter
+11-30 21:58:14.116  1754  4761 D AHAL_HFP_QTI: hfp_set_parameters Exit
+11-30 21:58:14.116  1754  4761 D AHAL_SecModulePrimary: processSetVendorParameters: configured g_hw_speaker_amp_temp_spk
+11-30 21:58:14.116  1754  4761 D AHAL_SecModulePrimary: processSetVendorParameters: handler set on Feature:0
+11-30 21:58:14.117  1754  4761 D AHAL_SecModulePrimary: onSetSECGenericParameters set temperature for g_hw_speaker_amp_temp_spk: 31
+11-30 21:58:14.117  1754  4761 I PAL: API: pal_set_param: 1377: Enter: param id 3002
+11-30 21:58:14.117  1754  4761 I PAL: ResourceManager: getActiveStream_l: 6569: no active streams found for device 3 ret -2
+11-30 21:58:14.117  1813 20582 E ConversionHelperAidl: Function: parseAndSetVendorParameters Line: 94 Failed 
+11-30 21:58:14.117  1813 20582 E ConversionHelperAidl: Function: parseAndSetVendorParameters Line: 94 Failed 
+11-30 21:58:14.118  7108  7874 I AudioManager: setParameters keyValuePairs = g_hw_speaker_amp_temp_rcv=31
+11-30 21:58:14.118  1813  1972 D AudioFlinger: setParameters: filtered dev setParameters keyvalue g_hw_speaker_amp_temp_rcv=31
+11-30 21:58:14.118  1754  1754 D AHAL_HFP_QTI: hfp_set_parameters enter
+11-30 21:58:14.119  1754  1754 D AHAL_HFP_QTI: hfp_set_parameters Exit
+11-30 21:58:14.119  1754  1754 D AHAL_SecModulePrimary: processSetVendorParameters: configured g_hw_speaker_amp_temp_rcv
+11-30 21:58:14.119  1754  1754 D AHAL_SecModulePrimary: processSetVendorParameters: handler set on Feature:0
+11-30 21:58:14.119  1754  1754 D AHAL_SecModulePrimary: onSetSECGenericParameters set temperature for g_hw_speaker_amp_temp_rcv: 31
+11-30 21:58:14.119  1754  1754 I PAL: API: pal_set_param: 1377: Enter: param id 3001
+11-30 21:58:14.119  1754  1754 I PAL: ResourceManager: getActiveStream_l: 6569: no active streams found for device 3 ret -2
+11-30 21:58:14.119  1813  1972 E ConversionHelperAidl: Function: parseAndSetVendorParameters Line: 94 Failed 
+11-30 21:58:14.120  1813  1972 E ConversionHelperAidl: Function: parseAndSetVendorParameters Line: 94 Failed 
+11-30 21:58:14.216  2537  2750 D RestrictionPolicy: isAirplaneModeAllowed : true
+11-30 21:58:14.700  1751  6834 I sensors-hal: handle_sns_client_event:208, auto_rotation_debug_2 mode,255,last,255, type,3,0 main,2.986,-1.216,9.054 sub,-3.115,-1.196,-9.265, ar,0, h_ic,1, s,3, ver,12, pedo,1,e,1,i,3
+11-30 21:58:15.020  2402  2402 I CNSS    : /sys/wifi/max_chipset_log_size doesn't exist
+11-30 21:58:15.028  2537  2750 D RestrictionPolicy: isAirplaneModeAllowed : true
+11-30 21:58:15.116  1786  2860 I thermal_core: pivot(AP) : 353, skin : 365
+11-30 21:58:15.116  1786  2860 I vendor.samsung.hardware.thermal-service: index = -11.800000
+11-30 21:58:15.116  1786  2860 I vendor.samsung.hardware.thermal-service: 1 / 2
