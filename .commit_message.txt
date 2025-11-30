@@ -1,1 +1,1 @@
-✨ 백업/복원 기능 구현 (JSON, 공유, Google Drive)
+✨ 백업 자동 저장 폴더 + Google OAuth 로그인 구현

@@ -33,6 +33,10 @@ export default function SettingsScreen({ navigation }: any) {
   const [showDriveListDialog, setShowDriveListDialog] = useState(false);
   const [isGoogleLoggedIn, setIsGoogleLoggedIn] = useState(false);
 
+  // Google Drive 토큰 입력용 상태
+  const [showGoogleTokenDialog, setShowGoogleTokenDialog] = useState(false);
+  const [googleToken, setGoogleToken] = useState('');
+
   // 초기 로드
   useEffect(() => {
     loadSettings();
@@ -123,7 +127,7 @@ export default function SettingsScreen({ navigation }: any) {
           break;
         case 'drive':
           if (!isGoogleLoggedIn) {
-            Alert.alert('알림', 'Google 로그인이 필요합니다.\n설정에서 Google Drive 액세스 토큰을 입력해주세요.');
+            Alert.alert('알림', 'Google 로그인이 필요합니다.\n설정에서 Google Drive를 연결해주세요.');
             setBackupLoading(false);
             setShowBackupDialog(false);
             return;
@@ -135,7 +139,10 @@ export default function SettingsScreen({ navigation }: any) {
       }
 
       if (result.success) {
-        Alert.alert('성공', `백업이 완료되었습니다.\n${result.fileName || ''}`);
+        const message = backupMethod === 'local'
+          ? `백업이 완료되었습니다.\n\n파일: ${result.fileName}\n\n앱 내부 저장소에 저장되었습니다.`
+          : `백업이 완료되었습니다.\n${result.fileName || ''}`;
+        Alert.alert('성공', message);
       } else {
         Alert.alert('오류', result.error || '백업에 실패했습니다.');
       }
@@ -145,36 +152,6 @@ export default function SettingsScreen({ navigation }: any) {
     } finally {
       setBackupLoading(false);
       setShowBackupDialog(false);
-    }
-  };
-
-  // 복원 실행 (로컬 파일)
-  const handleRestoreLocal = async () => {
-    setBackupLoading(true);
-    setShowRestoreDialog(false);
-
-    try {
-      const result = await backupManager.restoreFromFile();
-
-      if (result.success && result.stats) {
-        const statsText = `
-카테고리: ${result.stats.categories}개
-계좌: ${result.stats.accounts}개
-통장: ${result.stats.bankAccounts}개
-거래: ${result.stats.transactions}개
-예산: ${result.stats.budgets}개
-반복거래: ${result.stats.recurringTransactions}개
-지출그룹: ${result.stats.expenseGroups}개`;
-
-        Alert.alert('복원 완료', `데이터가 복원되었습니다.\n${statsText}`);
-      } else {
-        Alert.alert('오류', result.error || '복원에 실패했습니다.');
-      }
-    } catch (error) {
-      console.error('복원 실패:', error);
-      Alert.alert('오류', '복원 중 오류가 발생했습니다.');
-    } finally {
-      setBackupLoading(false);
     }
   };
 
@@ -235,26 +212,73 @@ export default function SettingsScreen({ navigation }: any) {
     );
   };
 
-  // Google Drive 액세스 토큰 설정 (임시 - 실제로는 OAuth 사용 필요)
-  const handleSetGoogleToken = () => {
-    Alert.prompt(
-      'Google Drive 연결',
-      'Google OAuth 액세스 토큰을 입력하세요.\n(개발자 도구에서 발급)',
-      [
-        { text: '취소', style: 'cancel' },
-        {
-          text: '저장',
-          onPress: (token) => {
-            if (token) {
-              googleDriveManager.setAccessToken(token);
-              setIsGoogleLoggedIn(true);
-              Alert.alert('성공', 'Google Drive가 연결되었습니다.');
-            }
+  // Google 로그인/로그아웃 처리
+  const handleGoogleAuth = async () => {
+    if (isGoogleLoggedIn) {
+      // 로그아웃
+      Alert.alert(
+        'Google Drive 연결 해제',
+        '연결을 해제하시겠습니까?',
+        [
+          { text: '취소', style: 'cancel' },
+          {
+            text: '해제',
+            onPress: async () => {
+              await googleDriveManager.logout();
+              setIsGoogleLoggedIn(false);
+              Alert.alert('알림', 'Google Drive 연결이 해제되었습니다.');
+            },
           },
-        },
-      ],
-      'plain-text'
-    );
+        ]
+      );
+    } else {
+      // 토큰 입력 다이얼로그 표시
+      setGoogleToken('');
+      setShowGoogleTokenDialog(true);
+    }
+  };
+
+  // Google Drive 토큰 저장
+  const handleSaveGoogleToken = () => {
+    if (googleToken.trim()) {
+      googleDriveManager.setAccessToken(googleToken.trim());
+      setIsGoogleLoggedIn(true);
+      setShowGoogleTokenDialog(false);
+      setGoogleToken('');
+      Alert.alert('성공', 'Google Drive가 연결되었습니다.');
+    } else {
+      Alert.alert('오류', '토큰을 입력해주세요.');
+    }
+  };
+
+  // 복원 실행 (로컬 파일)
+  const handleRestoreLocal = async () => {
+    setBackupLoading(true);
+    setShowRestoreDialog(false);
+
+    try {
+      const result = await backupManager.restoreFromFile();
+
+      if (result.success && result.stats) {
+        const statsText = `
+카테고리: ${result.stats.categories}개
+계좌: ${result.stats.accounts}개
+통장: ${result.stats.bankAccounts}개
+거래: ${result.stats.transactions}개
+예산: ${result.stats.budgets}개
+반복거래: ${result.stats.recurringTransactions}개
+지출그룹: ${result.stats.expenseGroups}개`;
+
+        Alert.alert('복원 완료', `데이터가 복원되었습니다.\n${statsText}`);
+      } else {
+        Alert.alert('오류', result.error || '복원에 실패했습니다.');
+      }
+    } catch (error) {
+      console.error('복원 실패:', error);
+      Alert.alert('오류', '복원 중 오류가 발생했습니다.');
+    } finally {
+      setBackupLoading(false);
+    }
   };
 
   return (
@@ -313,9 +337,9 @@ export default function SettingsScreen({ navigation }: any) {
             <Divider />
             <List.Item
               title="Google Drive 연결"
-              description={isGoogleLoggedIn ? '연결됨' : '연결 안됨'}
+              description={isGoogleLoggedIn ? '연결됨 (탭하여 해제)' : '탭하여 연결'}
               left={(props) => <List.Icon {...props} icon="google-drive" />}
-              onPress={handleSetGoogleToken}
+              onPress={handleGoogleAuth}
             />
             <Divider />
             <List.Item
@@ -462,13 +486,18 @@ export default function SettingsScreen({ navigation }: any) {
           <Dialog.Title>백업 방법 선택</Dialog.Title>
           <Dialog.Content>
             <RadioButton.Group onValueChange={(value) => setBackupMethod(value as 'local' | 'share' | 'drive')} value={backupMethod}>
-              <RadioButton.Item label="파일로 저장 (폴더 선택)" value="local" />
+              <RadioButton.Item label="앱 폴더에 저장" value="local" />
               <RadioButton.Item label="공유하기 (카카오톡, 이메일 등)" value="share" />
               <RadioButton.Item
                 label={`Google Drive ${isGoogleLoggedIn ? '' : '(로그인 필요)'}`}
                 value="drive"
               />
             </RadioButton.Group>
+            <Text variant="bodySmall" style={styles.backupHint}>
+              * 앱 폴더에 저장된 백업은 앱 삭제 시 함께 삭제됩니다.{'\n'}
+              * 카카오톡/이메일로 공유하면 다른 기기에서도 복원 가능합니다.{'\n'}
+              * Google Drive는 클라우드에 안전하게 백업됩니다.
+            </Text>
           </Dialog.Content>
           <Dialog.Actions>
             <Button onPress={() => setShowBackupDialog(false)}>취소</Button>
@@ -517,6 +546,38 @@ export default function SettingsScreen({ navigation }: any) {
           </Dialog.ScrollArea>
           <Dialog.Actions>
             <Button onPress={() => setShowDriveListDialog(false)}>닫기</Button>
+          </Dialog.Actions>
+        </Dialog>
+
+        {/* Google Drive 토큰 입력 다이얼로그 */}
+        <Dialog visible={showGoogleTokenDialog} onDismiss={() => setShowGoogleTokenDialog(false)}>
+          <Dialog.Title>Google Drive 연결</Dialog.Title>
+          <Dialog.ScrollArea>
+            <ScrollView style={styles.tokenDialogContent}>
+              <Text variant="bodyMedium" style={styles.tokenInstructions}>
+                Google OAuth Playground에서 액세스 토큰을 발급받아 입력하세요.{'\n\n'}
+                1. developers.google.com/oauthplayground 접속{'\n'}
+                2. Drive API v3 선택{'\n'}
+                3. "Authorize APIs" 클릭{'\n'}
+                4. Google 로그인{'\n'}
+                5. "Exchange authorization code for tokens" 클릭{'\n'}
+                6. 발급된 Access token 복사
+              </Text>
+              <TextInput
+                mode="outlined"
+                label="Access Token"
+                value={googleToken}
+                onChangeText={setGoogleToken}
+                placeholder="ya29..."
+                multiline
+                numberOfLines={3}
+                style={styles.tokenInput}
+              />
+            </ScrollView>
+          </Dialog.ScrollArea>
+          <Dialog.Actions>
+            <Button onPress={() => setShowGoogleTokenDialog(false)}>취소</Button>
+            <Button onPress={handleSaveGoogleToken}>연결</Button>
           </Dialog.Actions>
         </Dialog>
       </Portal>
@@ -579,6 +640,23 @@ const styles = StyleSheet.create({
     marginTop: -8,
     marginBottom: 12,
   },
+  backupHint: {
+    color: '#666',
+    marginTop: 12,
+    lineHeight: 18,
+  },
+  restoreActions: {
+    flexWrap: 'wrap',
+    justifyContent: 'flex-end',
+  },
+  driveListScrollArea: {
+    maxHeight: 300,
+  },
+  emptyText: {
+    textAlign: 'center',
+    padding: 24,
+    color: '#666',
+  },
   loadingOverlay: {
     position: 'absolute',
     top: 0,
@@ -595,16 +673,15 @@ const styles = StyleSheet.create({
     color: '#6366f1',
     fontSize: 16,
   },
-  restoreActions: {
-    flexWrap: 'wrap',
-    justifyContent: 'flex-end',
+  tokenDialogContent: {
+    padding: 16,
   },
-  driveListScrollArea: {
-    maxHeight: 300,
-  },
-  emptyText: {
-    textAlign: 'center',
-    padding: 24,
+  tokenInstructions: {
     color: '#666',
+    lineHeight: 20,
+    marginBottom: 16,
+  },
+  tokenInput: {
+    marginTop: 8,
   },
 });

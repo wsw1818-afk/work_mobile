@@ -10,7 +10,14 @@
       "Bash(adb install:*)",
       "Bash(adb shell am start:*)",
       "Bash(adb shell pm list packages:*)",
-      "Bash(adb shell monkey:*)"
+      "Bash(adb shell monkey:*)",
+      "Bash(npm uninstall:*)",
+      "Bash(npx expo install expo-modules-core)",
+      "Bash(timeout 90 powershell:*)",
+      "Bash(timeout 120 powershell:*)",
+      "Bash(cmd /c \"dir H:\\Claude_work\\gagyebu-native\\android\\app\\build\\outputs\\apk\\release\\*.apk 2>nul\")",
+      "Bash(adb -s RFCY70SZK9P install:*)",
+      "Bash(adb:*)"
     ],
     "deny": [],
     "ask": [],

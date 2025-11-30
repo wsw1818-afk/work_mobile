@@ -131,8 +131,47 @@ class BackupManager {
     }
   }
 
-  // 다운로드 폴더에 백업 저장 (SAF 사용)
+  // 앱 전용 백업 폴더에 자동 저장
   async saveBackupToDownloads(): Promise<BackupResult> {
+    try {
+      const backupData = await this.exportToJson();
+      const jsonString = JSON.stringify(backupData, null, 2);
+
+      // 파일명 생성
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+      const fileName = `gagyebu_backup_${timestamp}.json`;
+
+      // 앱 전용 백업 폴더 경로 (앱 내부 저장소)
+      const backupFolderPath = `${FileSystem.documentDirectory}backups/`;
+
+      // 폴더 존재 여부 확인 및 생성
+      const folderInfo = await FileSystem.getInfoAsync(backupFolderPath);
+      if (!folderInfo.exists) {
+        await FileSystem.makeDirectoryAsync(backupFolderPath, { intermediates: true });
+      }
+
+      // 파일 저장
+      const filePath = `${backupFolderPath}${fileName}`;
+      await FileSystem.writeAsStringAsync(filePath, jsonString, {
+        encoding: FileSystem.EncodingType.UTF8,
+      });
+
+      return {
+        success: true,
+        filePath,
+        fileName,
+      };
+    } catch (error) {
+      console.error('백업 저장 실패:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : '알 수 없는 오류',
+      };
+    }
+  }
+
+  // 외부 다운로드 폴더에 백업 저장 (SAF 사용 - 사용자가 폴더 선택)
+  async saveBackupToExternalDownloads(): Promise<BackupResult> {
     try {
       const backupData = await this.exportToJson();
       const jsonString = JSON.stringify(backupData, null, 2);
@@ -370,10 +409,18 @@ class BackupManager {
     }
   }
 
-  // 백업 파일 목록 조회 (앱 내부 저장소)
+  // 백업 파일 목록 조회 (앱 내부 저장소의 backups 폴더)
   async getBackupFiles(): Promise<string[]> {
     try {
-      const files = await FileSystem.readDirectoryAsync(FileSystem.documentDirectory || '');
+      const backupFolderPath = `${FileSystem.documentDirectory}backups/`;
+
+      // 폴더 존재 여부 확인
+      const folderInfo = await FileSystem.getInfoAsync(backupFolderPath);
+      if (!folderInfo.exists) {
+        return [];
+      }
+
+      const files = await FileSystem.readDirectoryAsync(backupFolderPath);
       return files.filter(f => f.startsWith('gagyebu_backup_') && f.endsWith('.json'));
     } catch {
       return [];
@@ -383,7 +430,7 @@ class BackupManager {
   // 백업 파일 삭제
   async deleteBackupFile(fileName: string): Promise<boolean> {
     try {
-      const filePath = `${FileSystem.documentDirectory}${fileName}`;
+      const filePath = `${FileSystem.documentDirectory}backups/${fileName}`;
       await FileSystem.deleteAsync(filePath);
       return true;
     } catch {
