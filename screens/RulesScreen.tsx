@@ -9,7 +9,7 @@ import { Picker } from '@react-native-picker/picker';
 import { database, Rule, Category, ExclusionPattern } from '../lib/db/database';
 import { theme } from '../lib/theme';
 
-export default function RulesScreen() {
+export default function RulesScreen({ navigation }: any) {
   const insets = useSafeAreaInsets();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -290,8 +290,15 @@ export default function RulesScreen() {
         colors={theme.gradients.header as [string, string]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
-        style={[styles.header, { paddingTop: insets.top + theme.spacing.xl }]}
+        style={[styles.header, { paddingTop: insets.top + theme.spacing.md }]}
       >
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => navigation.goBack()}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="arrow-back" size={24} color="#fff" />
+        </TouchableOpacity>
         <Text style={styles.headerTitle}>규칙 설정</Text>
         <Text style={styles.headerSubtitle}>자동 분류 및 제외 규칙을 관리하세요</Text>
       </LinearGradient>
@@ -597,6 +604,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing.lg,
     paddingTop: theme.spacing.md,
     paddingBottom: theme.spacing.lg,
+  },
+  backButton: {
+    marginBottom: theme.spacing.sm,
+    padding: theme.spacing.xs,
+    alignSelf: 'flex-start',
   },
   headerTitle: {
     fontSize: theme.fontSize.xxl,

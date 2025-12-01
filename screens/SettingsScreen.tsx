@@ -335,14 +335,6 @@ export default function SettingsScreen({ navigation }: any) {
 
   return (
     <View style={styles.container}>
-      {/* Dokterian 스타일 헤더 */}
-      <LinearGradient
-        colors={theme.gradients.header as [string, string]}
-        style={[styles.header, { paddingTop: insets.top + 16 }]}
-      >
-        <RNText style={styles.headerTitle}>설정</RNText>
-      </LinearGradient>
-
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
         {/* AI 설정 섹션 */}
         <View style={styles.section}>

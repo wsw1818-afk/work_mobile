@@ -251,35 +251,25 @@ export default function BankAccountsScreen() {
 
   return (
     <View style={styles.container}>
-      {/* 헤더 그라데이션 + 총 자산 요약 */}
-      <LinearGradient
-        colors={theme.gradients.header as [string, string]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={[styles.header, { paddingTop: insets.top + theme.spacing.md }]}
-      >
-        <Text style={styles.headerTitle}>통장 & 결제수단</Text>
-        <Text style={styles.headerSubtitle}>자산을 관리하세요</Text>
-
-        <View style={styles.summaryCard}>
-          <View style={styles.summaryRow}>
-            <View style={styles.summaryItem}>
-              <Text style={styles.summaryLabel}>총 자산</Text>
-              <Text style={styles.totalAmount}>{Math.round(totalBalance).toLocaleString()}원</Text>
-            </View>
-          </View>
-          <View style={styles.summaryStats}>
-            <View style={styles.statItem}>
-              <Ionicons name="wallet-outline" size={16} color={theme.colors.primary} />
-              <Text style={styles.statText}>통장 {bankAccounts.filter(a => a.isActive).length}개</Text>
-            </View>
-            <View style={styles.statItem}>
-              <Ionicons name="card-outline" size={16} color={theme.colors.primary} />
-              <Text style={styles.statText}>결제수단 {accounts.length}개</Text>
-            </View>
+      {/* 총 자산 요약 카드 */}
+      <View style={styles.summaryCardTop}>
+        <View style={styles.summaryRow}>
+          <View style={styles.summaryItem}>
+            <Text style={styles.summaryLabelTop}>총 자산</Text>
+            <Text style={styles.totalAmountTop}>{Math.round(totalBalance).toLocaleString()}원</Text>
           </View>
         </View>
-      </LinearGradient>
+        <View style={styles.summaryStats}>
+          <View style={styles.statItem}>
+            <Ionicons name="wallet-outline" size={16} color={theme.colors.primary} />
+            <Text style={styles.statText}>통장 {bankAccounts.filter(a => a.isActive).length}개</Text>
+          </View>
+          <View style={styles.statItem}>
+            <Ionicons name="card-outline" size={16} color={theme.colors.primary} />
+            <Text style={styles.statText}>결제수단 {accounts.length}개</Text>
+          </View>
+        </View>
+      </View>
 
       <ScrollView
         style={styles.scrollView}
@@ -767,6 +757,23 @@ const styles = StyleSheet.create({
     color: 'rgba(255, 255, 255, 0.9)',
     marginBottom: theme.spacing.md,
   },
+  summaryCardTop: {
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.lg,
+    padding: theme.spacing.md,
+    margin: theme.spacing.md,
+    ...theme.shadows.sm,
+  },
+  summaryLabelTop: {
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.textSecondary,
+    marginBottom: theme.spacing.xs,
+  },
+  totalAmountTop: {
+    fontSize: theme.fontSize.xxl,
+    fontWeight: theme.fontWeight.bold,
+    color: theme.colors.text,
+  },
   summaryCard: {
     backgroundColor: 'rgba(255, 255, 255, 0.15)',
     borderRadius: theme.borderRadius.lg,
@@ -795,14 +802,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: theme.spacing.xs,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: theme.colors.background,
     paddingHorizontal: theme.spacing.sm,
     paddingVertical: theme.spacing.xs,
     borderRadius: theme.borderRadius.full,
   },
   statText: {
     fontSize: theme.fontSize.sm,
-    color: '#fff',
+    color: theme.colors.text,
     fontWeight: theme.fontWeight.medium,
   },
   scrollView: {

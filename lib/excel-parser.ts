@@ -31,25 +31,56 @@ export interface ParseResult {
  */
 export function extractCardNameFromFilename(filename: string): string | null {
   const nameWithoutExt = filename.replace(/\.(xlsx?|csv)$/i, '');
+  const fullText = nameWithoutExt.toLowerCase();
 
-  // 언더스코어 또는 하이픈으로 구분된 첫 번째 부분 추출
-  const parts = nameWithoutExt.split(/[_\-]/);
-  if (parts.length > 0) {
-    const firstPart = parts[0].trim();
+  // 카드사 패턴 (우선순위 순)
+  const cardPatterns: [RegExp, string][] = [
+    [/현대.*카드|hyundai/i, '현대카드'],
+    [/신한.*카드|shinhan.*card/i, '신한카드'],
+    [/삼성.*카드|samsung.*card/i, '삼성카드'],
+    [/kb.*카드|국민.*카드|kookmin/i, 'KB국민카드'],
+    [/롯데.*카드|lotte/i, '롯데카드'],
+    [/하나.*카드|hana.*card/i, '하나카드'],
+    [/우리.*카드|woori.*card/i, '우리카드'],
+    [/nh.*카드|농협.*카드|nonghyup/i, 'NH농협카드'],
+    [/bc.*카드|비씨/i, 'BC카드'],
+    [/씨티.*카드|citi/i, '씨티카드'],
+    [/카카오.*카드|kakao/i, '카카오카드'],
+    [/토스.*카드|toss/i, '토스카드'],
+  ];
 
-    // 카드사/은행 이름 패턴 매칭
-    if (firstPart.includes('현대카드') || firstPart.match(/현대.*카드/i)) return '현대카드';
-    if (firstPart.includes('신한카드') || firstPart.match(/신한.*카드/i)) return '신한카드';
-    if (firstPart.includes('삼성카드') || firstPart.match(/삼성.*카드/i)) return '삼성카드';
-    if (firstPart.includes('KB국민카드') || firstPart.includes('국민카드') || firstPart.match(/KB.*카드/i)) return 'KB국민카드';
-    if (firstPart.includes('롯데카드') || firstPart.match(/롯데.*카드/i)) return '롯데카드';
-    if (firstPart.includes('하나카드') || firstPart.match(/하나.*카드/i)) return '하나카드';
-    if (firstPart.includes('우리카드') || firstPart.match(/우리.*카드/i)) return '우리카드';
-    if (firstPart.includes('NH농협카드') || firstPart.includes('농협카드') || firstPart.match(/NH.*카드/i)) return 'NH농협카드';
-    if (firstPart.includes('신한은행') || firstPart.match(/신한.*은행/i)) return '신한은행';
-    if (firstPart.match(/(KB국민은행|국민은행|우리은행|하나은행|농협은행|NH농협은행)/i)) {
-      return firstPart.match(/(KB국민은행|국민은행|우리은행|하나은행|농협은행|NH농협은행)/i)?.[0] || null;
-    }
+  // 은행 패턴
+  const bankPatterns: [RegExp, string][] = [
+    [/신한.*은행|shinhan.*bank/i, '신한은행'],
+    [/kb.*은행|국민.*은행|kookmin.*bank/i, 'KB국민은행'],
+    [/우리.*은행|woori.*bank/i, '우리은행'],
+    [/하나.*은행|hana.*bank/i, '하나은행'],
+    [/nh.*은행|농협.*은행|nonghyup.*bank/i, 'NH농협은행'],
+    [/기업.*은행|ibk/i, 'IBK기업은행'],
+    [/sc.*은행|제일.*은행/i, 'SC제일은행'],
+    [/케이.*뱅크|k.*bank/i, '케이뱅크'],
+    [/카카오.*뱅크|kakao.*bank/i, '카카오뱅크'],
+    [/토스.*뱅크|toss.*bank/i, '토스뱅크'],
+    [/새마을/i, '새마을금고'],
+    [/신협/i, '신협'],
+    [/우체국/i, '우체국'],
+    [/수협/i, '수협'],
+    [/대구.*은행/i, '대구은행'],
+    [/부산.*은행/i, '부산은행'],
+    [/경남.*은행/i, '경남은행'],
+    [/광주.*은행/i, '광주은행'],
+    [/전북.*은행/i, '전북은행'],
+    [/제주.*은행/i, '제주은행'],
+  ];
+
+  // 카드사 우선 매칭
+  for (const [pattern, name] of cardPatterns) {
+    if (pattern.test(fullText)) return name;
+  }
+
+  // 은행 매칭
+  for (const [pattern, name] of bankPatterns) {
+    if (pattern.test(fullText)) return name;
   }
 
   return null;
@@ -161,8 +192,15 @@ export function extractCardName(buffer: ArrayBuffer): string | null {
   }
 
   // 가장 먼저 발견된 카드/은행 반환 (카드 우선)
-  const cardPriority = ['하나카드', '신한카드', '현대카드', '삼성카드', 'KB국민카드', '롯데카드', '우리카드', 'NH농협카드'];
-  const bankPriority = ['신한은행', '하나은행', 'KB국민은행', '국민은행', '우리은행', '농협은행', 'NH농협은행'];
+  const cardPriority = [
+    '하나카드', '신한카드', '현대카드', '삼성카드', 'KB국민카드', '롯데카드', '우리카드', 'NH농협카드',
+    'BC카드', '씨티카드', '카카오카드', '토스카드'
+  ];
+  const bankPriority = [
+    '신한은행', '하나은행', 'KB국민은행', '국민은행', '우리은행', '농협은행', 'NH농협은행',
+    'IBK기업은행', 'SC제일은행', '케이뱅크', '카카오뱅크', '토스뱅크',
+    '새마을금고', '신협', '우체국', '수협'
+  ];
 
   for (const card of cardPriority) {
     if (foundCards.has(card)) return card;
@@ -230,7 +268,19 @@ export function parseExcelFile(buffer: ArrayBuffer): ParseResult {
 
   // 헤더 행 찾기
   let headerRowIndex = -1;
-  const headerKeywords = ['거래일자', '거래시간', '적요', '출금', '입금', '사용일자', '이용일', '가맹점명', '이용금액'];
+  // 더 다양한 은행/카드사 헤더 키워드 지원
+  const headerKeywords = [
+    // 날짜 관련
+    '거래일자', '거래일', '사용일자', '이용일', '이용일자', '승인일자', '승인일', '결제일', '매출일', '일자', '날짜', 'Date',
+    // 시간 관련
+    '거래시간', '이용시간', '승인시간', '시간',
+    // 금액 관련
+    '출금', '입금', '이용금액', '거래금액', '승인금액', '결제금액', '청구금액', '금액', '원금', 'Amount',
+    // 내역 관련
+    '적요', '가맹점명', '가맹점', '상호', '이용가맹점', '사용처', '거래처', '내역', '상세내역', '비고', 'Description', 'Merchant',
+    // 기타
+    '카드번호', '계좌번호', '잔액', '메모', '취소', '구분'
+  ];
 
   // 섹션 마커 찾기
   let sectionStartIndex = -1;
@@ -449,21 +499,66 @@ export function parseExcelFile(buffer: ArrayBuffer): ParseResult {
 
 /**
  * 컬럼명 기반 자동 매핑 추천
+ * 다양한 은행/카드사 형식 지원
  */
 export function suggestColumnMapping(headers: string[]): ColumnMapping[] {
   const mapping: ColumnMapping[] = [];
 
-  const datePatterns = ['날짜', '거래일자', '사용일자', '승인일시', '일자', 'date', '거래일', '이용일', '승인일자', '거래월일'];
-  const amountPatterns = ['이용금액', '승인금액', '청구금액', '공급가액', '매출금액', '출금', '입금', '금액', 'amount', 'price'];
-  const excludeAmountPatterns = ['혜택금액', '수수료', '포인트', '마일리지'];
-  const merchantPatterns = ['가맹점명', '사용처', '상호', 'merchant', 'store', '가맹점', '내용', '이용가맹점', '가맹점(상호)'];
-  const memoPatterns = ['메모', '비고', '상세', 'note', 'memo', 'description', '적요'];
-  const accountPatterns = ['카드명', '카드구분', 'account', 'card', '계좌'];
-  const typePatterns = ['취소여부', '승인구분', 'type', '거래구분'];
+  // 날짜 관련 패턴 (다양한 은행/카드사 지원)
+  const datePatterns = [
+    '날짜', '거래일자', '사용일자', '승인일시', '일자', '거래일', '이용일', '이용일자',
+    '승인일자', '승인일', '거래월일', '결제일', '결제일자', '매출일', '매출일자',
+    '처리일', '처리일자', '발생일', '발생일자', '이용년월일',
+    'date', 'transaction date', 'trans date', 'posting date'
+  ];
+
+  // 금액 관련 패턴
+  const amountPatterns = [
+    '이용금액', '승인금액', '청구금액', '공급가액', '매출금액', '출금', '입금', '금액',
+    '거래금액', '결제금액', '지출금액', '수입금액', '원금', '이용액', '출금액', '입금액',
+    '내실금액', '청구예정금액', '결제예정금액', '실결제금액', '국내이용금액', '해외이용금액',
+    'amount', 'price', 'debit', 'credit', 'withdrawal', 'deposit'
+  ];
+
+  // 금액에서 제외할 패턴
+  const excludeAmountPatterns = [
+    '혜택금액', '수수료', '포인트', '마일리지', '할인', '적립', '캐시백',
+    '잔액', '누적', '총액', '합계', '수수료금액'
+  ];
+
+  // 가맹점/내역 관련 패턴
+  const merchantPatterns = [
+    '가맹점명', '사용처', '상호', '가맹점', '내용', '이용가맹점', '가맹점(상호)',
+    '거래처', '거래처명', '결제처', '매출처', '업소명', '판매처', '승인가맹점',
+    '이용처', '상호명', '상점명', '점포명', '매장명',
+    'merchant', 'store', 'vendor', 'payee', 'description'
+  ];
+
+  // 메모/적요 관련 패턴
+  const memoPatterns = [
+    '메모', '비고', '상세', '적요', '내역', '상세내역', '거래내역', '이용내역',
+    '적요내용', '비고란', '참고', '추가정보', '거래적요',
+    'note', 'memo', 'remark', 'comment'
+  ];
+
+  // 계좌/카드 관련 패턴
+  const accountPatterns = [
+    '카드명', '카드구분', '계좌', '계좌번호', '카드번호', '카드종류', '결제카드',
+    '출금계좌', '입금계좌', '거래계좌', '은행명', '금융기관',
+    'account', 'card', 'card number', 'account number'
+  ];
+
+  // 거래유형 관련 패턴
+  const typePatterns = [
+    '취소여부', '승인구분', '거래구분', '입출금구분', '거래유형', '거래종류',
+    '입출구분', '차대구분', '승인취소', '취소', '구분',
+    'type', 'transaction type', 'trans type'
+  ];
 
   for (const header of headers) {
     const lowerHeader = header.toLowerCase();
 
+    // 제외할 금액 패턴 체크
     const isExcludedAmount = excludeAmountPatterns.some((p) =>
       lowerHeader.includes(p.toLowerCase())
     );
@@ -499,13 +594,19 @@ export function suggestColumnMapping(headers: string[]): ColumnMapping[] {
 
 /**
  * 날짜 문자열을 정규화 (YYYY-MM-DD 형식으로 변환)
+ * 다양한 은행/카드사 형식 지원
  */
 export function normalizeDate(value: any): string | null {
   if (!value) return null;
 
-  const str = String(value).trim();
+  let str = String(value).trim();
 
-  // 1. YYYY-MM-DD 형식
+  // 날짜+시간 형식에서 날짜만 추출 (예: "2024-01-15 14:30:00" -> "2024-01-15")
+  if (str.includes(' ')) {
+    str = str.split(' ')[0];
+  }
+
+  // 1. YYYY-MM-DD 형식 (표준)
   if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
     return str;
   }
@@ -516,33 +617,79 @@ export function normalizeDate(value: any): string | null {
   }
 
   // 3. YYYY.MM.DD 또는 YYYY/MM/DD 형식
-  if (/^\d{4}[./]\d{2}[./]\d{2}$/.test(str)) {
-    return str.replace(/[./]/g, '-');
+  if (/^\d{4}[./]\d{1,2}[./]\d{1,2}$/.test(str)) {
+    const parts = str.split(/[./]/);
+    return `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
   }
 
-  // 4. YY.MM.DD 형식
-  if (/^\d{2}\.\d{2}\.\d{2}$/.test(str)) {
-    const [yy, mm, dd] = str.split('.');
+  // 4. YY.MM.DD 또는 YY/MM/DD 또는 YY-MM-DD 형식
+  if (/^\d{2}[./-]\d{1,2}[./-]\d{1,2}$/.test(str)) {
+    const parts = str.split(/[./-]/);
+    const yy = parts[0];
     const year = parseInt(yy) >= 70 ? `19${yy}` : `20${yy}`;
-    return `${year}-${mm}-${dd}`;
+    return `${year}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
   }
 
-  // 5. M/D/YY 또는 MM/DD/YY 형식
+  // 5. M/D/YY 또는 MM/DD/YY 형식 (미국식)
   if (/^\d{1,2}\/\d{1,2}\/\d{2}$/.test(str)) {
     const [mm, dd, yy] = str.split('/');
     const year = parseInt(yy) >= 70 ? `19${yy}` : `20${yy}`;
-    const month = mm.padStart(2, '0');
-    const day = dd.padStart(2, '0');
-    return `${year}-${month}-${day}`;
+    return `${year}-${mm.padStart(2, '0')}-${dd.padStart(2, '0')}`;
   }
 
-  // 6. MM/DD/YYYY 형식
-  if (/^\d{2}\/\d{2}\/\d{4}$/.test(str)) {
+  // 6. MM/DD/YYYY 또는 M/D/YYYY 형식
+  if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(str)) {
     const [mm, dd, yyyy] = str.split('/');
-    return `${yyyy}-${mm}-${dd}`;
+    return `${yyyy}-${mm.padStart(2, '0')}-${dd.padStart(2, '0')}`;
   }
 
-  // 7. date-fns로 파싱 시도
+  // 7. DD/MM/YYYY 형식 (유럽식) - 일이 12보다 크면 유럽식으로 간주
+  if (/^\d{2}\/\d{2}\/\d{4}$/.test(str)) {
+    const parts = str.split('/');
+    if (parseInt(parts[0]) > 12) {
+      // DD/MM/YYYY
+      return `${parts[2]}-${parts[1]}-${parts[0]}`;
+    }
+    // MM/DD/YYYY
+    return `${parts[2]}-${parts[0]}-${parts[1]}`;
+  }
+
+  // 8. YYYY년 MM월 DD일 형식 (한국어)
+  const koreanMatch = str.match(/(\d{4})년\s*(\d{1,2})월\s*(\d{1,2})일/);
+  if (koreanMatch) {
+    return `${koreanMatch[1]}-${koreanMatch[2].padStart(2, '0')}-${koreanMatch[3].padStart(2, '0')}`;
+  }
+
+  // 9. MM월 DD일 형식 (연도 없음 - 현재 연도 사용)
+  const koreanNoYearMatch = str.match(/(\d{1,2})월\s*(\d{1,2})일/);
+  if (koreanNoYearMatch) {
+    const currentYear = new Date().getFullYear();
+    return `${currentYear}-${koreanNoYearMatch[1].padStart(2, '0')}-${koreanNoYearMatch[2].padStart(2, '0')}`;
+  }
+
+  // 10. DD-MMM-YYYY 형식 (예: 15-Jan-2024)
+  const monthNames: { [key: string]: string } = {
+    'jan': '01', 'feb': '02', 'mar': '03', 'apr': '04', 'may': '05', 'jun': '06',
+    'jul': '07', 'aug': '08', 'sep': '09', 'oct': '10', 'nov': '11', 'dec': '12'
+  };
+  const engMatch = str.match(/(\d{1,2})-([a-zA-Z]{3})-(\d{4})/i);
+  if (engMatch) {
+    const month = monthNames[engMatch[2].toLowerCase()];
+    if (month) {
+      return `${engMatch[3]}-${month}-${engMatch[1].padStart(2, '0')}`;
+    }
+  }
+
+  // 11. Excel 시리얼 날짜 (숫자만 있고 30000-50000 범위)
+  const numValue = parseFloat(str);
+  if (!isNaN(numValue) && numValue >= 30000 && numValue <= 60000) {
+    // Excel 시리얼 날짜를 JavaScript 날짜로 변환
+    const excelEpoch = new Date(1899, 11, 30); // Excel 기준일
+    const jsDate = new Date(excelEpoch.getTime() + numValue * 24 * 60 * 60 * 1000);
+    return format(jsDate, 'yyyy-MM-dd');
+  }
+
+  // 12. date-fns로 파싱 시도
   const formats = [
     'yyyy-MM-dd',
     'yyyy.MM.dd',
@@ -550,6 +697,8 @@ export function normalizeDate(value: any): string | null {
     'MM/dd/yyyy',
     'dd/MM/yyyy',
     'yy.MM.dd',
+    'dd-MM-yyyy',
+    'yyyy-M-d',
   ];
 
   for (const fmt of formats) {
@@ -568,16 +717,37 @@ export function normalizeDate(value: any): string | null {
 
 /**
  * 금액 문자열을 숫자로 정규화
+ * 다양한 통화/숫자 형식 지원
  */
 export function normalizeAmount(value: any): number {
   if (value === null || value === undefined || value === '') return 0;
 
-  const str = String(value)
+  let str = String(value).trim();
+
+  // 괄호로 감싸진 음수 처리 (예: (1,000) -> -1000)
+  const isNegativeParens = /^\([\d,.\s]+\)$/.test(str);
+  if (isNegativeParens) {
+    str = '-' + str.replace(/[()]/g, '');
+  }
+
+  // 통화 기호 및 단위 제거
+  str = str
     .replace(/[,\s]/g, '') // 쉼표와 공백 제거
     .replace(/원$/, '') // "원" 제거
+    .replace(/^₩/, '') // 원화 기호 제거
+    .replace(/^\$/, '') // 달러 기호 제거
+    .replace(/^€/, '') // 유로 기호 제거
+    .replace(/^¥/, '') // 엔화 기호 제거
+    .replace(/^£/, '') // 파운드 기호 제거
+    .replace(/^KRW\s*/i, '') // KRW 제거
+    .replace(/^USD\s*/i, '') // USD 제거
     .replace(/^"/, '')  // 현대카드 형식: 앞의 따옴표 제거
     .replace(/"$/, '')  // 현대카드 형식: 뒤의 따옴표 제거
+    .replace(/CR$|DR$/i, '') // 대변/차변 표시 제거
     .trim();
+
+  // 빈 문자열이면 0 반환
+  if (str === '' || str === '-') return 0;
 
   const num = parseFloat(str);
   return isNaN(num) ? 0 : num;

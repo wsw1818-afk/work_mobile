@@ -188,20 +188,10 @@ export default function DashboardScreen() {
 
   return (
     <View style={styles.container}>
-      {/* 헤더 - Dokterian 스타일 그라데이션 */}
-      <LinearGradient
-        colors={theme.gradients.header as [string, string]}
-        style={[styles.header, { paddingTop: insets.top + 16 }]}
-      >
-        <View style={styles.headerContent}>
-          <Text style={styles.headerGreeting}>안녕하세요!</Text>
-          <Text style={styles.headerTitle}>가계부</Text>
-        </View>
-
-        {/* 월 선택 */}
-        <View style={styles.monthSelector}>
-          <TouchableOpacity onPress={goToPreviousMonth} style={styles.monthArrow}>
-            <Ionicons name="chevron-back" size={24} color="#fff" />
+      {/* 월 선택 */}
+      <View style={styles.monthSelectorContainer}>
+          <TouchableOpacity onPress={goToPreviousMonth} style={styles.monthArrowNew}>
+            <Ionicons name="chevron-back" size={24} color={theme.colors.text} />
           </TouchableOpacity>
           <TouchableOpacity onPress={goToCurrentMonth} style={styles.monthDisplay}>
             <Text style={styles.monthText}>
@@ -215,17 +205,16 @@ export default function DashboardScreen() {
           </TouchableOpacity>
           <TouchableOpacity
             onPress={goToNextMonth}
-            style={styles.monthArrow}
+            style={styles.monthArrowNew}
             disabled={isCurrentMonth}
           >
             <Ionicons
               name="chevron-forward"
               size={24}
-              color={isCurrentMonth ? 'rgba(255,255,255,0.3)' : '#fff'}
+              color={isCurrentMonth ? theme.colors.textMuted : theme.colors.text}
             />
           </TouchableOpacity>
-        </View>
-      </LinearGradient>
+      </View>
 
       <ScrollView
         style={styles.scrollView}
@@ -560,6 +549,14 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#fff',
   },
+  monthSelectorContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: theme.spacing.md,
+    paddingHorizontal: theme.spacing.lg,
+    backgroundColor: theme.colors.surface,
+  },
   monthSelector: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -567,6 +564,14 @@ const styles = StyleSheet.create({
   },
   monthArrow: {
     padding: 8,
+  },
+  monthArrowNew: {
+    width: 40,
+    height: 40,
+    borderRadius: theme.borderRadius.full,
+    backgroundColor: theme.colors.background,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   monthDisplay: {
     flexDirection: 'row',
@@ -576,10 +581,10 @@ const styles = StyleSheet.create({
   monthText: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#fff',
+    color: theme.colors.text,
   },
   todayBadge: {
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: theme.colors.primary + '20',
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 12,
@@ -587,7 +592,7 @@ const styles = StyleSheet.create({
   },
   todayBadgeText: {
     fontSize: 10,
-    color: '#fff',
+    color: theme.colors.primary,
   },
   // 스크롤 영역
   scrollView: {

@@ -173,30 +173,19 @@ export default function BudgetsScreen() {
 
   return (
     <View style={styles.container}>
-      {/* 헤더 그라데이션 */}
-      <LinearGradient
-        colors={theme.gradients.header as [string, string]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={[styles.header, { paddingTop: insets.top + theme.spacing.md }]}
-      >
-        <Text style={styles.headerTitle}>예산 관리</Text>
-        <Text style={styles.headerSubtitle}>월별 예산을 설정하고 관리하세요</Text>
-
-        {/* 월 선택 */}
-        <View style={styles.monthSelector}>
-          <TouchableOpacity style={styles.monthButton} onPress={() => changeMonth('prev')}>
-            <Ionicons name="chevron-back" size={24} color="#fff" />
-          </TouchableOpacity>
-          <View style={styles.monthDisplay}>
-            <Ionicons name="calendar" size={18} color="#fff" />
-            <Text style={styles.monthText}>{currentMonth}</Text>
-          </View>
-          <TouchableOpacity style={styles.monthButton} onPress={() => changeMonth('next')}>
-            <Ionicons name="chevron-forward" size={24} color="#fff" />
-          </TouchableOpacity>
+      {/* 월 선택 */}
+      <View style={styles.monthSelectorContainer}>
+        <TouchableOpacity style={styles.monthButton} onPress={() => changeMonth('prev')}>
+          <Ionicons name="chevron-back" size={24} color={theme.colors.text} />
+        </TouchableOpacity>
+        <View style={styles.monthDisplay}>
+          <Ionicons name="calendar" size={18} color={theme.colors.primary} />
+          <Text style={styles.monthText}>{currentMonth}</Text>
         </View>
-      </LinearGradient>
+        <TouchableOpacity style={styles.monthButton} onPress={() => changeMonth('next')}>
+          <Ionicons name="chevron-forward" size={24} color={theme.colors.text} />
+        </TouchableOpacity>
+      </View>
 
       {/* 전체 예산 요약 */}
       <View style={styles.summaryCard}>
@@ -402,6 +391,15 @@ const styles = StyleSheet.create({
     fontSize: theme.fontSize.md,
     color: 'rgba(255, 255, 255, 0.9)',
   },
+  monthSelectorContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: theme.spacing.md,
+    paddingHorizontal: theme.spacing.lg,
+    backgroundColor: theme.colors.surface,
+    gap: theme.spacing.md,
+  },
   monthSelector: {
     flexDirection: 'row',
     justifyContent: 'center',
@@ -413,7 +411,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: theme.borderRadius.full,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: theme.colors.background,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -423,18 +421,18 @@ const styles = StyleSheet.create({
     gap: theme.spacing.sm,
     paddingHorizontal: theme.spacing.lg,
     paddingVertical: theme.spacing.sm,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: theme.colors.background,
     borderRadius: theme.borderRadius.lg,
   },
   monthText: {
     fontSize: theme.fontSize.lg,
     fontWeight: theme.fontWeight.semibold,
-    color: '#fff',
+    color: theme.colors.text,
   },
   summaryCard: {
     backgroundColor: theme.colors.surface,
     marginHorizontal: theme.spacing.lg,
-    marginTop: -theme.spacing.md,
+    marginTop: theme.spacing.md,
     borderRadius: theme.borderRadius.lg,
     padding: theme.spacing.md,
     ...theme.shadows.md,

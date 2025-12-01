@@ -303,17 +303,6 @@ export default function ReceiptScreen({ navigation }: any) {
 
   return (
     <View style={styles.safeArea}>
-      {/* 그래디언트 헤더 */}
-      <LinearGradient
-        colors={theme.gradients.header as any}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={[styles.header, { paddingTop: insets.top + theme.spacing.md }]}
-      >
-        <RNText style={styles.headerTitle}>영수증</RNText>
-        <RNText style={styles.headerSubtitle}>AI가 영수증을 분석합니다</RNText>
-      </LinearGradient>
-
       <View style={styles.container}>
         <ScrollView
           style={styles.scrollView}

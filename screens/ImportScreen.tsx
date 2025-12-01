@@ -43,7 +43,7 @@ export default function ImportScreen({ navigation }: any) {
   const [showExcludedIncome, setShowExcludedIncome] = useState(false); // 제외 내역 표시 토글
   const [duplicateInfo, setDuplicateInfo] = useState({ removed: 0, dbSkipped: 0, incomeExcluded: 0, patternExcluded: 0 });
   const [excludeIncome, setExcludeIncome] = useState(true); // 은행 입금 내역 제외 옵션 (기본: ON)
-  const [strictDuplicateCheck, setStrictDuplicateCheck] = useState(false); // 엄격한 중복 체크 (날짜+금액만)
+  const [strictDuplicateCheck, setStrictDuplicateCheck] = useState(true); // 엄격한 중복 체크 (날짜+금액만) - 기본: ON
   const [exclusionPatterns, setExclusionPatterns] = useState<ExclusionPattern[]>([]);
 
   // 제외 패턴 로드
@@ -398,17 +398,6 @@ export default function ImportScreen({ navigation }: any) {
 
   return (
     <View style={styles.safeArea}>
-      {/* 그래디언트 헤더 */}
-      <LinearGradient
-        colors={theme.gradients.header as any}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={[styles.header, { paddingTop: insets.top + theme.spacing.md }]}
-      >
-        <RNText style={styles.headerTitle}>거래 가져오기</RNText>
-        <RNText style={styles.headerSubtitle}>Excel 파일에서 거래를 자동 분석합니다</RNText>
-      </LinearGradient>
-
       <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
         {/* 메인 카드 */}
         <View style={styles.card}>
@@ -433,34 +422,7 @@ export default function ImportScreen({ navigation }: any) {
             </LinearGradient>
           </TouchableOpacity>
 
-          {/* 옵션들 */}
-          <View style={styles.optionRow}>
-            <View style={styles.optionTextContainer}>
-              <RNText style={styles.optionTitle}>입금 내역 제외</RNText>
-              <RNText style={styles.optionDesc}>은행 거래내역의 입금(수입)을 제외합니다</RNText>
-            </View>
-            <Switch
-              value={excludeIncome}
-              onValueChange={setExcludeIncome}
-              trackColor={{ false: theme.colors.border, true: 'rgba(19, 202, 214, 0.4)' }}
-              thumbColor={excludeIncome ? theme.colors.primary : '#f4f3f4'}
-            />
-          </View>
-
-          <View style={styles.optionRow}>
-            <View style={styles.optionTextContainer}>
-              <RNText style={styles.optionTitle}>엄격한 중복 체크</RNText>
-              <RNText style={styles.optionDesc}>날짜+금액만으로 중복 판단 (내역명 무시)</RNText>
-            </View>
-            <Switch
-              value={strictDuplicateCheck}
-              onValueChange={setStrictDuplicateCheck}
-              trackColor={{ false: theme.colors.border, true: 'rgba(19, 202, 214, 0.4)' }}
-              thumbColor={strictDuplicateCheck ? theme.colors.primary : '#f4f3f4'}
-            />
-          </View>
-
-          <View style={styles.divider} />
+          {/* 옵션들 - 기본값 사용 (입금 제외: ON, 엄격한 중복체크: ON) */}
 
           {/* 제외 패턴 정보 */}
           <View style={styles.exclusionInfoSection}>
@@ -494,6 +456,19 @@ export default function ImportScreen({ navigation }: any) {
 
           {parseResults.length > 0 && !loading && !importing && (
             <>
+              <View style={styles.divider} />
+
+              {/* 거래 가져오기 버튼 (상단 배치) */}
+              <TouchableOpacity
+                style={[styles.importButton, importing && styles.buttonDisabled]}
+                onPress={importTransactions}
+                disabled={importing}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="checkmark-circle" size={20} color="#fff" />
+                <RNText style={styles.importButtonText}>거래 가져오기 ({allTransactions.length}개)</RNText>
+              </TouchableOpacity>
+
               <View style={styles.divider} />
 
               {/* 파일 정보 */}
@@ -570,18 +545,6 @@ export default function ImportScreen({ navigation }: any) {
                   ))}
                 </DataTable>
               </ScrollView>
-
-              <View style={styles.divider} />
-
-              <TouchableOpacity
-                style={[styles.importButton, importing && styles.buttonDisabled]}
-                onPress={importTransactions}
-                disabled={importing}
-                activeOpacity={0.8}
-              >
-                <Ionicons name="checkmark-circle" size={20} color="#fff" />
-                <RNText style={styles.importButtonText}>거래 가져오기 ({allTransactions.length}개)</RNText>
-              </TouchableOpacity>
 
               {/* 제외된 입금 내역 섹션 */}
               {excludedIncomeTransactions.length > 0 && (

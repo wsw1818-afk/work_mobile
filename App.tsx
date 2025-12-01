@@ -231,6 +231,7 @@ export default function App() {
             component={RulesScreen}
             options={{
               title: '자동 분류 규칙',
+              headerShown: false,
               drawerIcon: ({ color, size}) => (
                 <Ionicons name="filter" size={size} color={color} />
               ),
