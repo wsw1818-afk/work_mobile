@@ -290,7 +290,7 @@ export default function RulesScreen() {
         colors={theme.gradients.header as [string, string]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
-        style={[styles.header, { paddingTop: insets.top + theme.spacing.md }]}
+        style={[styles.header, { paddingTop: insets.top + theme.spacing.xl }]}
       >
         <Text style={styles.headerTitle}>규칙 설정</Text>
         <Text style={styles.headerSubtitle}>자동 분류 및 제외 규칙을 관리하세요</Text>
@@ -305,7 +305,7 @@ export default function RulesScreen() {
           <Ionicons
             name="pricetag"
             size={18}
-            color={activeTab === 'category' ? theme.colors.primary : theme.colors.textSecondary}
+            color={activeTab === 'category' ? '#4894FE' : '#8696BB'}
           />
           <Text style={[styles.tabButtonText, activeTab === 'category' && styles.tabButtonTextActive]}>
             카테고리 배정
@@ -318,7 +318,7 @@ export default function RulesScreen() {
           <Ionicons
             name="eye-off"
             size={18}
-            color={activeTab === 'exclusion' ? theme.colors.primary : theme.colors.textSecondary}
+            color={activeTab === 'exclusion' ? '#4894FE' : '#8696BB'}
           />
           <Text style={[styles.tabButtonText, activeTab === 'exclusion' && styles.tabButtonTextActive]}>
             거래 제외
@@ -597,8 +597,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing.lg,
     paddingTop: theme.spacing.md,
     paddingBottom: theme.spacing.lg,
-    borderBottomLeftRadius: theme.borderRadius.xl,
-    borderBottomRightRadius: theme.borderRadius.xl,
   },
   headerTitle: {
     fontSize: theme.fontSize.xxl,
@@ -614,8 +612,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: theme.spacing.sm,
     paddingHorizontal: theme.spacing.lg,
-    marginTop: -theme.spacing.md,
-    marginBottom: theme.spacing.sm,
+    paddingVertical: theme.spacing.md,
+    backgroundColor: theme.colors.background,
   },
   tabButton: {
     flex: 1,
@@ -623,24 +621,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: theme.spacing.xs,
-    paddingVertical: theme.spacing.sm,
-    paddingHorizontal: theme.spacing.md,
-    borderRadius: theme.borderRadius.lg,
-    backgroundColor: theme.colors.surface,
-    ...theme.shadows.sm,
+    paddingVertical: 16, // Figma: padding top/bottom 16
+    paddingHorizontal: 32, // Figma: padding left/right 32
+    borderRadius: 100, // Figma: cornerRadius: 100 (pill shape)
+    backgroundColor: '#FAFAFA', // Figma: rgb(0.98, 0.98, 0.98)
   },
   tabButtonActive: {
-    backgroundColor: 'rgba(19, 202, 214, 0.1)',
-    borderWidth: 1,
-    borderColor: theme.colors.primary,
+    backgroundColor: 'rgba(99, 180, 255, 0.1)', // Figma: rgba(0.388, 0.706, 1, 0.1)
   },
   tabButtonText: {
     fontSize: theme.fontSize.sm,
     fontWeight: theme.fontWeight.medium,
-    color: theme.colors.textSecondary,
+    color: '#8696BB', // Figma: rgb(0.525, 0.588, 0.733)
   },
   tabButtonTextActive: {
-    color: theme.colors.primary,
+    color: '#4894FE', // Figma: rgb(0.282, 0.580, 0.996)
   },
   scrollView: {
     flex: 1,
@@ -810,7 +805,7 @@ const styles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'transparent',
     justifyContent: 'center',
     alignItems: 'center',
   },
