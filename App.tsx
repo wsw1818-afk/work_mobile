@@ -1,13 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
-import { createDrawerNavigator } from '@react-navigation/drawer';
+import { createDrawerNavigator, DrawerContentScrollView, DrawerItemList, DrawerContentComponentProps } from '@react-navigation/drawer';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Provider as PaperProvider } from 'react-native-paper';
-import { View, ActivityIndicator, LogBox } from 'react-native';
+import { View, ActivityIndicator, LogBox, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { database } from './lib/db/database';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { setupGlobalErrorHandler, ignoreWarnings } from './lib/error-tracker';
+import { theme } from './lib/theme';
 
 // LogBox 완전 비활성화 (디버깅용)
 LogBox.ignoreAllLogs(true);
@@ -25,10 +28,32 @@ import RulesScreen from './screens/RulesScreen';
 import SettingsScreen from './screens/SettingsScreen';
 import ReceiptScreen from './screens/ReceiptScreen';
 import ImportScreen from './screens/ImportScreen';
-import ErrorLogsScreen from './screens/ErrorLogsScreen';
 
 const Tab = createBottomTabNavigator();
 const Drawer = createDrawerNavigator();
+
+// 커스텀 드로어 컨텐츠 (Dokterian 스타일)
+function CustomDrawerContent(props: DrawerContentComponentProps) {
+  return (
+    <View style={{ flex: 1 }}>
+      <LinearGradient
+        colors={theme.gradients.header as [string, string]}
+        style={styles.drawerHeader}
+      >
+        <View style={styles.drawerLogoContainer}>
+          <View style={styles.drawerLogo}>
+            <Ionicons name="wallet" size={32} color={theme.colors.primary} />
+          </View>
+        </View>
+        <Text style={styles.drawerTitle}>가계부</Text>
+        <Text style={styles.drawerSubtitle}>개인 재정 관리</Text>
+      </LinearGradient>
+      <DrawerContentScrollView {...props} contentContainerStyle={{ paddingTop: 0 }}>
+        <DrawerItemList {...props} />
+      </DrawerContentScrollView>
+    </View>
+  );
+}
 
 // 하단 탭 네비게이터 (메인 화면들)
 function MainTabs() {
@@ -48,10 +73,21 @@ function MainTabs() {
             iconName = focused ? 'grid' : 'grid-outline';
           }
 
+          // Add 탭은 특별한 스타일 적용
+          if (route.name === 'Add') {
+            return (
+              <View style={focused ? styles.addButtonActive : styles.addButton}>
+                <Ionicons name={iconName} size={28} color={focused ? '#fff' : theme.colors.primary} />
+              </View>
+            );
+          }
+
           return <Ionicons name={iconName} size={size} color={color} />;
         },
-        tabBarActiveTintColor: '#6366f1',
-        tabBarInactiveTintColor: 'gray',
+        tabBarActiveTintColor: theme.colors.primary,
+        tabBarInactiveTintColor: theme.colors.textSecondary,
+        tabBarStyle: styles.tabBar,
+        tabBarLabelStyle: styles.tabBarLabel,
         headerShown: false,
       })}
     >
@@ -63,12 +99,15 @@ function MainTabs() {
       <Tab.Screen
         name="Add"
         component={AddTransactionScreen}
-        options={{ title: '거래 추가' }}
+        options={{
+          title: '추가',
+          tabBarLabel: () => null, // Add 버튼은 라벨 숨김
+        }}
       />
       <Tab.Screen
         name="Transactions"
         component={TransactionsScreen}
-        options={{ title: '거래 내역' }}
+        options={{ title: '거래내역' }}
       />
       <Tab.Screen
         name="Categories"
@@ -107,8 +146,12 @@ export default function App() {
 
   if (!isReady) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" color="#6366f1" />
+      <View style={styles.loadingContainer}>
+        <View style={styles.loadingLogo}>
+          <Ionicons name="wallet" size={48} color={theme.colors.primary} />
+        </View>
+        <ActivityIndicator size="large" color={theme.colors.primary} style={{ marginTop: 20 }} />
+        <Text style={styles.loadingText}>가계부</Text>
       </View>
     );
   }
@@ -119,16 +162,31 @@ export default function App() {
         <NavigationContainer>
           <Drawer.Navigator
           initialRouteName="Main"
+          drawerContent={(props) => <CustomDrawerContent {...props} />}
           screenOptions={{
             headerStyle: {
-              backgroundColor: '#6366f1',
+              backgroundColor: theme.colors.primary,
+              elevation: 0,
+              shadowOpacity: 0,
             },
             headerTintColor: '#fff',
             headerTitleStyle: {
-              fontWeight: 'bold',
+              fontWeight: '700',
+              fontSize: 18,
             },
-            drawerActiveTintColor: '#6366f1',
-            drawerInactiveTintColor: '#666',
+            drawerActiveTintColor: theme.colors.primary,
+            drawerInactiveTintColor: theme.colors.textSecondary,
+            drawerActiveBackgroundColor: `${theme.colors.primary}15`,
+            drawerLabelStyle: {
+              marginLeft: -16,
+              fontSize: 15,
+              fontWeight: '500',
+            },
+            drawerItemStyle: {
+              borderRadius: 12,
+              marginHorizontal: 8,
+              paddingVertical: 2,
+            },
           }}
         >
           {/* 메인 화면 (하단 탭) */}
@@ -215,22 +273,106 @@ export default function App() {
             }}
           />
 
-          {/* 에러 로그 (개발용) */}
-          {__DEV__ && (
-            <Drawer.Screen
-              name="ErrorLogs"
-              component={ErrorLogsScreen}
-              options={{
-                title: '🐛 에러 로그',
-                drawerIcon: ({ color, size }) => (
-                  <Ionicons name="bug" size={size} color={color} />
-                ),
-              }}
-            />
-          )}
         </Drawer.Navigator>
       </NavigationContainer>
     </PaperProvider>
     </ErrorBoundary>
   );
 }
+
+// Dokterian 스타일 StyleSheet
+const styles = StyleSheet.create({
+  // 로딩 화면
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: theme.colors.background,
+  },
+  loadingLogo: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: theme.colors.surface,
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...theme.shadows.lg,
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 24,
+    fontWeight: '700',
+    color: theme.colors.text,
+  },
+
+  // 탭바
+  tabBar: {
+    backgroundColor: theme.colors.surface,
+    borderTopWidth: 0,
+    elevation: 8,
+    shadowColor: theme.colors.shadow,
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    height: 60,
+    paddingBottom: 6,
+    paddingTop: 6,
+  },
+  tabBarLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+
+  // Add 버튼 (중앙 플로팅 스타일)
+  addButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: theme.colors.surface,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: theme.colors.primary,
+    ...theme.shadows.md,
+  },
+  addButtonActive: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: theme.colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...theme.shadows.lg,
+  },
+
+  // 드로어 헤더
+  drawerHeader: {
+    paddingTop: 50,
+    paddingBottom: 24,
+    paddingHorizontal: 20,
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
+  },
+  drawerLogoContainer: {
+    marginBottom: 16,
+  },
+  drawerLogo: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: theme.colors.surface,
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...theme.shadows.md,
+  },
+  drawerTitle: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: '#fff',
+  },
+  drawerSubtitle: {
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.8)',
+    marginTop: 4,
+  },
+});

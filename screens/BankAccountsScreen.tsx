@@ -1,10 +1,15 @@
 import React, { useState, useCallback } from 'react';
 import { View, ScrollView, StyleSheet, RefreshControl, Alert, Modal, KeyboardAvoidingView, Platform, TouchableWithoutFeedback, Keyboard, TouchableOpacity } from 'react-native';
-import { Text, Card, Button, TextInput, FAB, Chip, IconButton, RadioButton, Divider } from 'react-native-paper';
+import { Text, Button, TextInput, FAB, Chip, RadioButton, Divider, ActivityIndicator } from 'react-native-paper';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { database, BankAccount, Account } from '../lib/db/database';
+import { theme } from '../lib/theme';
 
 export default function BankAccountsScreen() {
+  const insets = useSafeAreaInsets();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
@@ -22,10 +27,14 @@ export default function BankAccountsScreen() {
   const [accountName, setAccountName] = useState('');
   const [accountType, setAccountType] = useState<'card' | 'cash'>('card');
   const [cardType, setCardType] = useState<'credit' | 'debit'>('credit');
+  const [cardLast4, setCardLast4] = useState('');
   const [selectedBankAccountId, setSelectedBankAccountId] = useState<number | null>(null);
 
   // 확장된 통장 ID
   const [expandedBankId, setExpandedBankId] = useState<number | null>(null);
+
+  // FAB 메뉴 상태
+  const [fabOpen, setFabOpen] = useState(false);
 
   const loadData = useCallback(async () => {
     try {
@@ -99,6 +108,7 @@ export default function BankAccountsScreen() {
         name: accountName,
         type: accountType,
         cardType: accountType === 'card' ? cardType : undefined,
+        last4: accountType === 'card' && cardLast4 ? cardLast4 : undefined,
         color: accountType === 'card' ? '#3b82f6' : '#10b981',
         bankAccountId: selectedBankAccountId || undefined,
       });
@@ -107,6 +117,7 @@ export default function BankAccountsScreen() {
       setAccountName('');
       setAccountType('card');
       setCardType('credit');
+      setCardLast4('');
       setSelectedBankAccountId(null);
       loadData();
       Alert.alert('성공', '결제수단이 추가되었습니다.');
@@ -230,119 +241,184 @@ export default function BankAccountsScreen() {
   // 통장에 연결되지 않은 결제수단
   const unlinkedAccounts = accounts.filter(a => !a.bankAccountId);
 
+  if (loading) {
+    return (
+      <View style={styles.centered}>
+        <ActivityIndicator size="large" color={theme.colors.primary} />
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
-      {/* 총 자산 요약 */}
-      <Card style={styles.summaryCard}>
-        <Card.Content>
-          <Text variant="titleMedium" style={styles.summaryTitle}>총 자산</Text>
-          <Text variant="headlineMedium" style={styles.totalAmount}>
-            {Math.round(totalBalance).toLocaleString()}원
-          </Text>
-          <Text style={styles.accountCount}>
-            통장: {bankAccounts.filter(a => a.isActive).length}개 | 결제수단: {accounts.length}개
-          </Text>
-        </Card.Content>
-      </Card>
+      {/* 헤더 그라데이션 + 총 자산 요약 */}
+      <LinearGradient
+        colors={theme.gradients.header as [string, string]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={[styles.header, { paddingTop: insets.top + theme.spacing.md }]}
+      >
+        <Text style={styles.headerTitle}>통장 & 결제수단</Text>
+        <Text style={styles.headerSubtitle}>자산을 관리하세요</Text>
+
+        <View style={styles.summaryCard}>
+          <View style={styles.summaryRow}>
+            <View style={styles.summaryItem}>
+              <Text style={styles.summaryLabel}>총 자산</Text>
+              <Text style={styles.totalAmount}>{Math.round(totalBalance).toLocaleString()}원</Text>
+            </View>
+          </View>
+          <View style={styles.summaryStats}>
+            <View style={styles.statItem}>
+              <Ionicons name="wallet-outline" size={16} color={theme.colors.primary} />
+              <Text style={styles.statText}>통장 {bankAccounts.filter(a => a.isActive).length}개</Text>
+            </View>
+            <View style={styles.statItem}>
+              <Ionicons name="card-outline" size={16} color={theme.colors.primary} />
+              <Text style={styles.statText}>결제수단 {accounts.length}개</Text>
+            </View>
+          </View>
+        </View>
+      </LinearGradient>
 
       <ScrollView
         style={styles.scrollView}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        contentContainerStyle={styles.scrollContent}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[theme.colors.primary]} />}
+        showsVerticalScrollIndicator={false}
       >
         {/* 통장 목록 */}
-        <Text style={styles.sectionTitle}>통장</Text>
+        <View style={styles.sectionHeader}>
+          <Ionicons name="wallet" size={20} color={theme.colors.primary} />
+          <Text style={styles.sectionTitle}>통장</Text>
+        </View>
+
         {bankAccounts.length === 0 ? (
-          <Card style={styles.emptyCard}>
-            <Card.Content>
-              <Text style={styles.emptyText}>등록된 통장이 없습니다.</Text>
-            </Card.Content>
-          </Card>
+          <View style={styles.emptyCard}>
+            <Ionicons name="wallet-outline" size={48} color={theme.colors.textMuted} />
+            <Text style={styles.emptyText}>등록된 통장이 없습니다</Text>
+            <Text style={styles.emptySubtext}>+ 버튼을 눌러 추가하세요</Text>
+          </View>
         ) : (
           bankAccounts.map((bank) => {
             const linkedAccounts = getAccountsByBankId(bank.id);
             const isExpanded = expandedBankId === bank.id;
 
             return (
-              <Card key={bank.id} style={[styles.bankCard, !bank.isActive && styles.inactiveCard]}>
+              <View key={bank.id} style={[styles.bankCard, !bank.isActive && styles.inactiveCard]}>
                 <TouchableOpacity onPress={() => setExpandedBankId(isExpanded ? null : bank.id)}>
-                  <Card.Content>
-                    <View style={styles.bankHeader}>
-                      <View style={styles.bankInfo}>
-                        <Text variant="titleMedium">{bank.name}</Text>
+                  <View style={styles.bankHeader}>
+                    <View style={styles.bankInfo}>
+                      <Text style={styles.bankName}>{bank.name}</Text>
+                      <View style={styles.bankMeta}>
                         <Text style={styles.bankType}>{bank.accountType}</Text>
                         {bank.bankName && (
-                          <Text style={styles.bankInstitution}>{bank.bankName}</Text>
+                          <Text style={styles.bankInstitution}>• {bank.bankName}</Text>
                         )}
                       </View>
-                      <View style={styles.bankRight}>
-                        <Chip mode="flat" compact style={{ backgroundColor: bank.isActive ? '#d1fae5' : '#f3f4f6' }}>
+                    </View>
+                    <View style={styles.bankRight}>
+                      <View style={[
+                        styles.statusBadge,
+                        { backgroundColor: bank.isActive ? 'rgba(16, 185, 129, 0.1)' : theme.colors.surfaceVariant }
+                      ]}>
+                        <Text style={[
+                          styles.statusText,
+                          { color: bank.isActive ? theme.colors.income : theme.colors.textMuted }
+                        ]}>
                           {bank.isActive ? '활성' : '비활성'}
-                        </Chip>
-                        <Text variant="titleLarge" style={styles.balance}>
-                          {Math.round(bank.balance).toLocaleString()}원
                         </Text>
                       </View>
-                    </View>
-                    <View style={styles.linkedAccountsInfo}>
-                      <Text style={styles.linkedAccountsText}>
-                        연결된 결제수단: {linkedAccounts.length}개
+                      <Text style={styles.balance}>
+                        {Math.round(bank.balance).toLocaleString()}원
                       </Text>
-                      <IconButton
-                        icon={isExpanded ? 'chevron-up' : 'chevron-down'}
-                        size={20}
-                      />
                     </View>
-                  </Card.Content>
+                  </View>
+                  <View style={styles.linkedAccountsInfo}>
+                    <Text style={styles.linkedAccountsText}>
+                      연결된 결제수단: {linkedAccounts.length}개
+                    </Text>
+                    <Ionicons
+                      name={isExpanded ? 'chevron-up' : 'chevron-down'}
+                      size={20}
+                      color={theme.colors.textSecondary}
+                    />
+                  </View>
                 </TouchableOpacity>
 
                 {isExpanded && (
                   <>
-                    <Divider />
-                    <Card.Content style={styles.linkedAccountsContainer}>
+                    <View style={styles.expandedDivider} />
+                    <View style={styles.linkedAccountsContainer}>
                       {linkedAccounts.length === 0 ? (
                         <Text style={styles.noLinkedAccounts}>연결된 결제수단이 없습니다.</Text>
                       ) : (
                         linkedAccounts.map((account) => (
                           <View key={account.id} style={styles.linkedAccount}>
                             <View style={styles.linkedAccountInfo}>
-                              <Text>{account.name}</Text>
+                              <View style={styles.linkedAccountNameRow}>
+                                <Text style={styles.linkedAccountName}>{account.name}</Text>
+                                {account.last4 && (
+                                  <Text style={styles.cardLast4}>(*{account.last4})</Text>
+                                )}
+                              </View>
                               <View style={styles.typeChips}>
-                                <Chip mode="flat" compact style={styles.smallChip}>{getTypeLabel(account.type)}</Chip>
+                                <View style={styles.smallChip}>
+                                  <Text style={styles.smallChipText}>{getTypeLabel(account.type)}</Text>
+                                </View>
                                 {account.cardType && (
-                                  <Chip mode="flat" compact style={styles.smallChip}>{getCardTypeLabel(account.cardType)}</Chip>
+                                  <View style={styles.smallChip}>
+                                    <Text style={styles.smallChipText}>{getCardTypeLabel(account.cardType)}</Text>
+                                  </View>
                                 )}
                               </View>
                             </View>
-                            <IconButton
-                              icon="delete"
-                              size={20}
+                            <TouchableOpacity
+                              style={styles.deleteIconButton}
                               onPress={() => handleDeleteAccount(account)}
-                            />
+                            >
+                              <Ionicons name="trash-outline" size={18} color={theme.colors.expense} />
+                            </TouchableOpacity>
                           </View>
                         ))
                       )}
-                      <Button
-                        mode="text"
-                        icon="plus"
+                      <TouchableOpacity
+                        style={styles.addLinkedButton}
                         onPress={() => {
                           setSelectedBankAccountId(bank.id);
                           setAddAccountDialogVisible(true);
                         }}
-                        style={styles.addLinkedButton}
                       >
-                        결제수단 추가
-                      </Button>
-                    </Card.Content>
+                        <Ionicons name="add" size={18} color={theme.colors.primary} />
+                        <Text style={styles.addLinkedButtonText}>결제수단 추가</Text>
+                      </TouchableOpacity>
+                    </View>
                   </>
                 )}
 
-                <Card.Actions>
-                  <Button onPress={() => handleToggleBankActive(bank)}>
-                    {bank.isActive ? '비활성화' : '활성화'}
-                  </Button>
-                  <Button onPress={() => handleDeleteBankAccount(bank)}>삭제</Button>
-                </Card.Actions>
-              </Card>
+                <View style={styles.cardActions}>
+                  <TouchableOpacity
+                    style={styles.actionButton}
+                    onPress={() => handleToggleBankActive(bank)}
+                  >
+                    <Ionicons
+                      name={bank.isActive ? 'eye-off-outline' : 'eye-outline'}
+                      size={18}
+                      color={theme.colors.textSecondary}
+                    />
+                    <Text style={styles.actionButtonText}>
+                      {bank.isActive ? '비활성화' : '활성화'}
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.actionButton}
+                    onPress={() => handleDeleteBankAccount(bank)}
+                  >
+                    <Ionicons name="trash-outline" size={18} color={theme.colors.expense} />
+                    <Text style={[styles.actionButtonText, { color: theme.colors.expense }]}>삭제</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
             );
           })
         )}
@@ -350,26 +426,39 @@ export default function BankAccountsScreen() {
         {/* 통장 미연결 결제수단 */}
         {unlinkedAccounts.length > 0 && (
           <>
-            <Text style={styles.sectionTitle}>통장 미연결 결제수단</Text>
+            <View style={[styles.sectionHeader, { marginTop: theme.spacing.lg }]}>
+              <Ionicons name="card" size={20} color={theme.colors.warning} />
+              <Text style={styles.sectionTitle}>통장 미연결 결제수단</Text>
+            </View>
             {unlinkedAccounts.map((account) => (
-              <Card key={account.id} style={styles.accountCard}>
-                <Card.Content>
-                  <View style={styles.accountHeader}>
-                    <View style={styles.accountInfo}>
-                      <Text variant="titleMedium">{account.name}</Text>
-                      <View style={styles.typeChips}>
-                        <Chip mode="flat" compact style={styles.chip}>{getTypeLabel(account.type)}</Chip>
-                        {account.cardType && (
-                          <Chip mode="flat" compact style={styles.chip}>{getCardTypeLabel(account.cardType)}</Chip>
-                        )}
+              <View key={account.id} style={styles.accountCard}>
+                <View style={styles.accountHeader}>
+                  <View style={styles.accountInfo}>
+                    <View style={styles.accountNameRow}>
+                      <Text style={styles.accountName}>{account.name}</Text>
+                      {account.last4 && (
+                        <Text style={styles.cardLast4Large}>(*{account.last4})</Text>
+                      )}
+                    </View>
+                    <View style={styles.typeChips}>
+                      <View style={styles.chip}>
+                        <Text style={styles.chipText}>{getTypeLabel(account.type)}</Text>
                       </View>
+                      {account.cardType && (
+                        <View style={styles.chip}>
+                          <Text style={styles.chipText}>{getCardTypeLabel(account.cardType)}</Text>
+                        </View>
+                      )}
                     </View>
                   </View>
-                </Card.Content>
-                <Card.Actions>
-                  <Button onPress={() => handleDeleteAccount(account)}>삭제</Button>
-                </Card.Actions>
-              </Card>
+                  <TouchableOpacity
+                    style={styles.deleteIconButton}
+                    onPress={() => handleDeleteAccount(account)}
+                  >
+                    <Ionicons name="trash-outline" size={20} color={theme.colors.expense} />
+                  </TouchableOpacity>
+                </View>
+              </View>
             ))}
           </>
         )}
@@ -379,25 +468,32 @@ export default function BankAccountsScreen() {
 
       {/* FAB 메뉴 */}
       <FAB.Group
-        open={false}
+        open={fabOpen}
         visible
-        icon="plus"
+        icon={fabOpen ? 'close' : 'plus'}
+        color="#fff"
         actions={[
           {
             icon: 'bank',
             label: '통장 추가',
-            onPress: () => setAddBankDialogVisible(true),
+            onPress: () => {
+              setFabOpen(false);
+              setAddBankDialogVisible(true);
+            },
+            color: theme.colors.primary,
           },
           {
             icon: 'credit-card',
             label: '결제수단 추가',
             onPress: () => {
+              setFabOpen(false);
               setSelectedBankAccountId(null);
               setAddAccountDialogVisible(true);
             },
+            color: theme.colors.primary,
           },
         ]}
-        onStateChange={() => {}}
+        onStateChange={({ open }) => setFabOpen(open)}
         fabStyle={styles.fab}
       />
 
@@ -578,6 +674,22 @@ export default function BankAccountsScreen() {
                             <Text>체크카드</Text>
                           </TouchableOpacity>
                         </View>
+
+                        <TextInput
+                          label="카드 뒷자리 4자리 (선택)"
+                          value={cardLast4}
+                          onChangeText={(text) => setCardLast4(text.replace(/[^0-9]/g, '').slice(0, 4))}
+                          keyboardType="numeric"
+                          mode="outlined"
+                          style={styles.input}
+                          placeholder="예: 1234"
+                          maxLength={4}
+                          autoCorrect={false}
+                          autoComplete="off"
+                          autoCapitalize="none"
+                          spellCheck={false}
+                          textContentType="none"
+                        />
                       </>
                     )}
 
@@ -629,46 +741,111 @@ export default function BankAccountsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: theme.colors.background,
+  },
+  centered: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: theme.colors.background,
+  },
+  header: {
+    paddingHorizontal: theme.spacing.lg,
+    paddingTop: theme.spacing.md,
+    paddingBottom: theme.spacing.xl,
+    borderBottomLeftRadius: theme.borderRadius.xl,
+    borderBottomRightRadius: theme.borderRadius.xl,
+  },
+  headerTitle: {
+    fontSize: theme.fontSize.xxl,
+    fontWeight: theme.fontWeight.bold,
+    color: '#fff',
+    marginBottom: theme.spacing.xs,
+  },
+  headerSubtitle: {
+    fontSize: theme.fontSize.md,
+    color: 'rgba(255, 255, 255, 0.9)',
+    marginBottom: theme.spacing.md,
   },
   summaryCard: {
-    margin: 16,
-    backgroundColor: '#6366f1',
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    borderRadius: theme.borderRadius.lg,
+    padding: theme.spacing.md,
+    marginTop: theme.spacing.sm,
   },
-  summaryTitle: {
-    color: '#fff',
-    marginBottom: 8,
+  summaryRow: {
+    marginBottom: theme.spacing.sm,
+  },
+  summaryItem: {},
+  summaryLabel: {
+    fontSize: theme.fontSize.sm,
+    color: 'rgba(255, 255, 255, 0.8)',
+    marginBottom: theme.spacing.xs,
   },
   totalAmount: {
+    fontSize: theme.fontSize.xxl,
+    fontWeight: theme.fontWeight.bold,
     color: '#fff',
-    fontWeight: 'bold',
-    marginBottom: 4,
   },
-  accountCount: {
-    color: '#e0e7ff',
+  summaryStats: {
+    flexDirection: 'row',
+    gap: theme.spacing.lg,
+  },
+  statItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.xs,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: theme.spacing.xs,
+    borderRadius: theme.borderRadius.full,
+  },
+  statText: {
+    fontSize: theme.fontSize.sm,
+    color: '#fff',
+    fontWeight: theme.fontWeight.medium,
   },
   scrollView: {
     flex: 1,
   },
+  scrollContent: {
+    padding: theme.spacing.lg,
+    paddingBottom: 100,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+    marginBottom: theme.spacing.md,
+  },
   sectionTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 8,
-    color: '#374151',
+    fontSize: theme.fontSize.lg,
+    fontWeight: theme.fontWeight.semibold,
+    color: theme.colors.text,
   },
   emptyCard: {
-    margin: 16,
-    marginTop: 0,
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.lg,
+    padding: theme.spacing.xl,
+    alignItems: 'center',
+    ...theme.shadows.sm,
   },
   emptyText: {
-    textAlign: 'center',
-    color: '#666',
+    fontSize: theme.fontSize.lg,
+    color: theme.colors.textSecondary,
+    marginTop: theme.spacing.md,
+  },
+  emptySubtext: {
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.textMuted,
+    marginTop: theme.spacing.xs,
   },
   bankCard: {
-    marginHorizontal: 16,
-    marginBottom: 12,
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.lg,
+    padding: theme.spacing.md,
+    marginBottom: theme.spacing.md,
+    ...theme.shadows.sm,
   },
   inactiveCard: {
     opacity: 0.6,
@@ -681,94 +858,206 @@ const styles = StyleSheet.create({
   bankInfo: {
     flex: 1,
   },
+  bankName: {
+    fontSize: theme.fontSize.lg,
+    fontWeight: theme.fontWeight.semibold,
+    color: theme.colors.text,
+    marginBottom: theme.spacing.xs,
+  },
+  bankMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+  },
   bankType: {
-    color: '#666',
-    marginTop: 4,
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.textSecondary,
   },
   bankInstitution: {
-    color: '#999',
-    fontSize: 12,
-    marginTop: 2,
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.textMuted,
   },
   bankRight: {
     alignItems: 'flex-end',
   },
+  statusBadge: {
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: 2,
+    borderRadius: theme.borderRadius.full,
+    marginBottom: theme.spacing.xs,
+  },
+  statusText: {
+    fontSize: theme.fontSize.xs,
+    fontWeight: theme.fontWeight.medium,
+  },
   balance: {
-    fontWeight: 'bold',
-    color: '#3b82f6',
-    marginTop: 8,
+    fontSize: theme.fontSize.lg,
+    fontWeight: theme.fontWeight.bold,
+    color: theme.colors.primary,
   },
   linkedAccountsInfo: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: 8,
+    marginTop: theme.spacing.sm,
+    paddingTop: theme.spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.divider,
   },
   linkedAccountsText: {
-    color: '#666',
-    fontSize: 13,
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.textSecondary,
+  },
+  expandedDivider: {
+    height: 1,
+    backgroundColor: theme.colors.divider,
+    marginVertical: theme.spacing.sm,
   },
   linkedAccountsContainer: {
-    paddingTop: 8,
+    paddingTop: theme.spacing.xs,
   },
   noLinkedAccounts: {
     textAlign: 'center',
-    color: '#999',
-    paddingVertical: 8,
+    color: theme.colors.textMuted,
+    paddingVertical: theme.spacing.md,
+    fontSize: theme.fontSize.sm,
   },
   linkedAccount: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 4,
+    paddingVertical: theme.spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.divider,
   },
   linkedAccountInfo: {
     flex: 1,
   },
+  linkedAccountNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.xs,
+  },
+  linkedAccountName: {
+    fontSize: theme.fontSize.md,
+    color: theme.colors.text,
+  },
+  cardLast4: {
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.textSecondary,
+  },
+  deleteIconButton: {
+    padding: theme.spacing.sm,
+  },
   addLinkedButton: {
-    marginTop: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: theme.spacing.xs,
+    paddingVertical: theme.spacing.sm,
+    marginTop: theme.spacing.sm,
+  },
+  addLinkedButtonText: {
+    fontSize: theme.fontSize.md,
+    color: theme.colors.primary,
+    fontWeight: theme.fontWeight.medium,
+  },
+  cardActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: theme.spacing.md,
+    marginTop: theme.spacing.md,
+    paddingTop: theme.spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.divider,
+  },
+  actionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.xs,
+    paddingVertical: theme.spacing.xs,
+    paddingHorizontal: theme.spacing.sm,
+  },
+  actionButtonText: {
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.textSecondary,
+    fontWeight: theme.fontWeight.medium,
   },
   accountCard: {
-    marginHorizontal: 16,
-    marginBottom: 12,
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.lg,
+    padding: theme.spacing.md,
+    marginBottom: theme.spacing.md,
+    ...theme.shadows.sm,
   },
   accountHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    alignItems: 'center',
   },
   accountInfo: {
     flex: 1,
   },
+  accountNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+  },
+  accountName: {
+    fontSize: theme.fontSize.lg,
+    fontWeight: theme.fontWeight.semibold,
+    color: theme.colors.text,
+  },
+  cardLast4Large: {
+    fontSize: theme.fontSize.md,
+    color: theme.colors.textSecondary,
+  },
   typeChips: {
     flexDirection: 'row',
-    marginTop: 8,
-    gap: 8,
+    marginTop: theme.spacing.xs,
+    gap: theme.spacing.xs,
   },
   chip: {
-    marginRight: 8,
+    backgroundColor: theme.colors.surfaceVariant,
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: 2,
+    borderRadius: theme.borderRadius.full,
+  },
+  chipText: {
+    fontSize: theme.fontSize.xs,
+    color: theme.colors.textSecondary,
+    fontWeight: theme.fontWeight.medium,
   },
   smallChip: {
-    marginRight: 4,
-    transform: [{ scale: 0.9 }],
+    backgroundColor: theme.colors.surfaceVariant,
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: 2,
+    borderRadius: theme.borderRadius.full,
+  },
+  smallChipText: {
+    fontSize: theme.fontSize.xs,
+    color: theme.colors.textSecondary,
   },
   bottomPadding: {
     height: 100,
   },
   fab: {
-    backgroundColor: '#6366f1',
+    backgroundColor: theme.colors.primary,
   },
   input: {
-    marginBottom: 12,
+    marginBottom: theme.spacing.md,
+    backgroundColor: theme.colors.surface,
   },
   label: {
-    marginTop: 8,
-    marginBottom: 8,
-    color: '#666',
+    marginTop: theme.spacing.sm,
+    marginBottom: theme.spacing.sm,
+    fontSize: theme.fontSize.md,
+    color: theme.colors.textSecondary,
+    fontWeight: theme.fontWeight.medium,
   },
   radioRow: {
     flexDirection: 'row',
-    marginBottom: 12,
+    marginBottom: theme.spacing.md,
   },
   radioOption: {
     flexDirection: 'row',
@@ -777,21 +1066,23 @@ const styles = StyleSheet.create({
   },
   bankSelectList: {
     borderWidth: 1,
-    borderColor: '#e5e7eb',
-    borderRadius: 8,
-    marginBottom: 12,
+    borderColor: theme.colors.border,
+    borderRadius: theme.borderRadius.sm,
+    marginBottom: theme.spacing.md,
+    overflow: 'hidden',
   },
   bankSelectItem: {
-    padding: 12,
+    padding: theme.spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    borderBottomColor: theme.colors.border,
+    backgroundColor: theme.colors.surface,
   },
   bankSelectItemSelected: {
-    backgroundColor: '#e0e7ff',
+    backgroundColor: 'rgba(19, 202, 214, 0.1)',
   },
   bankSelectSubtext: {
-    fontSize: 12,
-    color: '#666',
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.textSecondary,
     marginTop: 2,
   },
   modalContainer: {
@@ -804,16 +1095,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   modalContent: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 20,
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.lg,
+    padding: theme.spacing.lg,
     width: '90%',
     maxHeight: '80%',
   },
   modalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 16,
+    fontSize: theme.fontSize.xl,
+    fontWeight: theme.fontWeight.bold,
+    color: theme.colors.text,
+    marginBottom: theme.spacing.md,
   },
   modalScrollView: {
     maxHeight: 400,
@@ -821,8 +1113,8 @@ const styles = StyleSheet.create({
   modalActions: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
-    gap: 8,
-    marginTop: 16,
+    gap: theme.spacing.sm,
+    marginTop: theme.spacing.md,
   },
   modalButton: {
     minWidth: 80,

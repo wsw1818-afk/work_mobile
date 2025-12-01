@@ -4,19 +4,19 @@ import {
   ScrollView,
   StyleSheet,
   Alert,
-  TextInput as RNTextInput,
-} from 'react-native';
-import {
-  Button,
-  Card,
-  Text,
+  Text as RNText,
+  TouchableOpacity,
   ActivityIndicator,
-  List,
-  Chip,
-  Divider,
-  DataTable,
   Switch,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
+import {
+  Text,
+  DataTable,
 } from 'react-native-paper';
+import { theme } from '../lib/theme';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
 import {
@@ -32,6 +32,7 @@ import { applyCategoryRulesBulk } from '../lib/auto-categorize';
 import { database, ExclusionPattern } from '../lib/db/database';
 
 export default function ImportScreen({ navigation }: any) {
+  const insets = useSafeAreaInsets();
   const [loading, setLoading] = useState(false);
   const [parseResults, setParseResults] = useState<ParseResult[]>([]);
   const [previewData, setPreviewData] = useState<any[]>([]);
@@ -396,179 +397,235 @@ export default function ImportScreen({ navigation }: any) {
   };
 
   return (
-    <ScrollView style={styles.container}>
-      <Card style={styles.card}>
-        <Card.Content>
-          <Text variant="titleLarge" style={styles.title}>
-            거래 가져오기
-          </Text>
-          <Text variant="bodyMedium" style={styles.subtitle}>
-            Excel 파일(.xlsx)을 선택하면 자동으로 거래 내역을 분석하고 가져옵니다.
-            8개 은행/카드사를 지원합니다.
-          </Text>
+    <View style={styles.safeArea}>
+      {/* 그래디언트 헤더 */}
+      <LinearGradient
+        colors={theme.gradients.header as any}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={[styles.header, { paddingTop: insets.top + theme.spacing.md }]}
+      >
+        <RNText style={styles.headerTitle}>거래 가져오기</RNText>
+        <RNText style={styles.headerSubtitle}>Excel 파일에서 거래를 자동 분석합니다</RNText>
+      </LinearGradient>
 
-          <Button mode="contained" icon="file-excel" onPress={pickFile} style={styles.pickButton} disabled={loading || importing}>Excel 파일 선택</Button>
+      <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
+        {/* 메인 카드 */}
+        <View style={styles.card}>
+          <RNText style={styles.cardDescription}>
+            Excel 파일(.xlsx)을 선택하면 자동으로 거래 내역을 분석하고 가져옵니다. 8개 은행/카드사를 지원합니다.
+          </RNText>
 
+          <TouchableOpacity
+            style={[styles.pickButton, (loading || importing) && styles.buttonDisabled]}
+            onPress={pickFile}
+            disabled={loading || importing}
+            activeOpacity={0.8}
+          >
+            <LinearGradient
+              colors={theme.gradients.header as any}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.pickButtonGradient}
+            >
+              <Ionicons name="document-text" size={20} color="#fff" />
+              <RNText style={styles.pickButtonText}>Excel 파일 선택</RNText>
+            </LinearGradient>
+          </TouchableOpacity>
+
+          {/* 옵션들 */}
           <View style={styles.optionRow}>
             <View style={styles.optionTextContainer}>
-              <Text variant="bodyMedium" style={styles.optionTitle}>입금 내역 제외</Text>
-              <Text variant="bodySmall" style={styles.optionDesc}>은행 거래내역의 입금(수입)을 제외합니다</Text>
+              <RNText style={styles.optionTitle}>입금 내역 제외</RNText>
+              <RNText style={styles.optionDesc}>은행 거래내역의 입금(수입)을 제외합니다</RNText>
             </View>
             <Switch
               value={excludeIncome}
               onValueChange={setExcludeIncome}
-              color="#6366f1"
+              trackColor={{ false: theme.colors.border, true: 'rgba(19, 202, 214, 0.4)' }}
+              thumbColor={excludeIncome ? theme.colors.primary : '#f4f3f4'}
             />
           </View>
 
           <View style={styles.optionRow}>
             <View style={styles.optionTextContainer}>
-              <Text variant="bodyMedium" style={styles.optionTitle}>엄격한 중복 체크</Text>
-              <Text variant="bodySmall" style={styles.optionDesc}>날짜+금액만으로 중복 판단 (내역명 무시)</Text>
+              <RNText style={styles.optionTitle}>엄격한 중복 체크</RNText>
+              <RNText style={styles.optionDesc}>날짜+금액만으로 중복 판단 (내역명 무시)</RNText>
             </View>
             <Switch
               value={strictDuplicateCheck}
               onValueChange={setStrictDuplicateCheck}
-              color="#6366f1"
+              trackColor={{ false: theme.colors.border, true: 'rgba(19, 202, 214, 0.4)' }}
+              thumbColor={strictDuplicateCheck ? theme.colors.primary : '#f4f3f4'}
             />
           </View>
 
-          <Divider style={styles.divider} />
+          <View style={styles.divider} />
 
+          {/* 제외 패턴 정보 */}
           <View style={styles.exclusionInfoSection}>
-            <Text variant="titleSmall" style={styles.exclusionInfoTitle}>
-              거래 제외 패턴
-            </Text>
-            <Text variant="bodySmall" style={styles.exclusionInfoText}>
+            <View style={styles.exclusionInfoHeader}>
+              <Ionicons name="filter" size={18} color={theme.colors.primary} />
+              <RNText style={styles.exclusionInfoTitle}>거래 제외 패턴</RNText>
+            </View>
+            <RNText style={styles.exclusionInfoText}>
               {exclusionPatterns.length > 0
                 ? `현재 ${exclusionPatterns.length}개의 패턴이 적용되어 가져오기 시 자동으로 제외됩니다.`
                 : '제외 패턴이 없습니다.'}
-            </Text>
-            <Text variant="bodySmall" style={styles.exclusionInfoHint}>
+            </RNText>
+            <RNText style={styles.exclusionInfoHint}>
               제외 패턴을 추가하거나 수정하려면 메뉴의 "자동 분류 규칙"을 이용하세요.
-            </Text>
+            </RNText>
           </View>
 
           {loading && (
             <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color="#6366f1" />
-              <Text style={styles.loadingText}>파일을 분석 중입니다...</Text>
+              <ActivityIndicator size="large" color={theme.colors.primary} />
+              <RNText style={styles.loadingText}>파일을 분석 중입니다...</RNText>
             </View>
           )}
 
           {importing && (
             <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color="#10b981" />
-              <Text style={styles.loadingText}>거래를 가져오는 중입니다...</Text>
+              <ActivityIndicator size="large" color={theme.colors.income} />
+              <RNText style={styles.loadingText}>거래를 가져오는 중입니다...</RNText>
             </View>
           )}
 
           {parseResults.length > 0 && !loading && !importing && (
             <>
-              <Divider style={styles.divider} />
+              <View style={styles.divider} />
 
+              {/* 파일 정보 */}
               <View style={styles.infoContainer}>
-                <List.Item
-                  title="선택된 파일"
-                  description={`${parseResults.length}개`}
-                  left={(props) => <List.Icon {...props} icon="file-multiple" />}
-                />
-                <List.Item
-                  title="총 거래 수"
-                  description={`${parseResults.reduce((sum, r) => sum + r.rows.length, 0)}개`}
-                  left={(props) => <List.Icon {...props} icon="table-row" />}
-                />
+                <View style={styles.infoRow}>
+                  <View style={styles.infoItem}>
+                    <View style={styles.infoIconContainer}>
+                      <Ionicons name="documents" size={20} color={theme.colors.primary} />
+                    </View>
+                    <View>
+                      <RNText style={styles.infoLabel}>선택된 파일</RNText>
+                      <RNText style={styles.infoValue}>{parseResults.length}개</RNText>
+                    </View>
+                  </View>
+                  <View style={styles.infoItem}>
+                    <View style={styles.infoIconContainer}>
+                      <Ionicons name="list" size={20} color={theme.colors.primary} />
+                    </View>
+                    <View>
+                      <RNText style={styles.infoLabel}>총 거래 수</RNText>
+                      <RNText style={styles.infoValue}>{parseResults.reduce((sum, r) => sum + r.rows.length, 0)}개</RNText>
+                    </View>
+                  </View>
+                </View>
+
                 {cardNames.length > 0 && (
                   <View style={styles.chipContainer}>
                     {cardNames.map((name, idx) => (
-                      <Chip key={idx} icon="credit-card" style={styles.chip}>{name}</Chip>
+                      <View key={idx} style={styles.chip}>
+                        <Ionicons name="card" size={14} color={theme.colors.primary} />
+                        <RNText style={styles.chipText}>{name}</RNText>
+                      </View>
                     ))}
                   </View>
                 )}
               </View>
 
-              <Divider style={styles.divider} />
+              <View style={styles.divider} />
 
-              <Text variant="titleMedium" style={styles.sectionTitle}>
-                미리보기 (각 파일당 최대 5개)
-              </Text>
+              <RNText style={styles.sectionTitle}>미리보기 (각 파일당 최대 5개)</RNText>
 
-              <ScrollView horizontal style={styles.previewScroll}>
-                <DataTable>
-                  <DataTable.Header>
-                    <DataTable.Title style={styles.column}>파일명</DataTable.Title>
-                    <DataTable.Title style={styles.column}>날짜</DataTable.Title>
-                    <DataTable.Title style={styles.column}>금액</DataTable.Title>
-                    <DataTable.Title style={styles.column}>유형</DataTable.Title>
-                    <DataTable.Title style={styles.column}>가맹점</DataTable.Title>
+              <ScrollView horizontal style={styles.previewScroll} showsHorizontalScrollIndicator={false}>
+                <DataTable style={styles.dataTable}>
+                  <DataTable.Header style={styles.tableHeader}>
+                    <DataTable.Title style={styles.column}><Text style={styles.headerText}>파일명</Text></DataTable.Title>
+                    <DataTable.Title style={styles.column}><Text style={styles.headerText}>날짜</Text></DataTable.Title>
+                    <DataTable.Title style={styles.column}><Text style={styles.headerText}>금액</Text></DataTable.Title>
+                    <DataTable.Title style={styles.column}><Text style={styles.headerText}>유형</Text></DataTable.Title>
+                    <DataTable.Title style={styles.column}><Text style={styles.headerText}>가맹점</Text></DataTable.Title>
                   </DataTable.Header>
 
                   {previewData.map((tx, index) => (
-                    <DataTable.Row key={index}>
+                    <DataTable.Row key={index} style={styles.tableRow}>
                       <DataTable.Cell style={styles.column}>
-                        <Text numberOfLines={1} style={{ maxWidth: 120 }}>
-                          {tx.fileName || '-'}
-                        </Text>
+                        <Text numberOfLines={1} style={styles.cellText}>{tx.fileName || '-'}</Text>
                       </DataTable.Cell>
                       <DataTable.Cell style={styles.column}>
-                        <Text>{tx.date}</Text>
+                        <Text style={styles.cellText}>{tx.date}</Text>
                       </DataTable.Cell>
                       <DataTable.Cell style={styles.column}>
-                        <Text>{Math.round(tx.amount).toLocaleString()}원</Text>
+                        <Text style={styles.cellText}>{Math.round(tx.amount).toLocaleString()}원</Text>
                       </DataTable.Cell>
                       <DataTable.Cell style={styles.column}>
-                        <Chip mode="flat" style={tx.type === 'income' ? styles.incomeChip : styles.expenseChip}>{tx.type === 'income' ? '수입' : '지출'}</Chip>
+                        <View style={tx.type === 'income' ? styles.incomeChip : styles.expenseChip}>
+                          <RNText style={tx.type === 'income' ? styles.incomeChipText : styles.expenseChipText}>
+                            {tx.type === 'income' ? '수입' : '지출'}
+                          </RNText>
+                        </View>
                       </DataTable.Cell>
                       <DataTable.Cell style={styles.column}>
-                        <Text>{tx.merchant || tx.description || '-'}</Text>
+                        <Text style={styles.cellText}>{tx.merchant || tx.description || '-'}</Text>
                       </DataTable.Cell>
                     </DataTable.Row>
                   ))}
                 </DataTable>
               </ScrollView>
 
-              <Divider style={styles.divider} />
+              <View style={styles.divider} />
 
-              <Button mode="contained" icon="check" onPress={importTransactions} style={styles.importButton} buttonColor="#10b981" disabled={importing}>거래 가져오기 ({allTransactions.length}개)</Button>
+              <TouchableOpacity
+                style={[styles.importButton, importing && styles.buttonDisabled]}
+                onPress={importTransactions}
+                disabled={importing}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="checkmark-circle" size={20} color="#fff" />
+                <RNText style={styles.importButtonText}>거래 가져오기 ({allTransactions.length}개)</RNText>
+              </TouchableOpacity>
 
               {/* 제외된 입금 내역 섹션 */}
               {excludedIncomeTransactions.length > 0 && (
                 <>
-                  <Divider style={styles.divider} />
+                  <View style={styles.divider} />
 
-                  <Button
-                    mode="text"
-                    icon={showExcludedIncome ? 'chevron-up' : 'chevron-down'}
-                    onPress={() => setShowExcludedIncome(!showExcludedIncome)}
+                  <TouchableOpacity
                     style={styles.excludedToggleButton}
-                    contentStyle={styles.excludedToggleContent}
+                    onPress={() => setShowExcludedIncome(!showExcludedIncome)}
+                    activeOpacity={0.7}
                   >
-                    제외된 입금 내역 ({excludedIncomeTransactions.length}개)
-                  </Button>
+                    <Ionicons
+                      name={showExcludedIncome ? 'chevron-up' : 'chevron-down'}
+                      size={20}
+                      color={theme.colors.textSecondary}
+                    />
+                    <RNText style={styles.excludedToggleText}>
+                      제외된 입금 내역 ({excludedIncomeTransactions.length}개)
+                    </RNText>
+                  </TouchableOpacity>
 
                   {showExcludedIncome && (
                     <View style={styles.excludedContainer}>
-                      <Text variant="bodySmall" style={styles.excludedHint}>
+                      <RNText style={styles.excludedHint}>
                         아래 입금 내역은 가져오기에서 제외됩니다
-                      </Text>
-                      <ScrollView horizontal style={styles.previewScroll}>
-                        <DataTable>
-                          <DataTable.Header>
-                            <DataTable.Title style={styles.column}>날짜</DataTable.Title>
-                            <DataTable.Title style={styles.column}>금액</DataTable.Title>
-                            <DataTable.Title style={styles.column}>내용</DataTable.Title>
+                      </RNText>
+                      <ScrollView horizontal style={styles.previewScroll} showsHorizontalScrollIndicator={false}>
+                        <DataTable style={styles.dataTable}>
+                          <DataTable.Header style={styles.tableHeader}>
+                            <DataTable.Title style={styles.column}><Text style={styles.headerText}>날짜</Text></DataTable.Title>
+                            <DataTable.Title style={styles.column}><Text style={styles.headerText}>금액</Text></DataTable.Title>
+                            <DataTable.Title style={styles.column}><Text style={styles.headerText}>내용</Text></DataTable.Title>
                           </DataTable.Header>
 
                           {excludedIncomeTransactions.map((tx, index) => (
-                            <DataTable.Row key={`excluded-${index}`}>
+                            <DataTable.Row key={`excluded-${index}`} style={styles.tableRow}>
                               <DataTable.Cell style={styles.column}>
-                                <Text>{tx.date}</Text>
+                                <Text style={styles.cellText}>{tx.date}</Text>
                               </DataTable.Cell>
                               <DataTable.Cell style={styles.column}>
                                 <Text style={styles.incomeAmount}>+{Math.round(tx.amount).toLocaleString()}원</Text>
                               </DataTable.Cell>
                               <DataTable.Cell style={styles.column}>
-                                <Text>{tx.merchant || tx.memo || '-'}</Text>
+                                <Text style={styles.cellText}>{tx.merchant || tx.memo || '-'}</Text>
                               </DataTable.Cell>
                             </DataTable.Row>
                           ))}
@@ -580,130 +637,289 @@ export default function ImportScreen({ navigation }: any) {
               )}
             </>
           )}
-        </Card.Content>
-      </Card>
-    </ScrollView>
+        </View>
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: theme.colors.background,
+  },
+  header: {
+    paddingTop: theme.spacing.md,
+    paddingBottom: theme.spacing.xl,
+    paddingHorizontal: theme.spacing.lg,
+    borderBottomLeftRadius: theme.borderRadius.xl,
+    borderBottomRightRadius: theme.borderRadius.xl,
+  },
+  headerTitle: {
+    fontSize: theme.fontSize.xxl,
+    fontWeight: theme.fontWeight.bold as any,
+    color: '#fff',
+    marginBottom: theme.spacing.xs,
+  },
+  headerSubtitle: {
+    fontSize: theme.fontSize.sm,
+    color: 'rgba(255, 255, 255, 0.9)',
+  },
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+  },
+  scrollContent: {
+    paddingTop: theme.spacing.md,
+    paddingBottom: theme.spacing.xl,
   },
   card: {
-    margin: 16,
+    marginHorizontal: theme.spacing.md,
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.lg,
+    padding: theme.spacing.lg,
+    ...theme.shadows.sm,
   },
-  title: {
-    marginBottom: 8,
-    fontWeight: 'bold',
-  },
-  subtitle: {
-    color: '#666',
-    marginBottom: 16,
+  cardDescription: {
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.textSecondary,
+    marginBottom: theme.spacing.lg,
+    lineHeight: 20,
   },
   pickButton: {
-    marginBottom: 16,
+    borderRadius: theme.borderRadius.lg,
+    overflow: 'hidden',
+    marginBottom: theme.spacing.lg,
+    ...theme.shadows.sm,
+  },
+  pickButtonGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: theme.spacing.md,
+    gap: theme.spacing.sm,
+  },
+  pickButtonText: {
+    fontSize: theme.fontSize.md,
+    fontWeight: theme.fontWeight.semibold as any,
+    color: '#fff',
+  },
+  buttonDisabled: {
+    opacity: 0.5,
   },
   optionRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#f8f9fa',
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 16,
+    backgroundColor: theme.colors.background,
+    padding: theme.spacing.md,
+    borderRadius: theme.borderRadius.md,
+    marginBottom: theme.spacing.sm,
   },
   optionTextContainer: {
     flex: 1,
+    marginRight: theme.spacing.md,
   },
   optionTitle: {
-    fontWeight: '600',
+    fontSize: theme.fontSize.sm,
+    fontWeight: theme.fontWeight.semibold as any,
+    color: theme.colors.text,
   },
   optionDesc: {
-    color: '#666',
-    marginTop: 2,
+    fontSize: theme.fontSize.xs,
+    color: theme.colors.textSecondary,
+    marginTop: theme.spacing.xs,
   },
   loadingContainer: {
     alignItems: 'center',
-    paddingVertical: 24,
+    paddingVertical: theme.spacing.xl,
   },
   loadingText: {
-    marginTop: 12,
-    color: '#666',
+    marginTop: theme.spacing.md,
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.textSecondary,
   },
   divider: {
-    marginVertical: 16,
+    height: 1,
+    backgroundColor: theme.colors.border,
+    marginVertical: theme.spacing.md,
   },
   infoContainer: {
-    marginBottom: 8,
+    marginBottom: theme.spacing.sm,
+  },
+  infoRow: {
+    flexDirection: 'row',
+    gap: theme.spacing.md,
+  },
+  infoItem: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: theme.colors.background,
+    padding: theme.spacing.md,
+    borderRadius: theme.borderRadius.md,
+    gap: theme.spacing.sm,
+  },
+  infoIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: theme.borderRadius.full,
+    backgroundColor: 'rgba(19, 202, 214, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  infoLabel: {
+    fontSize: theme.fontSize.xs,
+    color: theme.colors.textSecondary,
+  },
+  infoValue: {
+    fontSize: theme.fontSize.md,
+    fontWeight: theme.fontWeight.bold as any,
+    color: theme.colors.text,
   },
   chipContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
-    marginTop: 8,
+    gap: theme.spacing.sm,
+    marginTop: theme.spacing.md,
   },
   chip: {
-    marginTop: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(19, 202, 214, 0.1)',
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: theme.spacing.xs,
+    borderRadius: theme.borderRadius.full,
+    gap: theme.spacing.xs,
+  },
+  chipText: {
+    fontSize: theme.fontSize.xs,
+    color: theme.colors.primary,
+    fontWeight: theme.fontWeight.medium as any,
   },
   sectionTitle: {
-    marginBottom: 12,
-    fontWeight: 'bold',
+    fontSize: theme.fontSize.md,
+    fontWeight: theme.fontWeight.semibold as any,
+    color: theme.colors.text,
+    marginBottom: theme.spacing.md,
   },
   previewScroll: {
-    marginBottom: 16,
+    marginBottom: theme.spacing.md,
+  },
+  dataTable: {
+    backgroundColor: theme.colors.background,
+    borderRadius: theme.borderRadius.md,
+  },
+  tableHeader: {
+    backgroundColor: theme.colors.background,
+  },
+  tableRow: {
+    borderBottomColor: theme.colors.border,
+  },
+  headerText: {
+    fontSize: theme.fontSize.xs,
+    fontWeight: theme.fontWeight.semibold as any,
+    color: theme.colors.textSecondary,
+  },
+  cellText: {
+    fontSize: theme.fontSize.xs,
+    color: theme.colors.text,
   },
   column: {
     minWidth: 100,
   },
   incomeChip: {
-    backgroundColor: '#d1fae5',
+    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: theme.spacing.xs,
+    borderRadius: theme.borderRadius.full,
+  },
+  incomeChipText: {
+    fontSize: theme.fontSize.xs,
+    color: theme.colors.income,
+    fontWeight: theme.fontWeight.medium as any,
   },
   expenseChip: {
-    backgroundColor: '#fee2e2',
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: theme.spacing.xs,
+    borderRadius: theme.borderRadius.full,
+  },
+  expenseChipText: {
+    fontSize: theme.fontSize.xs,
+    color: theme.colors.expense,
+    fontWeight: theme.fontWeight.medium as any,
   },
   importButton: {
-    marginTop: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: theme.colors.income,
+    paddingVertical: theme.spacing.md,
+    borderRadius: theme.borderRadius.lg,
+    gap: theme.spacing.sm,
+    marginTop: theme.spacing.sm,
+  },
+  importButtonText: {
+    fontSize: theme.fontSize.md,
+    fontWeight: theme.fontWeight.semibold as any,
+    color: '#fff',
   },
   excludedToggleButton: {
-    marginTop: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: theme.spacing.sm,
+    gap: theme.spacing.xs,
+    marginTop: theme.spacing.sm,
   },
-  excludedToggleContent: {
-    flexDirection: 'row-reverse',
+  excludedToggleText: {
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.textSecondary,
+    fontWeight: theme.fontWeight.medium as any,
   },
   excludedContainer: {
     backgroundColor: '#fef3c7',
-    borderRadius: 8,
-    padding: 12,
-    marginTop: 8,
+    borderRadius: theme.borderRadius.md,
+    padding: theme.spacing.md,
+    marginTop: theme.spacing.sm,
   },
   excludedHint: {
+    fontSize: theme.fontSize.xs,
     color: '#92400e',
-    marginBottom: 8,
+    marginBottom: theme.spacing.sm,
   },
   incomeAmount: {
-    color: '#10b981',
-    fontWeight: '600',
+    fontSize: theme.fontSize.xs,
+    color: theme.colors.income,
+    fontWeight: theme.fontWeight.semibold as any,
   },
   exclusionInfoSection: {
-    backgroundColor: '#f0f9ff',
-    padding: 12,
-    borderRadius: 8,
+    backgroundColor: 'rgba(19, 202, 214, 0.1)',
+    padding: theme.spacing.md,
+    borderRadius: theme.borderRadius.md,
     borderWidth: 1,
-    borderColor: '#bae6fd',
+    borderColor: 'rgba(19, 202, 214, 0.2)',
+  },
+  exclusionInfoHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+    marginBottom: theme.spacing.sm,
   },
   exclusionInfoTitle: {
-    fontWeight: '600',
-    marginBottom: 6,
-    color: '#0c4a6e',
+    fontSize: theme.fontSize.sm,
+    fontWeight: theme.fontWeight.semibold as any,
+    color: theme.colors.primary,
   },
   exclusionInfoText: {
-    color: '#075985',
-    marginBottom: 8,
+    fontSize: theme.fontSize.xs,
+    color: theme.colors.textSecondary,
+    marginBottom: theme.spacing.sm,
+    lineHeight: 18,
   },
   exclusionInfoHint: {
-    color: '#0369a1',
+    fontSize: theme.fontSize.xs,
+    color: theme.colors.textTertiary,
     fontStyle: 'italic',
   },
 });

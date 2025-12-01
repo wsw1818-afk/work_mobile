@@ -6,17 +6,20 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  Text as RNText,
+  TouchableOpacity,
+  TextInput as RNTextInput,
 } from 'react-native';
 import {
   TextInput,
-  Button,
-  Card,
-  Text,
   Menu,
-  Divider,
 } from 'react-native-paper';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { format } from 'date-fns';
 import { database, Category, Account } from '../lib/db/database';
+import { theme } from '../lib/theme';
 
 export default function AddTransactionScreen() {
   const [type, setType] = useState<'income' | 'expense'>('expense');
@@ -112,179 +115,215 @@ export default function AddTransactionScreen() {
     }
   };
 
+  const insets = useSafeAreaInsets();
+
   return (
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <ScrollView style={styles.scrollView}>
-        <Card style={styles.card}>
-          <Card.Content>
-            {/* 수입/지출 선택 */}
-            <Text variant="titleMedium" style={styles.label}>
-              유형
-            </Text>
-            <View style={styles.typeButtons}>
-              <Button mode={type === 'income' ? 'contained' : 'outlined'} onPress={() => setType('income')} style={[styles.typeButton, type === 'income' ? styles.activeButton : undefined]} icon="plus-circle">수입</Button>
-              <Button mode={type === 'expense' ? 'contained' : 'outlined'} onPress={() => setType('expense')} style={[styles.typeButton, type === 'expense' ? styles.activeButton : undefined]} icon="minus-circle">지출</Button>
-            </View>
+      {/* Dokterian 스타일 헤더 */}
+      <LinearGradient
+        colors={theme.gradients.header as [string, string]}
+        style={[styles.header, { paddingTop: insets.top + 16 }]}
+      >
+        <RNText style={styles.headerTitle}>거래 추가</RNText>
 
-            {/* 금액 입력 */}
-            <Text variant="titleMedium" style={styles.label}>
-              금액
-            </Text>
-            <TextInput
-              mode="outlined"
-              label="금액"
-              value={amount}
-              onChangeText={setAmount}
-              keyboardType="numeric"
-              placeholder="0"
-              right={<TextInput.Affix text="원" />}
-              style={styles.input}
-              autoCorrect={false}
-              autoComplete="off"
-              autoCapitalize="none"
-              spellCheck={false}
-              textContentType="none"
+        {/* 수입/지출 토글 */}
+        <View style={styles.typeToggle}>
+          <TouchableOpacity
+            style={[styles.typeBtn, type === 'income' && styles.typeBtnActiveIncome]}
+            onPress={() => setType('income')}
+          >
+            <Ionicons
+              name="trending-up"
+              size={20}
+              color={type === 'income' ? '#fff' : 'rgba(255,255,255,0.7)'}
             />
+            <RNText style={[styles.typeBtnText, type === 'income' && styles.typeBtnTextActive]}>
+              수입
+            </RNText>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.typeBtn, type === 'expense' && styles.typeBtnActiveExpense]}
+            onPress={() => setType('expense')}
+          >
+            <Ionicons
+              name="trending-down"
+              size={20}
+              color={type === 'expense' ? '#fff' : 'rgba(255,255,255,0.7)'}
+            />
+            <RNText style={[styles.typeBtnText, type === 'expense' && styles.typeBtnTextActive]}>
+              지출
+            </RNText>
+          </TouchableOpacity>
+        </View>
+      </LinearGradient>
 
-            {/* 카테고리 선택 */}
-            <Text variant="titleMedium" style={styles.label}>
-              카테고리
-            </Text>
-            <Menu
-              visible={categoryMenuVisible}
-              onDismiss={() => setCategoryMenuVisible(false)}
-              anchor={
-                <Button
-                  mode="outlined"
-                  onPress={() => setCategoryMenuVisible(true)}
-                  style={styles.categoryButton}
-                  contentStyle={styles.categoryButtonContent}
-                >
-                  {selectedCategory ? (
-                    <View style={styles.categoryButtonInner}>
-                      <View
-                        style={[
-                          styles.categoryDot,
-                          { backgroundColor: selectedCategory.color },
-                        ]}
-                      />
-                      <Text>{selectedCategory.name}</Text>
-                    </View>
-                  ) : (
-                    <Text>카테고리 선택</Text>
-                  )}
-                </Button>
-              }
-            >
-              {categories.map((category) => (
-                <Menu.Item
-                  key={category.id}
-                  onPress={() => {
-                    setSelectedCategory(category);
-                    setCategoryMenuVisible(false);
-                  }}
-                  title={
-                    <View style={styles.menuItemContent}>
-                      <View
-                        style={[
-                          styles.categoryDot,
-                          { backgroundColor: category.color },
-                        ]}
-                      />
-                      <Text>{category.name}</Text>
-                    </View>
-                  }
-                />
-              ))}
-            </Menu>
+      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
+        {/* 금액 입력 카드 */}
+        <View style={styles.card}>
+          <View style={styles.amountContainer}>
+            <RNText style={styles.amountLabel}>금액</RNText>
+            <View style={styles.amountInputContainer}>
+              <RNTextInput
+                style={styles.amountInput}
+                value={amount}
+                onChangeText={setAmount}
+                keyboardType="numeric"
+                placeholder="0"
+                placeholderTextColor={theme.colors.textMuted}
+              />
+              <RNText style={styles.amountUnit}>원</RNText>
+            </View>
+          </View>
+        </View>
 
-            {/* 결제수단 선택 */}
-            <Text variant="titleMedium" style={styles.label}>
-              결제수단
-            </Text>
-            <Menu
-              visible={accountMenuVisible}
-              onDismiss={() => setAccountMenuVisible(false)}
-              anchor={
-                <Button
-                  mode="outlined"
-                  onPress={() => setAccountMenuVisible(true)}
-                  style={styles.categoryButton}
-                  contentStyle={styles.categoryButtonContent}
-                >
-                  <Text>
+        {/* 카테고리 선택 */}
+        <View style={styles.card}>
+          <RNText style={styles.label}>카테고리</RNText>
+          <Menu
+            visible={categoryMenuVisible}
+            onDismiss={() => setCategoryMenuVisible(false)}
+            anchor={
+              <TouchableOpacity
+                style={styles.selectButton}
+                onPress={() => setCategoryMenuVisible(true)}
+              >
+                {selectedCategory ? (
+                  <View style={styles.selectContent}>
+                    <View
+                      style={[styles.categoryDot, { backgroundColor: selectedCategory.color }]}
+                    />
+                    <RNText style={styles.selectText}>{selectedCategory.name}</RNText>
+                  </View>
+                ) : (
+                  <RNText style={styles.selectPlaceholder}>카테고리 선택</RNText>
+                )}
+                <Ionicons name="chevron-down" size={20} color={theme.colors.textSecondary} />
+              </TouchableOpacity>
+            }
+          >
+            {categories.map((category) => (
+              <Menu.Item
+                key={category.id}
+                onPress={() => {
+                  setSelectedCategory(category);
+                  setCategoryMenuVisible(false);
+                }}
+                title={
+                  <View style={styles.menuItemContent}>
+                    <View style={[styles.categoryDot, { backgroundColor: category.color }]} />
+                    <RNText style={styles.menuItemText}>{category.name}</RNText>
+                  </View>
+                }
+              />
+            ))}
+          </Menu>
+        </View>
+
+        {/* 결제수단 선택 */}
+        <View style={styles.card}>
+          <RNText style={styles.label}>결제수단</RNText>
+          <Menu
+            visible={accountMenuVisible}
+            onDismiss={() => setAccountMenuVisible(false)}
+            anchor={
+              <TouchableOpacity
+                style={styles.selectButton}
+                onPress={() => setAccountMenuVisible(true)}
+              >
+                <View style={styles.selectContent}>
+                  <Ionicons name="wallet-outline" size={20} color={theme.colors.primary} />
+                  <RNText style={styles.selectText}>
                     {selectedAccount
-                      ? selectedAccount.bankAccountName
-                        ? `${selectedAccount.name} (${selectedAccount.bankAccountName})`
-                        : selectedAccount.name
+                      ? `${selectedAccount.name}${selectedAccount.last4 ? ` (*${selectedAccount.last4})` : ''}${selectedAccount.bankAccountName ? ` - ${selectedAccount.bankAccountName}` : ''}`
                       : '결제수단 선택'}
-                  </Text>
-                </Button>
-              }
-            >
-              {accounts.map((account) => (
-                <Menu.Item
-                  key={account.id}
-                  onPress={() => {
-                    setSelectedAccount(account);
-                    setAccountMenuVisible(false);
-                  }}
-                  title={account.bankAccountName
-                    ? `${account.name} (${account.bankAccountName})`
-                    : account.name}
-                />
-              ))}
-            </Menu>
+                  </RNText>
+                </View>
+                <Ionicons name="chevron-down" size={20} color={theme.colors.textSecondary} />
+              </TouchableOpacity>
+            }
+          >
+            {accounts.map((account) => (
+              <Menu.Item
+                key={account.id}
+                onPress={() => {
+                  setSelectedAccount(account);
+                  setAccountMenuVisible(false);
+                }}
+                title={`${account.name}${account.last4 ? ` (*${account.last4})` : ''}${account.bankAccountName ? ` - ${account.bankAccountName}` : ''}`}
+              />
+            ))}
+          </Menu>
+        </View>
 
-            {/* 날짜 입력 */}
-            <Text variant="titleMedium" style={styles.label}>
-              날짜
-            </Text>
+        {/* 날짜 입력 */}
+        <View style={styles.card}>
+          <RNText style={styles.label}>날짜</RNText>
+          <View style={styles.inputRow}>
+            <Ionicons name="calendar-outline" size={20} color={theme.colors.primary} />
             <TextInput
-              mode="outlined"
-              label="날짜"
+              mode="flat"
               value={date}
               onChangeText={setDate}
               placeholder="yyyy-MM-dd"
-              style={styles.input}
-              keyboardType="default"
+              style={styles.flatInput}
+              underlineColor="transparent"
+              activeUnderlineColor="transparent"
               autoCorrect={false}
               autoComplete="off"
               autoCapitalize="none"
               spellCheck={false}
               textContentType="none"
             />
+          </View>
+        </View>
 
-            {/* 메모 입력 */}
-            <Text variant="titleMedium" style={styles.label}>
-              메모 (선택)
-            </Text>
+        {/* 메모 입력 */}
+        <View style={styles.card}>
+          <RNText style={styles.label}>메모 (선택)</RNText>
+          <View style={styles.memoContainer}>
+            <Ionicons name="document-text-outline" size={20} color={theme.colors.primary} style={{ marginTop: 4 }} />
             <TextInput
-              mode="outlined"
-              label="메모"
+              mode="flat"
               value={description}
               onChangeText={setDescription}
               placeholder="메모를 입력하세요"
               multiline
               numberOfLines={3}
-              style={styles.input}
-              keyboardType="default"
+              style={styles.memoInput}
+              underlineColor="transparent"
+              activeUnderlineColor="transparent"
               autoCorrect={false}
               autoComplete="off"
               autoCapitalize="none"
               spellCheck={false}
               textContentType="none"
             />
+          </View>
+        </View>
 
-            <Divider style={styles.divider} />
+        {/* 추가 버튼 */}
+        <TouchableOpacity
+          style={[
+            styles.submitButton,
+            { backgroundColor: type === 'income' ? theme.colors.income : theme.colors.expense },
+          ]}
+          onPress={handleSubmit}
+          disabled={loading}
+        >
+          <Ionicons
+            name={type === 'income' ? 'add-circle' : 'remove-circle'}
+            size={24}
+            color="#fff"
+          />
+          <RNText style={styles.submitButtonText}>
+            {loading ? '처리 중...' : `${type === 'income' ? '수입' : '지출'} 추가`}
+          </RNText>
+        </TouchableOpacity>
 
-            {/* 추가 버튼 */}
-            <Button mode="contained" onPress={handleSubmit} loading={loading} disabled={loading} style={styles.submitButton} buttonColor={type === 'income' ? '#10b981' : '#ef4444'}>{type === 'income' ? '수입' : '지출'} 추가</Button>
-          </Card.Content>
-        </Card>
+        <View style={{ height: 40 }} />
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -293,57 +332,186 @@ export default function AddTransactionScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: theme.colors.background,
   },
+
+  // 헤더
+  header: {
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+    borderBottomLeftRadius: theme.borderRadius.xxl,
+    borderBottomRightRadius: theme.borderRadius.xxl,
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: '#fff',
+    marginBottom: 20,
+  },
+
+  // 유형 토글
+  typeToggle: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderRadius: theme.borderRadius.lg,
+    padding: 4,
+  },
+  typeBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    borderRadius: theme.borderRadius.md,
+    gap: 8,
+  },
+  typeBtnActiveIncome: {
+    backgroundColor: theme.colors.income,
+  },
+  typeBtnActiveExpense: {
+    backgroundColor: theme.colors.expense,
+  },
+  typeBtnText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.7)',
+  },
+  typeBtnTextActive: {
+    color: '#fff',
+  },
+
+  // 스크롤뷰
   scrollView: {
     flex: 1,
   },
+  scrollContent: {
+    padding: 20,
+  },
+
+  // 카드
   card: {
-    margin: 16,
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.lg,
+    padding: 16,
+    marginBottom: 12,
+    ...theme.shadows.sm,
   },
   label: {
-    marginTop: 16,
-    marginBottom: 8,
-    fontWeight: 'bold',
+    fontSize: 14,
+    fontWeight: '600',
+    color: theme.colors.textSecondary,
+    marginBottom: 12,
   },
-  typeButtons: {
-    flexDirection: 'row',
-    gap: 12,
-    marginBottom: 8,
+
+  // 금액 입력
+  amountContainer: {
+    alignItems: 'center',
   },
-  typeButton: {
-    flex: 1,
-  },
-  activeButton: {
-    backgroundColor: '#e0f2fe',
-  },
-  input: {
+  amountLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: theme.colors.textSecondary,
     marginBottom: 8,
   },
-  categoryButton: {
-    marginBottom: 8,
-  },
-  categoryButtonContent: {
-    justifyContent: 'flex-start',
-  },
-  categoryButtonInner: {
+  amountInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+  },
+  amountInput: {
+    fontSize: 36,
+    fontWeight: '700',
+    color: theme.colors.text,
+    textAlign: 'center',
+    minWidth: 120,
+  },
+  amountUnit: {
+    fontSize: 24,
+    fontWeight: '600',
+    color: theme.colors.textSecondary,
+    marginLeft: 8,
+  },
+
+  // 선택 버튼
+  selectButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    backgroundColor: theme.colors.surfaceVariant,
+    borderRadius: theme.borderRadius.md,
+  },
+  selectContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  selectText: {
+    fontSize: 15,
+    color: theme.colors.text,
+    marginLeft: 12,
+  },
+  selectPlaceholder: {
+    fontSize: 15,
+    color: theme.colors.textMuted,
   },
   categoryDot: {
     width: 12,
     height: 12,
     borderRadius: 6,
-    marginRight: 8,
   },
   menuItemContent: {
     flexDirection: 'row',
     alignItems: 'center',
   },
-  divider: {
-    marginVertical: 16,
+  menuItemText: {
+    fontSize: 15,
+    color: theme.colors.text,
+    marginLeft: 12,
   },
+
+  // 입력 행
+  inputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: theme.colors.surfaceVariant,
+    borderRadius: theme.borderRadius.md,
+    paddingLeft: 16,
+  },
+  flatInput: {
+    flex: 1,
+    backgroundColor: 'transparent',
+    fontSize: 15,
+  },
+
+  // 메모
+  memoContainer: {
+    flexDirection: 'row',
+    backgroundColor: theme.colors.surfaceVariant,
+    borderRadius: theme.borderRadius.md,
+    paddingLeft: 16,
+    paddingTop: 12,
+  },
+  memoInput: {
+    flex: 1,
+    backgroundColor: 'transparent',
+    fontSize: 15,
+    minHeight: 80,
+  },
+
+  // 제출 버튼
   submitButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    borderRadius: theme.borderRadius.lg,
     marginTop: 8,
+    gap: 8,
+    ...theme.shadows.md,
+  },
+  submitButtonText: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#fff',
   },
 });

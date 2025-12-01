@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { View, ScrollView, StyleSheet, RefreshControl, Alert, TouchableOpacity } from 'react-native';
 import KoreanTextInput, { KoreanTextInputRef } from '../components/KoreanTextInput';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 import {
   Text,
-  Card,
   ActivityIndicator,
   Divider,
   FAB,
@@ -17,6 +18,7 @@ import {
   IconButton,
 } from 'react-native-paper';
 import { database, Category, ExpenseGroup } from '../lib/db/database';
+import { theme } from '../lib/theme';
 
 const GROUP_COLORS = [
   '#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#6366f1',
@@ -47,6 +49,7 @@ const PRESET_COLORS = [
 ];
 
 export default function CategoriesScreen() {
+  const insets = useSafeAreaInsets();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [type, setType] = useState<'income' | 'expense'>('expense');
@@ -226,135 +229,175 @@ export default function CategoriesScreen() {
   if (loading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" />
+        <ActivityIndicator size="large" color={theme.colors.primary} />
       </View>
     );
   }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.container}>
-      <View style={styles.header}>
-        <Text variant="titleMedium" style={styles.headerText}>
-          카테고리 목록
-        </Text>
-        <View style={styles.typeButtons}>
-          <Button mode={type === 'income' ? 'contained' : 'outlined'} onPress={() => setType('income')} style={styles.typeButton}>수입</Button>
-          <Button mode={type === 'expense' ? 'contained' : 'outlined'} onPress={() => setType('expense')} style={styles.typeButton}>지출</Button>
+    <View style={styles.safeArea}>
+      {/* 헤더 그라데이션 */}
+      <LinearGradient
+        colors={theme.gradients.header as [string, string]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={[styles.header, { paddingTop: insets.top + theme.spacing.md }]}
+      >
+        <Text style={styles.headerTitle}>카테고리</Text>
+        <Text style={styles.headerSubtitle}>수입/지출 카테고리를 관리하세요</Text>
+
+        {/* 타입 선택 버튼 */}
+        <View style={styles.typeSelector}>
+          <TouchableOpacity
+            style={[
+              styles.typeButton,
+              type === 'income' && styles.typeButtonActive,
+            ]}
+            onPress={() => setType('income')}
+          >
+            <Ionicons
+              name="add-circle"
+              size={18}
+              color={type === 'income' ? theme.colors.primary : 'rgba(255,255,255,0.7)'}
+            />
+            <Text
+              style={[
+                styles.typeButtonText,
+                type === 'income' && styles.typeButtonTextActive,
+              ]}
+            >
+              수입
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              styles.typeButton,
+              type === 'expense' && styles.typeButtonActive,
+            ]}
+            onPress={() => setType('expense')}
+          >
+            <Ionicons
+              name="remove-circle"
+              size={18}
+              color={type === 'expense' ? theme.colors.primary : 'rgba(255,255,255,0.7)'}
+            />
+            <Text
+              style={[
+                styles.typeButtonText,
+                type === 'expense' && styles.typeButtonTextActive,
+              ]}
+            >
+              지출
+            </Text>
+          </TouchableOpacity>
         </View>
-      </View>
+      </LinearGradient>
 
       <ScrollView
         style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[theme.colors.primary]} />
         }
+        showsVerticalScrollIndicator={false}
       >
-        <Card style={styles.card}>
-          <Card.Content>
-            {categories.length === 0 ? (
-              <View style={styles.emptyContainer}>
-                <Text variant="bodyLarge" style={styles.emptyText}>
-                  카테고리가 없습니다.
-                </Text>
-              </View>
-            ) : (
-              categories.map((category, index) => (
-                <View key={category.id}>
-                  <View style={styles.categoryItem}>
-                    <View style={styles.categoryLeft}>
-                      <View
-                        style={[
-                          styles.categoryDot,
-                          { backgroundColor: category.color },
-                        ]}
-                      />
-                      <View style={styles.categoryNameContainer}>
-                        <Text variant="bodyLarge" style={styles.categoryName}>
-                          {category.name}
-                        </Text>
-                        <View style={styles.categoryBadges}>
-                          {category.groupName ? (
-                            <Chip
-                              compact
-                              style={[styles.categoryChip, { backgroundColor: category.groupColor || '#f3f4f6' }]}
-                              textStyle={[styles.categoryChipText, { color: '#fff' }]}
-                            >
-                              {category.groupName}
-                            </Chip>
-                          ) : null}
-                          {category.excludeFromStats === true ? (
-                            <Chip compact style={styles.categoryChip} textStyle={styles.categoryChipText}>집계제외</Chip>
-                          ) : null}
-                        </View>
-                      </View>
-                    </View>
-                    <View style={styles.categoryRight}>
-                      {/* 지출 카테고리일 때만 대시보드 표시 토글 아이콘 */}
-                      {category.type === 'expense' && (
-                        <IconButton
-                          icon={category.showOnDashboard === false ? 'eye-off' : 'eye'}
-                          size={20}
-                          iconColor={category.showOnDashboard === false ? '#9ca3af' : '#6366f1'}
-                          onPress={() => toggleShowOnDashboard(category.id, category.showOnDashboard)}
-                          style={styles.dashboardToggle}
-                        />
-                      )}
-                      <View
-                        style={[
-                          styles.typeBadge,
-                          {
-                            backgroundColor:
-                              category.type === 'income' ? '#d1fae5' : '#fee2e2',
-                          },
-                        ]}
-                      >
-                        <Text
-                          variant="bodySmall"
-                          style={[
-                            styles.typeBadgeText,
-                            {
-                              color:
-                                category.type === 'income' ? '#059669' : '#dc2626',
-                            },
-                          ]}
-                        >
-                          {category.type === 'income' ? '수입' : '지출'}
-                        </Text>
+        {/* 카테고리 목록 */}
+        <View style={styles.card}>
+          {categories.length === 0 ? (
+            <View style={styles.emptyContainer}>
+              <Ionicons name="folder-open-outline" size={48} color={theme.colors.textMuted} />
+              <Text style={styles.emptyText}>카테고리가 없습니다</Text>
+              <Text style={styles.emptySubtext}>+ 버튼을 눌러 추가하세요</Text>
+            </View>
+          ) : (
+            categories.map((category, index) => (
+              <View key={category.id}>
+                <View style={styles.categoryItem}>
+                  <View style={styles.categoryLeft}>
+                    <View
+                      style={[
+                        styles.categoryDot,
+                        { backgroundColor: category.color },
+                      ]}
+                    />
+                    <View style={styles.categoryNameContainer}>
+                      <Text style={styles.categoryName}>
+                        {category.name}
+                      </Text>
+                      <View style={styles.categoryBadges}>
+                        {category.groupName ? (
+                          <View style={[styles.categoryChip, { backgroundColor: category.groupColor || theme.colors.surfaceVariant }]}>
+                            <Text style={styles.categoryChipText}>{category.groupName}</Text>
+                          </View>
+                        ) : null}
+                        {category.excludeFromStats === true ? (
+                          <View style={[styles.categoryChip, { backgroundColor: theme.colors.surfaceVariant }]}>
+                            <Text style={[styles.categoryChipText, { color: theme.colors.textSecondary }]}>집계제외</Text>
+                          </View>
+                        ) : null}
                       </View>
                     </View>
                   </View>
-                  {index < categories.length - 1 && <Divider style={styles.divider} />}
+                  <View style={styles.categoryRight}>
+                    {category.type === 'expense' && (
+                      <TouchableOpacity
+                        style={styles.dashboardToggle}
+                        onPress={() => toggleShowOnDashboard(category.id, category.showOnDashboard)}
+                      >
+                        <Ionicons
+                          name={category.showOnDashboard === false ? 'eye-off-outline' : 'eye-outline'}
+                          size={20}
+                          color={category.showOnDashboard === false ? theme.colors.textMuted : theme.colors.primary}
+                        />
+                      </TouchableOpacity>
+                    )}
+                    <View
+                      style={[
+                        styles.typeBadge,
+                        {
+                          backgroundColor:
+                            category.type === 'income' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                        },
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.typeBadgeText,
+                          {
+                            color:
+                              category.type === 'income' ? theme.colors.income : theme.colors.expense,
+                          },
+                        ]}
+                      >
+                        {category.type === 'income' ? '수입' : '지출'}
+                      </Text>
+                    </View>
+                  </View>
                 </View>
-              ))
-            )}
-          </Card.Content>
-        </Card>
+                {index < categories.length - 1 && <View style={styles.divider} />}
+              </View>
+            ))
+          )}
+        </View>
 
-        <Card style={styles.infoCard}>
-          <Card.Content>
-            <Text variant="titleMedium" style={styles.infoTitle}>
-              카테고리 정보
-            </Text>
-            <Text variant="bodyMedium" style={styles.infoText}>
-              • 총 {categories.length}개의 카테고리가 등록되어 있습니다.
-            </Text>
-            <Text variant="bodyMedium" style={styles.infoText}>
-              • 거래 추가 시 카테고리를 선택할 수 있습니다.
-            </Text>
-            <Text variant="bodyMedium" style={styles.infoText}>
-              • 각 카테고리는 고유한 색상으로 구분됩니다.
-            </Text>
-          </Card.Content>
-        </Card>
+        {/* 정보 카드 */}
+        <View style={styles.infoCard}>
+          <View style={styles.infoHeader}>
+            <Ionicons name="information-circle" size={20} color={theme.colors.primary} />
+            <Text style={styles.infoTitle}>카테고리 정보</Text>
+          </View>
+          <Text style={styles.infoText}>• 총 {categories.length}개의 카테고리가 등록되어 있습니다.</Text>
+          <Text style={styles.infoText}>• 거래 추가 시 카테고리를 선택할 수 있습니다.</Text>
+          <Text style={styles.infoText}>• 각 카테고리는 고유한 색상으로 구분됩니다.</Text>
+        </View>
       </ScrollView>
 
       {/* 추가 버튼 */}
       <FAB
         icon="plus"
         style={styles.fab}
+        color="#fff"
         onPress={() => setAddModalVisible(true)}
-        label="카테고리 추가"
       />
 
       {/* 추가 모달 */}
@@ -629,51 +672,84 @@ export default function CategoriesScreen() {
         </Modal>
       </Portal>
     </View>
-    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
-  },
-  container: {
-    flex: 1,
+    backgroundColor: theme.colors.background,
   },
   centered: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: theme.colors.background,
   },
   header: {
-    backgroundColor: '#fff',
-    padding: 16,
-    paddingBottom: 12,
+    paddingHorizontal: theme.spacing.lg,
+    paddingTop: theme.spacing.md,
+    paddingBottom: theme.spacing.lg,
+    borderBottomLeftRadius: theme.borderRadius.xl,
+    borderBottomRightRadius: theme.borderRadius.xl,
   },
-  headerText: {
-    marginBottom: 12,
-    fontWeight: 'bold',
+  headerTitle: {
+    fontSize: theme.fontSize.xxl,
+    fontWeight: theme.fontWeight.bold,
+    color: '#fff',
+    marginBottom: theme.spacing.xs,
   },
-  typeButtons: {
+  headerSubtitle: {
+    fontSize: theme.fontSize.md,
+    color: 'rgba(255, 255, 255, 0.9)',
+    marginBottom: theme.spacing.md,
+  },
+  typeSelector: {
     flexDirection: 'row',
-    gap: 12,
+    gap: theme.spacing.sm,
+    marginTop: theme.spacing.sm,
   },
   typeButton: {
     flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: theme.spacing.xs,
+    paddingVertical: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.md,
+    borderRadius: theme.borderRadius.lg,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  typeButtonActive: {
+    backgroundColor: '#fff',
+  },
+  typeButtonText: {
+    fontSize: theme.fontSize.md,
+    fontWeight: theme.fontWeight.semibold,
+    color: 'rgba(255, 255, 255, 0.9)',
+  },
+  typeButtonTextActive: {
+    color: theme.colors.primary,
   },
   scrollView: {
     flex: 1,
   },
+  scrollContent: {
+    padding: theme.spacing.lg,
+    paddingBottom: 100,
+  },
   card: {
-    margin: 16,
-    marginBottom: 8,
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.lg,
+    padding: theme.spacing.md,
+    marginBottom: theme.spacing.md,
+    ...theme.shadows.md,
   },
   categoryItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 12,
+    paddingVertical: theme.spacing.sm,
   },
   categoryLeft: {
     flexDirection: 'row',
@@ -684,76 +760,99 @@ const styles = StyleSheet.create({
     width: 16,
     height: 16,
     borderRadius: 8,
-    marginRight: 12,
+    marginRight: theme.spacing.md,
   },
   categoryNameContainer: {
     flex: 1,
   },
   categoryName: {
-    fontWeight: '600',
-    marginBottom: 4,
+    fontSize: theme.fontSize.md,
+    fontWeight: theme.fontWeight.semibold,
+    color: theme.colors.text,
+    marginBottom: theme.spacing.xs,
   },
   categoryBadges: {
     flexDirection: 'row',
-    gap: 6,
+    gap: theme.spacing.xs,
     flexWrap: 'wrap',
   },
   categoryChip: {
-    height: 24,
-    backgroundColor: '#f3f4f6',
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: 2,
+    borderRadius: theme.borderRadius.sm,
   },
   categoryChipText: {
-    fontSize: 11,
-    color: '#374151',
-    marginVertical: 0,
+    fontSize: theme.fontSize.xs,
+    color: '#fff',
+    fontWeight: theme.fontWeight.medium,
   },
   categoryRight: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: theme.spacing.sm,
   },
   dashboardToggle: {
-    margin: 0,
-    marginRight: 4,
+    padding: theme.spacing.xs,
   },
   typeBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 12,
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: theme.spacing.xs,
+    borderRadius: theme.borderRadius.full,
   },
   typeBadgeText: {
-    fontWeight: '600',
+    fontSize: theme.fontSize.xs,
+    fontWeight: theme.fontWeight.semibold,
   },
   divider: {
-    marginVertical: 4,
+    height: 1,
+    backgroundColor: theme.colors.divider,
+    marginVertical: theme.spacing.xs,
   },
   emptyContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 40,
+    paddingVertical: theme.spacing.xl * 2,
   },
   emptyText: {
-    color: '#6b7280',
+    fontSize: theme.fontSize.lg,
+    color: theme.colors.textSecondary,
+    marginTop: theme.spacing.md,
+  },
+  emptySubtext: {
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.textMuted,
+    marginTop: theme.spacing.xs,
   },
   infoCard: {
-    margin: 16,
-    marginTop: 8,
-    backgroundColor: '#f0fdf4',
+    backgroundColor: 'rgba(19, 202, 214, 0.08)',
+    borderRadius: theme.borderRadius.lg,
+    padding: theme.spacing.md,
+    marginBottom: theme.spacing.lg,
+  },
+  infoHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+    marginBottom: theme.spacing.sm,
   },
   infoTitle: {
-    marginBottom: 12,
-    fontWeight: 'bold',
-    color: '#059669',
+    fontSize: theme.fontSize.md,
+    fontWeight: theme.fontWeight.semibold,
+    color: theme.colors.primary,
   },
   infoText: {
-    color: '#047857',
-    marginBottom: 8,
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.textSecondary,
+    marginBottom: theme.spacing.xs,
+    lineHeight: 20,
   },
   fab: {
     position: 'absolute',
-    margin: 16,
+    margin: theme.spacing.lg,
     right: 0,
     bottom: 0,
-    backgroundColor: '#6366f1',
+    backgroundColor: theme.colors.primary,
+    ...theme.shadows.lg,
   },
   modalContainer: {
     backgroundColor: 'white',

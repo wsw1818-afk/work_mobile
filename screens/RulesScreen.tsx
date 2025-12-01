@@ -1,11 +1,16 @@
 import React, { useState, useCallback } from 'react';
-import { View, ScrollView, StyleSheet, RefreshControl, Alert, Modal, KeyboardAvoidingView, Platform, TouchableWithoutFeedback, Keyboard } from 'react-native';
-import { Text, Card, Button, Portal, TextInput, FAB, Chip, Switch, SegmentedButtons } from 'react-native-paper';
+import { View, ScrollView, StyleSheet, RefreshControl, Alert, Modal, KeyboardAvoidingView, Platform, TouchableWithoutFeedback, Keyboard, TouchableOpacity } from 'react-native';
+import { Text, Button, TextInput, FAB, Switch, SegmentedButtons, ActivityIndicator } from 'react-native-paper';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { Picker } from '@react-native-picker/picker';
 import { database, Rule, Category, ExclusionPattern } from '../lib/db/database';
+import { theme } from '../lib/theme';
 
 export default function RulesScreen() {
+  const insets = useSafeAreaInsets();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [rules, setRules] = useState<Rule[]>([]);
@@ -270,133 +275,187 @@ export default function RulesScreen() {
     );
   };
 
+  if (loading) {
+    return (
+      <View style={styles.centered}>
+        <ActivityIndicator size="large" color={theme.colors.primary} />
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
-      <SegmentedButtons
-        value={activeTab}
-        onValueChange={setActiveTab}
-        buttons={[
-          { value: 'category', label: '카테고리 자동 배정' },
-          { value: 'exclusion', label: '거래 제외' },
-        ]}
-        style={styles.tabs}
-      />
+      {/* 헤더 그라데이션 */}
+      <LinearGradient
+        colors={theme.gradients.header as [string, string]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={[styles.header, { paddingTop: insets.top + theme.spacing.md }]}
+      >
+        <Text style={styles.headerTitle}>규칙 설정</Text>
+        <Text style={styles.headerSubtitle}>자동 분류 및 제외 규칙을 관리하세요</Text>
+      </LinearGradient>
+
+      {/* 탭 선택 */}
+      <View style={styles.tabContainer}>
+        <TouchableOpacity
+          style={[styles.tabButton, activeTab === 'category' && styles.tabButtonActive]}
+          onPress={() => setActiveTab('category')}
+        >
+          <Ionicons
+            name="pricetag"
+            size={18}
+            color={activeTab === 'category' ? theme.colors.primary : theme.colors.textSecondary}
+          />
+          <Text style={[styles.tabButtonText, activeTab === 'category' && styles.tabButtonTextActive]}>
+            카테고리 배정
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tabButton, activeTab === 'exclusion' && styles.tabButtonActive]}
+          onPress={() => setActiveTab('exclusion')}
+        >
+          <Ionicons
+            name="eye-off"
+            size={18}
+            color={activeTab === 'exclusion' ? theme.colors.primary : theme.colors.textSecondary}
+          />
+          <Text style={[styles.tabButtonText, activeTab === 'exclusion' && styles.tabButtonTextActive]}>
+            거래 제외
+          </Text>
+        </TouchableOpacity>
+      </View>
 
       <ScrollView
         style={styles.scrollView}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        contentContainerStyle={styles.scrollContent}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[theme.colors.primary]} />}
+        showsVerticalScrollIndicator={false}
       >
         {activeTab === 'category' ? (
           <>
-            <View style={styles.sectionHeader}>
-              <View style={styles.sectionTitleContainer}>
-                <Text style={styles.sectionTitle}>카테고리 자동 배정 규칙</Text>
-                <Text style={styles.sectionSubtitle}>
-                  키워드를 포함한 거래를 자동으로 카테고리에 배정합니다
-                </Text>
-              </View>
-              {rules.length > 0 && (
-                <Button
-                  mode="contained-tonal"
-                  onPress={handleApplyRulesToExisting}
-                  style={styles.applyButton}
-                  compact
-                >
-                  기존 거래에 적용
-                </Button>
-              )}
-            </View>
+            {/* 규칙 적용 버튼 */}
+            {rules.length > 0 && (
+              <TouchableOpacity style={styles.applyButton} onPress={handleApplyRulesToExisting}>
+                <Ionicons name="sync" size={18} color={theme.colors.primary} />
+                <Text style={styles.applyButtonText}>기존 거래에 적용</Text>
+              </TouchableOpacity>
+            )}
 
             {rules.length === 0 ? (
-              <Card style={styles.emptyCard}>
-                <Card.Content>
-                  <Text style={styles.emptyText}>등록된 규칙이 없습니다.</Text>
-                  <Text style={styles.emptySubtext}>아래 + 버튼을 눌러 규칙을 추가하세요.</Text>
-                </Card.Content>
-              </Card>
+              <View style={styles.emptyCard}>
+                <Ionicons name="pricetag-outline" size={48} color={theme.colors.textMuted} />
+                <Text style={styles.emptyText}>등록된 규칙이 없습니다</Text>
+                <Text style={styles.emptySubtext}>+ 버튼을 눌러 규칙을 추가하세요</Text>
+              </View>
             ) : (
               rules.map((rule) => (
-                <Card key={rule.id} style={[styles.card, !rule.isActive && styles.inactiveCard]}>
-                  <Card.Content>
-                    <View style={styles.cardHeader}>
-                      <View style={styles.cardInfo}>
-                        <Text variant="titleMedium">{rule.pattern}</Text>
-                        <View style={styles.tags}>
-                          {rule.checkMerchant && (
-                            <Chip mode="flat" compact style={styles.chip}>가맹점 검사</Chip>
-                          )}
-                          {rule.checkMemo && (
-                            <Chip mode="flat" compact style={styles.chip}>메모 검사</Chip>
-                          )}
-                        </View>
-                        <Text style={styles.categoryLabel}>
-                          → {rule.assignCategoryName}
-                        </Text>
+                <View key={rule.id} style={[styles.ruleCard, !rule.isActive && styles.inactiveCard]}>
+                  <View style={styles.cardHeader}>
+                    <View style={styles.cardInfo}>
+                      <Text style={styles.patternText}>{rule.pattern}</Text>
+                      <View style={styles.tags}>
+                        {rule.checkMerchant && (
+                          <View style={styles.tagChip}>
+                            <Text style={styles.tagChipText}>가맹점</Text>
+                          </View>
+                        )}
+                        {rule.checkMemo && (
+                          <View style={styles.tagChip}>
+                            <Text style={styles.tagChipText}>메모</Text>
+                          </View>
+                        )}
                       </View>
-                      <Chip mode="flat" style={{ backgroundColor: rule.isActive ? '#d1fae5' : '#f3f4f6' }}>{rule.isActive ? '활성' : '비활성'}</Chip>
+                      <View style={styles.categoryRow}>
+                        <Ionicons name="arrow-forward" size={14} color={theme.colors.primary} />
+                        <Text style={styles.categoryLabel}>{rule.assignCategoryName}</Text>
+                      </View>
                     </View>
-                  </Card.Content>
-                  <Card.Actions>
-                    <Button onPress={() => handleToggleActive(rule)}>{rule.isActive ? '비활성화' : '활성화'}</Button>
-                    <Button onPress={() => handleDelete(rule)}>삭제</Button>
-                  </Card.Actions>
-                </Card>
+                    <View style={[
+                      styles.statusBadge,
+                      { backgroundColor: rule.isActive ? 'rgba(16, 185, 129, 0.1)' : theme.colors.surfaceVariant }
+                    ]}>
+                      <Text style={[
+                        styles.statusText,
+                        { color: rule.isActive ? theme.colors.income : theme.colors.textMuted }
+                      ]}>
+                        {rule.isActive ? '활성' : '비활성'}
+                      </Text>
+                    </View>
+                  </View>
+                  <View style={styles.cardActions}>
+                    <TouchableOpacity style={styles.actionButton} onPress={() => handleToggleActive(rule)}>
+                      <Ionicons
+                        name={rule.isActive ? 'eye-off-outline' : 'eye-outline'}
+                        size={18}
+                        color={theme.colors.textSecondary}
+                      />
+                      <Text style={styles.actionButtonText}>{rule.isActive ? '비활성화' : '활성화'}</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.actionButton} onPress={() => handleDelete(rule)}>
+                      <Ionicons name="trash-outline" size={18} color={theme.colors.expense} />
+                      <Text style={[styles.actionButtonText, { color: theme.colors.expense }]}>삭제</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
               ))
             )}
           </>
         ) : (
           <>
-            <View style={styles.sectionHeader}>
-              <View style={styles.sectionTitleContainer}>
-                <Text style={styles.sectionTitle}>거래 제외 규칙</Text>
-                <Text style={styles.sectionSubtitle}>
-                  패턴과 일치하는 거래를 통계 및 예산에서 자동으로 제외합니다
-                </Text>
-              </View>
-              {exclusions.length > 0 && (
-                <Button
-                  mode="contained-tonal"
-                  onPress={handleApplyExclusionsToExisting}
-                  style={styles.applyButton}
-                  compact
-                >
-                  기존 거래에 적용
-                </Button>
-              )}
-            </View>
+            {/* 제외 규칙 적용 버튼 */}
+            {exclusions.length > 0 && (
+              <TouchableOpacity style={styles.applyButton} onPress={handleApplyExclusionsToExisting}>
+                <Ionicons name="sync" size={18} color={theme.colors.primary} />
+                <Text style={styles.applyButtonText}>기존 거래에 적용</Text>
+              </TouchableOpacity>
+            )}
 
             {exclusions.length === 0 ? (
-              <Card style={styles.emptyCard}>
-                <Card.Content>
-                  <Text style={styles.emptyText}>등록된 제외 규칙이 없습니다.</Text>
-                  <Text style={styles.emptySubtext}>아래 + 버튼을 눌러 규칙을 추가하세요.</Text>
-                </Card.Content>
-              </Card>
+              <View style={styles.emptyCard}>
+                <Ionicons name="eye-off-outline" size={48} color={theme.colors.textMuted} />
+                <Text style={styles.emptyText}>등록된 제외 규칙이 없습니다</Text>
+                <Text style={styles.emptySubtext}>+ 버튼을 눌러 규칙을 추가하세요</Text>
+              </View>
             ) : (
               exclusions.map((exclusion) => (
-                <Card key={exclusion.id} style={[styles.card, !exclusion.isActive && styles.inactiveCard]}>
-                  <Card.Content>
-                    <View style={styles.cardHeader}>
-                      <View style={styles.cardInfo}>
-                        <Text variant="titleMedium">{exclusion.pattern}</Text>
-                        <View style={styles.tags}>
-                          <Chip mode="flat" compact style={styles.chip}>
-                            {getExclusionTypeLabel(exclusion.type)}
-                          </Chip>
+                <View key={exclusion.id} style={[styles.ruleCard, !exclusion.isActive && styles.inactiveCard]}>
+                  <View style={styles.cardHeader}>
+                    <View style={styles.cardInfo}>
+                      <Text style={styles.patternText}>{exclusion.pattern}</Text>
+                      <View style={styles.tags}>
+                        <View style={styles.tagChip}>
+                          <Text style={styles.tagChipText}>{getExclusionTypeLabel(exclusion.type)}</Text>
                         </View>
                       </View>
-                      <Chip mode="flat" style={{ backgroundColor: exclusion.isActive ? '#d1fae5' : '#f3f4f6' }}>
-                        {exclusion.isActive ? '활성' : '비활성'}
-                      </Chip>
                     </View>
-                  </Card.Content>
-                  <Card.Actions>
-                    <Button onPress={() => handleToggleExclusionActive(exclusion)}>
-                      {exclusion.isActive ? '비활성화' : '활성화'}
-                    </Button>
-                    <Button onPress={() => handleDeleteExclusion(exclusion)}>삭제</Button>
-                  </Card.Actions>
-                </Card>
+                    <View style={[
+                      styles.statusBadge,
+                      { backgroundColor: exclusion.isActive ? 'rgba(16, 185, 129, 0.1)' : theme.colors.surfaceVariant }
+                    ]}>
+                      <Text style={[
+                        styles.statusText,
+                        { color: exclusion.isActive ? theme.colors.income : theme.colors.textMuted }
+                      ]}>
+                        {exclusion.isActive ? '활성' : '비활성'}
+                      </Text>
+                    </View>
+                  </View>
+                  <View style={styles.cardActions}>
+                    <TouchableOpacity style={styles.actionButton} onPress={() => handleToggleExclusionActive(exclusion)}>
+                      <Ionicons
+                        name={exclusion.isActive ? 'eye-off-outline' : 'eye-outline'}
+                        size={18}
+                        color={theme.colors.textSecondary}
+                      />
+                      <Text style={styles.actionButtonText}>{exclusion.isActive ? '비활성화' : '활성화'}</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.actionButton} onPress={() => handleDeleteExclusion(exclusion)}>
+                      <Ionicons name="trash-outline" size={18} color={theme.colors.expense} />
+                      <Text style={[styles.actionButtonText, { color: theme.colors.expense }]}>삭제</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
               ))
             )}
           </>
@@ -406,6 +465,7 @@ export default function RulesScreen() {
       <FAB
         style={styles.fab}
         icon="plus"
+        color="#fff"
         onPress={() => openAddDialog(activeTab === 'category' ? 'category' : 'exclusion')}
       />
 
@@ -525,53 +585,111 @@ export default function RulesScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: theme.colors.background,
   },
-  tabs: {
-    margin: 16,
-    marginBottom: 0,
+  centered: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: theme.colors.background,
+  },
+  header: {
+    paddingHorizontal: theme.spacing.lg,
+    paddingTop: theme.spacing.md,
+    paddingBottom: theme.spacing.lg,
+    borderBottomLeftRadius: theme.borderRadius.xl,
+    borderBottomRightRadius: theme.borderRadius.xl,
+  },
+  headerTitle: {
+    fontSize: theme.fontSize.xxl,
+    fontWeight: theme.fontWeight.bold,
+    color: '#fff',
+    marginBottom: theme.spacing.xs,
+  },
+  headerSubtitle: {
+    fontSize: theme.fontSize.md,
+    color: 'rgba(255, 255, 255, 0.9)',
+  },
+  tabContainer: {
+    flexDirection: 'row',
+    gap: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.lg,
+    marginTop: -theme.spacing.md,
+    marginBottom: theme.spacing.sm,
+  },
+  tabButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: theme.spacing.xs,
+    paddingVertical: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.md,
+    borderRadius: theme.borderRadius.lg,
+    backgroundColor: theme.colors.surface,
+    ...theme.shadows.sm,
+  },
+  tabButtonActive: {
+    backgroundColor: 'rgba(19, 202, 214, 0.1)',
+    borderWidth: 1,
+    borderColor: theme.colors.primary,
+  },
+  tabButtonText: {
+    fontSize: theme.fontSize.sm,
+    fontWeight: theme.fontWeight.medium,
+    color: theme.colors.textSecondary,
+  },
+  tabButtonTextActive: {
+    color: theme.colors.primary,
   },
   scrollView: {
     flex: 1,
   },
-  sectionHeader: {
-    backgroundColor: '#fff',
-    marginTop: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
-  },
-  sectionTitleContainer: {
-    padding: 16,
-    paddingBottom: 8,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 4,
-  },
-  sectionSubtitle: {
-    fontSize: 14,
-    color: '#666',
+  scrollContent: {
+    padding: theme.spacing.lg,
+    paddingBottom: 100,
   },
   applyButton: {
-    marginHorizontal: 16,
-    marginBottom: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: theme.spacing.sm,
+    backgroundColor: 'rgba(19, 202, 214, 0.1)',
+    paddingVertical: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.md,
+    borderRadius: theme.borderRadius.lg,
+    marginBottom: theme.spacing.md,
+  },
+  applyButtonText: {
+    fontSize: theme.fontSize.md,
+    fontWeight: theme.fontWeight.medium,
+    color: theme.colors.primary,
   },
   emptyCard: {
-    margin: 16,
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.lg,
+    padding: theme.spacing.xl,
+    alignItems: 'center',
+    ...theme.shadows.sm,
   },
   emptyText: {
+    fontSize: theme.fontSize.lg,
+    color: theme.colors.textSecondary,
+    marginTop: theme.spacing.md,
     textAlign: 'center',
-    fontSize: 16,
-    marginBottom: 8,
   },
   emptySubtext: {
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.textMuted,
+    marginTop: theme.spacing.xs,
     textAlign: 'center',
-    color: '#666',
   },
-  card: {
-    margin: 16,
-    marginTop: 8,
+  ruleCard: {
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.lg,
+    padding: theme.spacing.md,
+    marginBottom: theme.spacing.md,
+    ...theme.shadows.sm,
   },
   inactiveCard: {
     opacity: 0.6,
@@ -584,102 +702,131 @@ const styles = StyleSheet.create({
   cardInfo: {
     flex: 1,
   },
+  patternText: {
+    fontSize: theme.fontSize.lg,
+    fontWeight: theme.fontWeight.semibold,
+    color: theme.colors.text,
+  },
   tags: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    marginTop: 8,
-    gap: 8,
+    marginTop: theme.spacing.sm,
+    gap: theme.spacing.xs,
   },
-  chip: {
-    marginRight: 8,
-    marginTop: 4,
+  tagChip: {
+    backgroundColor: theme.colors.surfaceVariant,
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: 2,
+    borderRadius: theme.borderRadius.full,
+  },
+  tagChipText: {
+    fontSize: theme.fontSize.xs,
+    color: theme.colors.textSecondary,
+    fontWeight: theme.fontWeight.medium,
+  },
+  categoryRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.xs,
+    marginTop: theme.spacing.sm,
   },
   categoryLabel: {
-    marginTop: 8,
-    color: '#6366f1',
-    fontWeight: 'bold',
+    fontSize: theme.fontSize.md,
+    color: theme.colors.primary,
+    fontWeight: theme.fontWeight.semibold,
+  },
+  statusBadge: {
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: 2,
+    borderRadius: theme.borderRadius.full,
+  },
+  statusText: {
+    fontSize: theme.fontSize.xs,
+    fontWeight: theme.fontWeight.medium,
+  },
+  cardActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: theme.spacing.md,
+    marginTop: theme.spacing.md,
+    paddingTop: theme.spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.divider,
+  },
+  actionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.xs,
+    paddingVertical: theme.spacing.xs,
+    paddingHorizontal: theme.spacing.sm,
+  },
+  actionButtonText: {
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.textSecondary,
+    fontWeight: theme.fontWeight.medium,
   },
   fab: {
     position: 'absolute',
-    margin: 16,
+    margin: theme.spacing.lg,
     right: 0,
     bottom: 0,
-    backgroundColor: '#6366f1',
+    backgroundColor: theme.colors.primary,
+    ...theme.shadows.lg,
   },
   input: {
-    marginBottom: 12,
-  },
-  inputWrapper: {
-    marginBottom: 12,
-    position: 'relative',
-  },
-  nativeInput: {
-    borderWidth: 1,
-    borderColor: '#999',
-    borderRadius: 4,
-    padding: 12,
-    paddingTop: 18,
-    fontSize: 16,
-    backgroundColor: '#fff',
-  },
-  inputLabel: {
-    position: 'absolute',
-    left: 12,
-    top: 4,
-    fontSize: 12,
-    color: '#666',
+    marginBottom: theme.spacing.md,
+    backgroundColor: theme.colors.surface,
   },
   label: {
-    marginTop: 8,
-    marginBottom: 8,
-    color: '#666',
+    marginTop: theme.spacing.sm,
+    marginBottom: theme.spacing.sm,
+    fontSize: theme.fontSize.md,
+    color: theme.colors.textSecondary,
+    fontWeight: theme.fontWeight.medium,
   },
   pickerContainer: {
     borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 4,
-    marginBottom: 12,
+    borderColor: theme.colors.border,
+    borderRadius: theme.borderRadius.sm,
+    marginBottom: theme.spacing.md,
+    backgroundColor: theme.colors.surface,
   },
   switchRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 8,
+    paddingVertical: theme.spacing.sm,
   },
   segmentedButtons: {
-    marginBottom: 12,
+    marginBottom: theme.spacing.md,
   },
   hint: {
-    marginTop: 12,
-    padding: 12,
-    backgroundColor: '#eff6ff',
-    borderRadius: 8,
-    color: '#1e40af',
-    fontSize: 12,
+    marginTop: theme.spacing.md,
+    padding: theme.spacing.md,
+    backgroundColor: 'rgba(19, 202, 214, 0.08)',
+    borderRadius: theme.borderRadius.sm,
+    color: theme.colors.primary,
+    fontSize: theme.fontSize.sm,
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'transparent',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   modalContent: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 20,
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.lg,
+    padding: theme.spacing.lg,
     width: '90%',
     maxHeight: '80%',
-    elevation: 5,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
+    ...theme.shadows.lg,
   },
   modalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 16,
-    color: '#333',
+    fontSize: theme.fontSize.xl,
+    fontWeight: theme.fontWeight.bold,
+    marginBottom: theme.spacing.md,
+    color: theme.colors.text,
   },
   modalScrollView: {
     maxHeight: 400,
@@ -687,11 +834,11 @@ const styles = StyleSheet.create({
   modalActions: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
-    gap: 8,
-    marginTop: 16,
-    paddingTop: 16,
+    gap: theme.spacing.sm,
+    marginTop: theme.spacing.md,
+    paddingTop: theme.spacing.md,
     borderTopWidth: 1,
-    borderTopColor: '#e0e0e0',
+    borderTopColor: theme.colors.divider,
   },
   modalButton: {
     minWidth: 80,

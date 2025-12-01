@@ -8,21 +8,21 @@ import {
   Platform,
   RefreshControl,
   Pressable,
-  SafeAreaView,
-} from 'react-native';
-import {
-  Button,
-  Card,
-  Text,
+  Text as RNText,
+  TouchableOpacity,
   ActivityIndicator,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
+import {
+  Text,
   TextInput,
   Divider,
-  IconButton,
-  Chip,
   Portal,
   Modal,
-  FAB,
 } from 'react-native-paper';
+import { theme } from '../lib/theme';
 import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { analyzeReceiptWithOpenAI, analyzeReceiptWithGemini, OCRResult } from '../lib/ai-ocr';
@@ -31,6 +31,8 @@ import { format } from 'date-fns';
 import { ko } from 'date-fns/locale';
 
 export default function ReceiptScreen({ navigation }: any) {
+  const insets = useSafeAreaInsets();
+
   // 리스트 관련 상태
   const [receipts, setReceipts] = useState<Receipt[]>([]);
   const [refreshing, setRefreshing] = useState(false);
@@ -294,53 +296,62 @@ export default function ReceiptScreen({ navigation }: any) {
   if (listLoading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" />
+        <ActivityIndicator size="large" color={theme.colors.primary} />
       </View>
     );
   }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.container}>
-      <ScrollView
-        style={styles.scrollView}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
+    <View style={styles.safeArea}>
+      {/* 그래디언트 헤더 */}
+      <LinearGradient
+        colors={theme.gradients.header as any}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={[styles.header, { paddingTop: insets.top + theme.spacing.md }]}
       >
-        {receipts.length === 0 ? (
-          <View style={styles.emptyContainer}>
-            <Text variant="bodyLarge" style={styles.emptyText}>
-              업로드된 영수증이 없습니다.
-            </Text>
-            <Text variant="bodySmall" style={styles.emptySubtext}>
-              아래 + 버튼을 눌러 영수증을 스캔하세요.
-            </Text>
-          </View>
-        ) : (
-          receipts.map((receipt) => (
-            <Pressable key={receipt.id} onPress={() => handleReceiptClick(receipt)}>
-              <Card style={styles.card}>
-                <Card.Content>
+        <RNText style={styles.headerTitle}>영수증</RNText>
+        <RNText style={styles.headerSubtitle}>AI가 영수증을 분석합니다</RNText>
+      </LinearGradient>
+
+      <View style={styles.container}>
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[theme.colors.primary]} />
+          }
+        >
+          {receipts.length === 0 ? (
+            <View style={styles.emptyContainer}>
+              <Ionicons name="receipt-outline" size={64} color={theme.colors.textTertiary} />
+              <RNText style={styles.emptyText}>업로드된 영수증이 없습니다</RNText>
+              <RNText style={styles.emptySubtext}>아래 버튼을 눌러 영수증을 스캔하세요</RNText>
+            </View>
+          ) : (
+            receipts.map((receipt) => (
+              <Pressable key={receipt.id} onPress={() => handleReceiptClick(receipt)}>
+                <View style={styles.card}>
                   <View style={styles.receiptHeader}>
                     <View style={styles.receiptInfo}>
-                      <Text variant="titleMedium" style={styles.receiptMerchant}>
+                      <RNText style={styles.receiptMerchant}>
                         {receipt.ocrMerchant || '가맹점 정보 없음'}
-                      </Text>
-                      <Text variant="bodySmall" style={styles.receiptDate}>
+                      </RNText>
+                      <RNText style={styles.receiptDate}>
                         {receipt.ocrDate
                           ? format(new Date(receipt.ocrDate), 'yyyy년 M월 d일', { locale: ko })
                           : format(new Date(receipt.uploadedAt), 'yyyy년 M월 d일', { locale: ko })}
-                      </Text>
+                      </RNText>
                     </View>
-                    <IconButton
-                      icon="delete"
-                      size={20}
+                    <TouchableOpacity
+                      style={styles.deleteButton}
                       onPress={(e) => {
                         e?.stopPropagation();
                         handleDeleteReceipt(receipt.id);
                       }}
-                    />
+                    >
+                      <Ionicons name="trash-outline" size={20} color={theme.colors.expense} />
+                    </TouchableOpacity>
                   </View>
 
                   <View style={styles.receiptRow}>
@@ -350,34 +361,56 @@ export default function ReceiptScreen({ navigation }: any) {
                     <View style={styles.receiptDetails}>
                       {receipt.ocrAmount && (
                         <View style={styles.detailRow}>
-                          <Text variant="bodySmall" style={styles.detailLabel}>금액:</Text>
-                          <Text variant="bodyMedium" style={styles.detailValue}>
+                          <RNText style={styles.detailLabel}>금액</RNText>
+                          <RNText style={styles.detailValue}>
                             {Math.round(receipt.ocrAmount).toLocaleString()}원
-                          </Text>
+                          </RNText>
                         </View>
                       )}
                       {receipt.ocrConfidence && (
                         <View style={styles.detailRow}>
-                          <Text variant="bodySmall" style={styles.detailLabel}>정확도:</Text>
-                          <Chip compact style={[styles.confidenceChip, receipt.ocrConfidence >= 0.8 ? styles.highConfidence : receipt.ocrConfidence >= 0.6 ? styles.mediumConfidence : styles.lowConfidence]}>{(receipt.ocrConfidence * 100).toFixed(0)}%</Chip>
+                          <RNText style={styles.detailLabel}>정확도</RNText>
+                          <View style={[
+                            styles.confidenceBadge,
+                            receipt.ocrConfidence >= 0.8 ? styles.highConfidence :
+                            receipt.ocrConfidence >= 0.6 ? styles.mediumConfidence : styles.lowConfidence
+                          ]}>
+                            <RNText style={[
+                              styles.confidenceText,
+                              receipt.ocrConfidence >= 0.8 ? styles.highConfidenceText :
+                              receipt.ocrConfidence >= 0.6 ? styles.mediumConfidenceText : styles.lowConfidenceText
+                            ]}>
+                              {(receipt.ocrConfidence * 100).toFixed(0)}%
+                            </RNText>
+                          </View>
                         </View>
                       )}
                       {receipt.linkedTxId && (
-                        <View style={styles.detailRow}>
-                          <Chip compact icon="check-circle" style={styles.linkedChip}>거래 연결됨</Chip>
+                        <View style={styles.linkedBadge}>
+                          <Ionicons name="checkmark-circle" size={14} color={theme.colors.primary} />
+                          <RNText style={styles.linkedText}>거래 연결됨</RNText>
                         </View>
                       )}
                     </View>
                   </View>
-                </Card.Content>
-              </Card>
-            </Pressable>
-          ))
-        )}
-      </ScrollView>
+                </View>
+              </Pressable>
+            ))
+          )}
+        </ScrollView>
 
-      {/* FAB 버튼 */}
-      <FAB icon="plus" style={styles.fab} onPress={openUploadModal} label="영수증 스캔" />
+        {/* FAB 버튼 */}
+        <TouchableOpacity style={styles.fab} onPress={openUploadModal} activeOpacity={0.8}>
+          <LinearGradient
+            colors={theme.gradients.header as any}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.fabGradient}
+          >
+            <Ionicons name="scan" size={24} color="#fff" />
+            <RNText style={styles.fabText}>영수증 스캔</RNText>
+          </LinearGradient>
+        </TouchableOpacity>
 
       {/* 업로드 모달 */}
       <Portal>
@@ -386,49 +419,60 @@ export default function ReceiptScreen({ navigation }: any) {
           onDismiss={closeUploadModal}
           contentContainerStyle={styles.modal}
         >
-          <ScrollView>
+          <ScrollView showsVerticalScrollIndicator={false}>
             <View style={styles.modalHeader}>
-              <Text variant="titleLarge" style={styles.modalTitle}>
-                영수증 스캔
-              </Text>
-              <IconButton icon="close" size={24} onPress={closeUploadModal} />
+              <RNText style={styles.modalTitle}>영수증 스캔</RNText>
+              <TouchableOpacity onPress={closeUploadModal} style={styles.closeButton}>
+                <Ionicons name="close" size={24} color={theme.colors.textSecondary} />
+              </TouchableOpacity>
             </View>
-            <Text variant="bodyMedium" style={styles.subtitle}>
+            <RNText style={styles.subtitle}>
               영수증 사진을 촬영하거나 선택하면 AI가 자동으로 금액, 가맹점, 날짜를 추출합니다.
-            </Text>
+            </RNText>
 
             <View style={styles.buttonRow}>
-              <Button mode="contained" icon="camera" onPress={takePhoto} style={styles.button} disabled={loading}>카메라</Button>
-              <Button mode="outlined" icon="image" onPress={pickImage} style={styles.button} disabled={loading}>갤러리</Button>
+              <TouchableOpacity
+                style={[styles.actionButton, styles.primaryButton, loading && styles.buttonDisabled]}
+                onPress={takePhoto}
+                disabled={loading}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="camera" size={20} color="#fff" />
+                <RNText style={styles.primaryButtonText}>카메라</RNText>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.actionButton, styles.secondaryButton, loading && styles.buttonDisabled]}
+                onPress={pickImage}
+                disabled={loading}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="image" size={20} color={theme.colors.primary} />
+                <RNText style={styles.secondaryButtonText}>갤러리</RNText>
+              </TouchableOpacity>
             </View>
 
             {loading && (
               <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color="#6366f1" />
-                <Text style={styles.loadingText}>AI가 영수증을 분석 중입니다...</Text>
+                <ActivityIndicator size="large" color={theme.colors.primary} />
+                <RNText style={styles.loadingText}>AI가 영수증을 분석 중입니다...</RNText>
               </View>
             )}
 
             {imageUri && (
               <>
-                <Divider style={styles.divider} />
-                <Text variant="titleMedium" style={styles.sectionTitle}>
-                  영수증 이미지
-                </Text>
+                <View style={styles.divider} />
+                <RNText style={styles.sectionTitle}>영수증 이미지</RNText>
                 <Image source={{ uri: imageUri }} style={styles.image} />
               </>
             )}
 
             {ocrResult && (
               <>
-                <Divider style={styles.divider} />
-                <Text variant="titleMedium" style={styles.sectionTitle}>
-                  추출된 정보
-                </Text>
-                <Text variant="bodySmall" style={styles.confidence}>
-                  정확도: {(ocrResult.confidence * 100).toFixed(0)}% |
-                  제공자: {ocrResult.provider === 'openai' ? 'OpenAI' : 'Google Gemini'}
-                </Text>
+                <View style={styles.divider} />
+                <RNText style={styles.sectionTitle}>추출된 정보</RNText>
+                <RNText style={styles.confidence}>
+                  정확도: {(ocrResult.confidence * 100).toFixed(0)}% | 제공자: {ocrResult.provider === 'openai' ? 'OpenAI' : 'Google Gemini'}
+                </RNText>
 
                 <TextInput
                   mode="outlined"
@@ -439,6 +483,8 @@ export default function ReceiptScreen({ navigation }: any) {
                   placeholder="0"
                   right={<TextInput.Affix text="원" />}
                   style={styles.input}
+                  outlineColor={theme.colors.border}
+                  activeOutlineColor={theme.colors.primary}
                   autoCorrect={false}
                   autoComplete="off"
                   autoCapitalize="none"
@@ -453,6 +499,8 @@ export default function ReceiptScreen({ navigation }: any) {
                   onChangeText={setMerchant}
                   placeholder="가맹점명"
                   style={styles.input}
+                  outlineColor={theme.colors.border}
+                  activeOutlineColor={theme.colors.primary}
                   keyboardType="default"
                   autoCorrect={false}
                   autoComplete="off"
@@ -468,6 +516,8 @@ export default function ReceiptScreen({ navigation }: any) {
                   onChangeText={setDate}
                   placeholder="yyyy-MM-dd"
                   style={styles.input}
+                  outlineColor={theme.colors.border}
+                  activeOutlineColor={theme.colors.primary}
                   keyboardType="default"
                   autoCorrect={false}
                   autoComplete="off"
@@ -478,29 +528,32 @@ export default function ReceiptScreen({ navigation }: any) {
 
                 {ocrResult.items && ocrResult.items.length > 0 && (
                   <>
-                    <Text variant="titleSmall" style={styles.label}>
-                      메뉴 항목
-                    </Text>
-                    <Text variant="bodySmall" style={styles.menuItems}>
-                      {ocrResult.items.join(', ')}
-                    </Text>
+                    <RNText style={styles.label}>메뉴 항목</RNText>
+                    <View style={styles.menuItemsContainer}>
+                      <RNText style={styles.menuItems}>{ocrResult.items.join(', ')}</RNText>
+                    </View>
                   </>
                 )}
 
                 {ocrResult.text && (
                   <>
-                    <Text variant="titleSmall" style={styles.label}>
-                      전체 텍스트
-                    </Text>
-                    <Text variant="bodySmall" style={styles.fullText}>
-                      {ocrResult.text}
-                    </Text>
+                    <RNText style={styles.label}>전체 텍스트</RNText>
+                    <View style={styles.fullTextContainer}>
+                      <RNText style={styles.fullText}>{ocrResult.text}</RNText>
+                    </View>
                   </>
                 )}
 
-                <Divider style={styles.divider} />
+                <View style={styles.divider} />
 
-                <Button mode="contained" icon="check" onPress={createTransaction} style={styles.createButton} buttonColor="#10b981">거래 생성</Button>
+                <TouchableOpacity
+                  style={styles.createButton}
+                  onPress={createTransaction}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="checkmark-circle" size={20} color="#fff" />
+                  <RNText style={styles.createButtonText}>거래 생성</RNText>
+                </TouchableOpacity>
               </>
             )}
           </ScrollView>
@@ -512,12 +565,12 @@ export default function ReceiptScreen({ navigation }: any) {
           onDismiss={closeDetailModal}
           contentContainerStyle={styles.modal}
         >
-          <ScrollView>
+          <ScrollView showsVerticalScrollIndicator={false}>
             <View style={styles.modalHeader}>
-              <Text variant="titleLarge" style={styles.modalTitle}>
-                영수증 상세 정보
-              </Text>
-              <IconButton icon="close" size={24} onPress={closeDetailModal} />
+              <RNText style={styles.modalTitle}>영수증 상세 정보</RNText>
+              <TouchableOpacity onPress={closeDetailModal} style={styles.closeButton}>
+                <Ionicons name="close" size={24} color={theme.colors.textSecondary} />
+              </TouchableOpacity>
             </View>
 
             {selectedReceipt && (
@@ -525,94 +578,123 @@ export default function ReceiptScreen({ navigation }: any) {
                 {/* 영수증 이미지 */}
                 {selectedReceipt.url && (
                   <>
-                    <Text variant="titleMedium" style={styles.sectionTitle}>
-                      영수증 이미지
-                    </Text>
+                    <RNText style={styles.sectionTitle}>영수증 이미지</RNText>
                     <Image source={{ uri: selectedReceipt.url }} style={styles.image} />
-                    <Divider style={styles.divider} />
+                    <View style={styles.divider} />
                   </>
                 )}
 
                 {/* OCR 추출 정보 */}
-                <Text variant="titleMedium" style={styles.sectionTitle}>
-                  추출된 정보
-                </Text>
+                <RNText style={styles.sectionTitle}>추출된 정보</RNText>
 
                 {selectedReceipt.ocrConfidence && (
                   <View style={styles.detailInfoRow}>
-                    <Text variant="bodySmall" style={styles.detailInfoLabel}>정확도:</Text>
-                    <Chip compact style={[styles.confidenceChip, selectedReceipt.ocrConfidence >= 0.8 ? styles.highConfidence : selectedReceipt.ocrConfidence >= 0.6 ? styles.mediumConfidence : styles.lowConfidence]}>{(selectedReceipt.ocrConfidence * 100).toFixed(0)}%</Chip>
+                    <RNText style={styles.detailInfoLabel}>정확도</RNText>
+                    <View style={[
+                      styles.confidenceBadge,
+                      selectedReceipt.ocrConfidence >= 0.8 ? styles.highConfidence :
+                      selectedReceipt.ocrConfidence >= 0.6 ? styles.mediumConfidence : styles.lowConfidence
+                    ]}>
+                      <RNText style={[
+                        styles.confidenceText,
+                        selectedReceipt.ocrConfidence >= 0.8 ? styles.highConfidenceText :
+                        selectedReceipt.ocrConfidence >= 0.6 ? styles.mediumConfidenceText : styles.lowConfidenceText
+                      ]}>
+                        {(selectedReceipt.ocrConfidence * 100).toFixed(0)}%
+                      </RNText>
+                    </View>
                   </View>
                 )}
 
                 <View style={styles.detailInfoRow}>
-                  <Text variant="bodySmall" style={styles.detailInfoLabel}>가맹점:</Text>
-                  <Text variant="bodyMedium" style={styles.detailInfoValue}>
+                  <RNText style={styles.detailInfoLabel}>가맹점</RNText>
+                  <RNText style={styles.detailInfoValue}>
                     {selectedReceipt.ocrMerchant || '-'}
-                  </Text>
+                  </RNText>
                 </View>
 
                 <View style={styles.detailInfoRow}>
-                  <Text variant="bodySmall" style={styles.detailInfoLabel}>금액:</Text>
-                  <Text variant="bodyMedium" style={styles.detailInfoValue}>
+                  <RNText style={styles.detailInfoLabel}>금액</RNText>
+                  <RNText style={styles.detailInfoValue}>
                     {selectedReceipt.ocrAmount ? `${Math.round(selectedReceipt.ocrAmount).toLocaleString()}원` : '-'}
-                  </Text>
+                  </RNText>
                 </View>
 
                 <View style={styles.detailInfoRow}>
-                  <Text variant="bodySmall" style={styles.detailInfoLabel}>날짜:</Text>
-                  <Text variant="bodyMedium" style={styles.detailInfoValue}>
+                  <RNText style={styles.detailInfoLabel}>날짜</RNText>
+                  <RNText style={styles.detailInfoValue}>
                     {selectedReceipt.ocrDate
                       ? format(new Date(selectedReceipt.ocrDate), 'yyyy년 M월 d일', { locale: ko })
                       : '-'}
-                  </Text>
+                  </RNText>
                 </View>
 
                 <View style={styles.detailInfoRow}>
-                  <Text variant="bodySmall" style={styles.detailInfoLabel}>업로드일:</Text>
-                  <Text variant="bodyMedium" style={styles.detailInfoValue}>
+                  <RNText style={styles.detailInfoLabel}>업로드일</RNText>
+                  <RNText style={styles.detailInfoValue}>
                     {format(new Date(selectedReceipt.uploadedAt), 'yyyy년 M월 d일 HH:mm', { locale: ko })}
-                  </Text>
+                  </RNText>
                 </View>
 
                 {selectedReceipt.linkedTxId && (
-                  <View style={styles.detailInfoRow}>
-                    <Chip compact icon="check-circle" style={styles.linkedChip}>거래 연결됨 (ID: {selectedReceipt.linkedTxId})</Chip>
+                  <View style={styles.linkedBadgeLarge}>
+                    <Ionicons name="checkmark-circle" size={16} color={theme.colors.primary} />
+                    <RNText style={styles.linkedTextLarge}>거래 연결됨 (ID: {selectedReceipt.linkedTxId})</RNText>
                   </View>
                 )}
 
                 {/* 전체 OCR 텍스트 */}
                 {selectedReceipt.ocrText && (
                   <>
-                    <Divider style={styles.divider} />
-                    <Text variant="titleMedium" style={styles.sectionTitle}>
-                      전체 OCR 텍스트
-                    </Text>
+                    <View style={styles.divider} />
+                    <RNText style={styles.sectionTitle}>전체 OCR 텍스트</RNText>
                     <View style={styles.ocrTextContainer}>
-                      <Text variant="bodySmall" style={styles.fullText}>
-                        {selectedReceipt.ocrText}
-                      </Text>
+                      <RNText style={styles.fullText}>{selectedReceipt.ocrText}</RNText>
                     </View>
                   </>
                 )}
 
-                <Divider style={styles.divider} />
+                <View style={styles.divider} />
 
-                <Button mode="outlined" icon="close" onPress={closeDetailModal} style={styles.createButton}>닫기</Button>
+                <TouchableOpacity
+                  style={styles.closeModalButton}
+                  onPress={closeDetailModal}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="close-circle-outline" size={20} color={theme.colors.textSecondary} />
+                  <RNText style={styles.closeModalButtonText}>닫기</RNText>
+                </TouchableOpacity>
               </>
             )}
           </ScrollView>
         </Modal>
       </Portal>
+      </View>
     </View>
-    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: theme.colors.background,
+  },
+  header: {
+    paddingTop: theme.spacing.md,
+    paddingBottom: theme.spacing.xl,
+    paddingHorizontal: theme.spacing.lg,
+    borderBottomLeftRadius: theme.borderRadius.xl,
+    borderBottomRightRadius: theme.borderRadius.xl,
+  },
+  headerTitle: {
+    fontSize: theme.fontSize.xxl,
+    fontWeight: theme.fontWeight.bold as any,
+    color: '#fff',
+    marginBottom: theme.spacing.xs,
+  },
+  headerSubtitle: {
+    fontSize: theme.fontSize.sm,
+    color: 'rgba(255, 255, 255, 0.9)',
   },
   container: {
     flex: 1,
@@ -621,191 +703,354 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: theme.colors.background,
   },
   scrollView: {
     flex: 1,
   },
+  scrollContent: {
+    paddingTop: theme.spacing.md,
+    paddingBottom: 100,
+  },
   card: {
-    marginHorizontal: 16,
-    marginVertical: 8,
+    marginHorizontal: theme.spacing.md,
+    marginBottom: theme.spacing.sm,
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.lg,
+    padding: theme.spacing.md,
+    ...theme.shadows.sm,
   },
   emptyContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 60,
-    paddingHorizontal: 32,
+    paddingVertical: 80,
+    paddingHorizontal: theme.spacing.xl,
   },
   emptyText: {
-    color: '#6b7280',
-    marginBottom: 8,
+    fontSize: theme.fontSize.md,
+    fontWeight: theme.fontWeight.medium as any,
+    color: theme.colors.textSecondary,
+    marginTop: theme.spacing.md,
+    marginBottom: theme.spacing.xs,
   },
   emptySubtext: {
-    color: '#9ca3af',
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.textTertiary,
     textAlign: 'center',
   },
   receiptHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
+    alignItems: 'flex-start',
+    marginBottom: theme.spacing.md,
   },
   receiptInfo: {
     flex: 1,
   },
   receiptMerchant: {
-    fontWeight: 'bold',
-    marginBottom: 4,
+    fontSize: theme.fontSize.md,
+    fontWeight: theme.fontWeight.semibold as any,
+    color: theme.colors.text,
+    marginBottom: theme.spacing.xs,
   },
   receiptDate: {
-    color: '#6b7280',
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.textSecondary,
+  },
+  deleteButton: {
+    padding: theme.spacing.sm,
   },
   receiptRow: {
     flexDirection: 'row',
-    gap: 12,
+    gap: theme.spacing.md,
   },
   thumbnail: {
     width: 80,
     height: 80,
-    borderRadius: 8,
-    backgroundColor: '#f0f0f0',
+    borderRadius: theme.borderRadius.md,
+    backgroundColor: theme.colors.background,
   },
   receiptDetails: {
     flex: 1,
-    gap: 8,
+    gap: theme.spacing.sm,
   },
   detailRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: theme.spacing.sm,
   },
   detailLabel: {
-    color: '#6b7280',
-    minWidth: 60,
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.textSecondary,
+    minWidth: 50,
   },
   detailValue: {
-    fontWeight: '600',
+    fontSize: theme.fontSize.sm,
+    fontWeight: theme.fontWeight.semibold as any,
+    color: theme.colors.text,
   },
-  confidenceChip: {
-    alignSelf: 'flex-start',
+  confidenceBadge: {
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: theme.spacing.xs,
+    borderRadius: theme.borderRadius.full,
+  },
+  confidenceText: {
+    fontSize: theme.fontSize.xs,
+    fontWeight: theme.fontWeight.medium as any,
   },
   highConfidence: {
     backgroundColor: '#dcfce7',
   },
+  highConfidenceText: {
+    color: '#166534',
+  },
   mediumConfidence: {
     backgroundColor: '#fef3c7',
+  },
+  mediumConfidenceText: {
+    color: '#92400e',
   },
   lowConfidence: {
     backgroundColor: '#fee2e2',
   },
-  linkedChip: {
-    backgroundColor: '#dbeafe',
+  lowConfidenceText: {
+    color: '#991b1b',
+  },
+  linkedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.xs,
+    backgroundColor: 'rgba(19, 202, 214, 0.1)',
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: theme.spacing.xs,
+    borderRadius: theme.borderRadius.full,
+    alignSelf: 'flex-start',
+  },
+  linkedText: {
+    fontSize: theme.fontSize.xs,
+    color: theme.colors.primary,
+    fontWeight: theme.fontWeight.medium as any,
+  },
+  linkedBadgeLarge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+    backgroundColor: 'rgba(19, 202, 214, 0.1)',
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    borderRadius: theme.borderRadius.md,
+    marginTop: theme.spacing.sm,
+  },
+  linkedTextLarge: {
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.primary,
+    fontWeight: theme.fontWeight.medium as any,
   },
   fab: {
     position: 'absolute',
-    margin: 16,
-    right: 0,
-    bottom: 0,
+    right: theme.spacing.md,
+    bottom: theme.spacing.md,
+    borderRadius: theme.borderRadius.full,
+    overflow: 'hidden',
+    ...theme.shadows.md,
+  },
+  fabGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: theme.spacing.md,
+    paddingHorizontal: theme.spacing.lg,
+    gap: theme.spacing.sm,
+  },
+  fabText: {
+    fontSize: theme.fontSize.sm,
+    fontWeight: theme.fontWeight.semibold as any,
+    color: '#fff',
   },
   modal: {
-    backgroundColor: 'white',
-    padding: 20,
-    margin: 20,
-    borderRadius: 12,
+    backgroundColor: theme.colors.surface,
+    padding: theme.spacing.lg,
+    margin: theme.spacing.lg,
+    borderRadius: theme.borderRadius.xl,
     maxHeight: '90%',
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: theme.spacing.sm,
   },
   modalTitle: {
-    fontWeight: 'bold',
+    fontSize: theme.fontSize.xl,
+    fontWeight: theme.fontWeight.bold as any,
+    color: theme.colors.text,
+  },
+  closeButton: {
+    padding: theme.spacing.xs,
   },
   subtitle: {
-    color: '#666',
-    marginBottom: 16,
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.textSecondary,
+    marginBottom: theme.spacing.md,
+    lineHeight: 20,
   },
   buttonRow: {
     flexDirection: 'row',
-    gap: 12,
-    marginBottom: 16,
+    gap: theme.spacing.md,
+    marginBottom: theme.spacing.md,
   },
-  button: {
+  actionButton: {
     flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: theme.spacing.md,
+    borderRadius: theme.borderRadius.lg,
+    gap: theme.spacing.sm,
+  },
+  primaryButton: {
+    backgroundColor: theme.colors.primary,
+  },
+  primaryButtonText: {
+    fontSize: theme.fontSize.sm,
+    fontWeight: theme.fontWeight.semibold as any,
+    color: '#fff',
+  },
+  secondaryButton: {
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.primary,
+  },
+  secondaryButtonText: {
+    fontSize: theme.fontSize.sm,
+    fontWeight: theme.fontWeight.semibold as any,
+    color: theme.colors.primary,
+  },
+  buttonDisabled: {
+    opacity: 0.5,
   },
   loadingContainer: {
     alignItems: 'center',
-    paddingVertical: 24,
+    paddingVertical: theme.spacing.xl,
   },
   loadingText: {
-    marginTop: 12,
-    color: '#666',
+    marginTop: theme.spacing.md,
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.textSecondary,
   },
   divider: {
-    marginVertical: 16,
+    height: 1,
+    backgroundColor: theme.colors.border,
+    marginVertical: theme.spacing.md,
   },
   sectionTitle: {
-    marginBottom: 12,
-    fontWeight: 'bold',
+    fontSize: theme.fontSize.md,
+    fontWeight: theme.fontWeight.semibold as any,
+    color: theme.colors.text,
+    marginBottom: theme.spacing.md,
   },
   image: {
     width: '100%',
     height: 300,
     resizeMode: 'contain',
-    backgroundColor: '#f0f0f0',
-    borderRadius: 8,
+    backgroundColor: theme.colors.background,
+    borderRadius: theme.borderRadius.lg,
   },
   confidence: {
-    color: '#666',
-    marginBottom: 12,
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.textSecondary,
+    marginBottom: theme.spacing.md,
   },
   input: {
-    marginBottom: 12,
+    marginBottom: theme.spacing.md,
+    backgroundColor: theme.colors.surface,
   },
   label: {
-    marginTop: 8,
-    marginBottom: 4,
-    fontWeight: 'bold',
+    fontSize: theme.fontSize.sm,
+    fontWeight: theme.fontWeight.semibold as any,
+    color: theme.colors.text,
+    marginTop: theme.spacing.sm,
+    marginBottom: theme.spacing.sm,
+  },
+  menuItemsContainer: {
+    backgroundColor: 'rgba(19, 202, 214, 0.1)',
+    padding: theme.spacing.md,
+    borderRadius: theme.borderRadius.md,
+    marginBottom: theme.spacing.sm,
   },
   menuItems: {
-    backgroundColor: '#e0f2fe',
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 8,
-    color: '#0c4a6e',
-  },
-  fullText: {
-    backgroundColor: '#f0f0f0',
-    padding: 12,
-    borderRadius: 8,
-    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.primary,
     lineHeight: 20,
   },
+  fullTextContainer: {
+    backgroundColor: theme.colors.background,
+    padding: theme.spacing.md,
+    borderRadius: theme.borderRadius.md,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  fullText: {
+    fontSize: theme.fontSize.xs,
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+    lineHeight: 18,
+    color: theme.colors.textSecondary,
+  },
   createButton: {
-    marginTop: 8,
-    marginBottom: 24,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: theme.colors.income,
+    paddingVertical: theme.spacing.md,
+    borderRadius: theme.borderRadius.lg,
+    gap: theme.spacing.sm,
+    marginTop: theme.spacing.sm,
+    marginBottom: theme.spacing.lg,
+  },
+  createButtonText: {
+    fontSize: theme.fontSize.md,
+    fontWeight: theme.fontWeight.semibold as any,
+    color: '#fff',
+  },
+  closeModalButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: theme.colors.background,
+    paddingVertical: theme.spacing.md,
+    borderRadius: theme.borderRadius.lg,
+    gap: theme.spacing.sm,
+    marginTop: theme.spacing.sm,
+    marginBottom: theme.spacing.lg,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  closeModalButtonText: {
+    fontSize: theme.fontSize.md,
+    fontWeight: theme.fontWeight.medium as any,
+    color: theme.colors.textSecondary,
   },
   detailInfoRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
-    gap: 8,
+    marginBottom: theme.spacing.md,
+    gap: theme.spacing.sm,
   },
   detailInfoLabel: {
-    color: '#6b7280',
-    minWidth: 80,
-    fontWeight: '600',
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.textSecondary,
+    minWidth: 70,
+    fontWeight: theme.fontWeight.medium as any,
   },
   detailInfoValue: {
     flex: 1,
-    color: '#1f2937',
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.text,
   },
   ocrTextContainer: {
-    backgroundColor: '#f9fafb',
-    padding: 16,
-    borderRadius: 8,
+    backgroundColor: theme.colors.background,
+    padding: theme.spacing.md,
+    borderRadius: theme.borderRadius.md,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: theme.colors.border,
   },
 });

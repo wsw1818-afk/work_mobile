@@ -7,15 +7,15 @@ import {
   Alert,
   Clipboard,
   Pressable,
+  Text as RNText,
+  TouchableOpacity,
+  TextInput,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   Text,
-  Card,
   ActivityIndicator,
   IconButton,
-  Searchbar,
-  Chip,
   Menu,
   Button,
   Portal,
@@ -23,9 +23,12 @@ import {
   TextInput as PaperInput,
   SegmentedButtons,
 } from 'react-native-paper';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 import { format, addMonths, subMonths } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { database, Transaction, Category } from '../lib/db/database';
+import { theme } from '../lib/theme';
 
 // 검색 debounce 훅
 function useDebounce<T>(value: T, delay: number): T {
@@ -233,10 +236,12 @@ export default function TransactionsScreen() {
     Alert.alert('복사 완료', `${label}이(가) 복사되었습니다.`);
   };
 
+  const insets = useSafeAreaInsets();
+
   if (loading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" />
+        <ActivityIndicator size="large" color={theme.colors.primary} />
       </View>
     );
   }
@@ -248,60 +253,99 @@ export default function TransactionsScreen() {
     month === new Date().getMonth() + 1;
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.container}>
-      {/* 월별 선택 헤더 */}
-      <View style={styles.monthSelector}>
-        <IconButton
-          icon="chevron-left"
-          size={24}
-          onPress={goToPreviousMonth}
-        />
-        <View style={styles.monthInfo}>
-          <Text variant="titleLarge" style={styles.monthText}>
-            {format(selectedDate, 'yyyy년 M월', { locale: ko })}
-          </Text>
-          {!isCurrentMonth && (
-            <Button mode="text" compact onPress={goToCurrentMonth} style={styles.currentMonthButton}>이번 달로</Button>
+    <View style={styles.container}>
+      {/* Dokterian 스타일 헤더 */}
+      <LinearGradient
+        colors={theme.gradients.header as [string, string]}
+        style={[styles.header, { paddingTop: insets.top + 16 }]}
+      >
+        <RNText style={styles.headerTitle}>거래내역</RNText>
+
+        {/* 월 선택기 */}
+        <View style={styles.monthSelector}>
+          <TouchableOpacity onPress={goToPreviousMonth} style={styles.monthArrow}>
+            <Ionicons name="chevron-back" size={24} color="#fff" />
+          </TouchableOpacity>
+          <View style={styles.monthInfo}>
+            <RNText style={styles.monthText}>
+              {format(selectedDate, 'yyyy년 M월', { locale: ko })}
+            </RNText>
+            {!isCurrentMonth && (
+              <TouchableOpacity onPress={goToCurrentMonth}>
+                <RNText style={styles.currentMonthBtn}>이번 달로</RNText>
+              </TouchableOpacity>
+            )}
+          </View>
+          <TouchableOpacity
+            onPress={goToNextMonth}
+            style={[styles.monthArrow, isCurrentMonth && styles.disabledArrow]}
+            disabled={isCurrentMonth}
+          >
+            <Ionicons name="chevron-forward" size={24} color={isCurrentMonth ? 'rgba(255,255,255,0.4)' : '#fff'} />
+          </TouchableOpacity>
+        </View>
+
+        {/* 검색창 */}
+        <View style={styles.searchContainer}>
+          <Ionicons name="search" size={20} color={theme.colors.textSecondary} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="검색..."
+            placeholderTextColor={theme.colors.textSecondary}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity onPress={() => setSearchQuery('')}>
+              <Ionicons name="close-circle" size={20} color={theme.colors.textSecondary} />
+            </TouchableOpacity>
           )}
         </View>
-        <IconButton
-          icon="chevron-right"
-          size={24}
-          onPress={goToNextMonth}
-          disabled={isCurrentMonth}
-        />
-      </View>
+      </LinearGradient>
 
-      {/* 검색 및 필터 */}
+      {/* 필터 칩 */}
       <View style={styles.filterContainer}>
-        <Searchbar
-          placeholder="검색..."
-          onChangeText={setSearchQuery}
-          value={searchQuery}
-          style={styles.searchbar}
-        />
-        <View style={styles.chipContainer}>
-          <Chip selected={filterType === 'all'} onPress={() => setFilterType('all')} style={styles.chip}>전체</Chip>
-          <Chip selected={filterType === 'income'} onPress={() => setFilterType('income')} style={styles.chip}>수입</Chip>
-          <Chip selected={filterType === 'expense'} onPress={() => setFilterType('expense')} style={styles.chip}>지출</Chip>
-        </View>
+        {(['all', 'income', 'expense'] as const).map((type) => (
+          <TouchableOpacity
+            key={type}
+            style={[
+              styles.filterChip,
+              filterType === type && styles.filterChipActive,
+            ]}
+            onPress={() => setFilterType(type)}
+          >
+            <RNText style={[
+              styles.filterChipText,
+              filterType === type && styles.filterChipTextActive,
+            ]}>
+              {type === 'all' ? '전체' : type === 'income' ? '수입' : '지출'}
+            </RNText>
+          </TouchableOpacity>
+        ))}
       </View>
 
       {/* 거래 목록 */}
       <ScrollView
         style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={theme.colors.primary}
+          />
         }
       >
         {filteredTransactions.length === 0 ? (
           <View style={styles.emptyContainer}>
-            <Text variant="bodyLarge" style={styles.emptyText}>
+            <View style={styles.emptyIcon}>
+              <Ionicons name="receipt-outline" size={48} color={theme.colors.textSecondary} />
+            </View>
+            <RNText style={styles.emptyText}>
               {searchQuery || filterType !== 'all'
                 ? '검색 결과가 없습니다.'
                 : '거래 내역이 없습니다.'}
-            </Text>
+            </RNText>
           </View>
         ) : (
           filteredTransactions.map((transaction) => (
@@ -310,81 +354,80 @@ export default function TransactionsScreen() {
               onLongPress={() => handleLongPress(transaction)}
               delayLongPress={1000}
             >
-              <Card style={styles.card}>
-                <Card.Content style={styles.cardContent}>
-                  <View style={styles.transactionRow}>
-                    <Pressable
-                      style={styles.transactionLeft}
-                      onLongPress={() => {
-                        const text = `${transaction.categoryName}${transaction.description ? '\n' + transaction.description : ''}`;
-                        copyToClipboard(text, '거래 내용');
-                      }}
-                      delayLongPress={1000}
-                    >
-                      <View
-                        style={[
-                          styles.categoryDot,
-                          { backgroundColor: transaction.categoryColor || '#6b7280' },
-                        ]}
-                      />
-                      <View style={styles.transactionInfo}>
-                        <Text variant="bodyLarge" style={styles.categoryName}>
-                          {transaction.categoryName}
-                        </Text>
-                        {transaction.description && (
-                          <Text variant="bodySmall" style={styles.description}>
-                            {transaction.description}
-                          </Text>
-                        )}
-                        <Text variant="bodySmall" style={styles.date}>
-                          {format(new Date(transaction.date), 'yyyy년 M월 d일 (E)', {
-                            locale: ko,
-                          })}
-                        </Text>
-                      </View>
-                    </Pressable>
-
-                    <View style={styles.transactionRight}>
-                      <Pressable
-                        onLongPress={() => {
-                          const amountText = `${transaction.type === 'income' ? '+' : '-'}${Math.round(transaction.amount).toLocaleString()}원`;
-                          copyToClipboard(amountText, '금액');
-                        }}
-                        delayLongPress={1000}
-                      >
-                        <Text
-                          variant="bodyLarge"
-                          style={[
-                            styles.amount,
-                            {
-                              color:
-                                transaction.type === 'income' ? '#10b981' : '#ef4444',
-                            },
-                          ]}
-                        >
-                          {transaction.type === 'income' ? '+' : '-'}
-                          {Math.round(transaction.amount).toLocaleString()}원
-                        </Text>
-                      </Pressable>
-                      <View style={styles.actionButtons}>
-                        <IconButton
-                          icon="pencil"
-                          size={20}
-                          onPress={() => handleEdit(transaction)}
-                        />
-                        <IconButton
-                          icon="delete"
-                          size={20}
-                          onPress={() => handleDelete(transaction)}
-                        />
-                      </View>
-                    </View>
+              <View style={styles.transactionCard}>
+                <Pressable
+                  style={styles.transactionLeft}
+                  onLongPress={() => {
+                    const text = `${transaction.categoryName}${transaction.description ? '\n' + transaction.description : ''}`;
+                    copyToClipboard(text, '거래 내용');
+                  }}
+                  delayLongPress={1000}
+                >
+                  <View
+                    style={[
+                      styles.categoryIcon,
+                      { backgroundColor: `${transaction.categoryColor || theme.colors.primary}20` },
+                    ]}
+                  >
+                    <Ionicons
+                      name={transaction.type === 'income' ? 'trending-up' : 'cart'}
+                      size={20}
+                      color={transaction.categoryColor || theme.colors.primary}
+                    />
                   </View>
-                </Card.Content>
-              </Card>
+                  <View style={styles.transactionInfo}>
+                    <RNText style={styles.categoryName}>
+                      {transaction.categoryName}
+                    </RNText>
+                    {transaction.description && (
+                      <RNText style={styles.description} numberOfLines={1}>
+                        {transaction.description}
+                      </RNText>
+                    )}
+                    <RNText style={styles.date}>
+                      {format(new Date(transaction.date), 'M월 d일 (E)', { locale: ko })}
+                    </RNText>
+                  </View>
+                </Pressable>
+
+                <View style={styles.transactionRight}>
+                  <Pressable
+                    onLongPress={() => {
+                      const amountText = `${transaction.type === 'income' ? '+' : '-'}${Math.round(transaction.amount).toLocaleString()}원`;
+                      copyToClipboard(amountText, '금액');
+                    }}
+                    delayLongPress={1000}
+                  >
+                    <RNText
+                      style={[
+                        styles.amount,
+                        { color: transaction.type === 'income' ? theme.colors.income : theme.colors.expense },
+                      ]}
+                    >
+                      {transaction.type === 'income' ? '+' : '-'}
+                      {Math.round(transaction.amount).toLocaleString()}원
+                    </RNText>
+                  </Pressable>
+                  <View style={styles.actionButtons}>
+                    <TouchableOpacity
+                      style={styles.actionBtn}
+                      onPress={() => handleEdit(transaction)}
+                    >
+                      <Ionicons name="create-outline" size={18} color={theme.colors.textSecondary} />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.actionBtn}
+                      onPress={() => handleDelete(transaction)}
+                    >
+                      <Ionicons name="trash-outline" size={18} color={theme.colors.expense} />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </View>
             </Pressable>
           ))
         )}
+        <View style={{ height: 20 }} />
       </ScrollView>
 
       {/* 편집 모달 */}
@@ -394,19 +437,22 @@ export default function TransactionsScreen() {
           onDismiss={() => setEditModalVisible(false)}
           contentContainerStyle={styles.modal}
         >
-          <Text variant="titleLarge" style={styles.modalTitle}>
-            거래 수정
-          </Text>
+          <RNText style={styles.modalTitle}>거래 수정</RNText>
 
-          <SegmentedButtons
-            value={editType}
-            onValueChange={(value) => handleTypeChangeInEdit(value as 'income' | 'expense')}
-            buttons={[
-              { value: 'income', label: '수입' },
-              { value: 'expense', label: '지출' },
-            ]}
-            style={styles.segmentedButtons}
-          />
+          <View style={styles.typeSelector}>
+            <TouchableOpacity
+              style={[styles.typeBtn, editType === 'income' && styles.typeBtnActiveIncome]}
+              onPress={() => handleTypeChangeInEdit('income')}
+            >
+              <RNText style={[styles.typeBtnText, editType === 'income' && styles.typeBtnTextActive]}>수입</RNText>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.typeBtn, editType === 'expense' && styles.typeBtnActiveExpense]}
+              onPress={() => handleTypeChangeInEdit('expense')}
+            >
+              <RNText style={[styles.typeBtnText, editType === 'expense' && styles.typeBtnTextActive]}>지출</RNText>
+            </TouchableOpacity>
+          </View>
 
           <PaperInput
             mode="outlined"
@@ -416,6 +462,8 @@ export default function TransactionsScreen() {
             keyboardType="numeric"
             right={<PaperInput.Affix text="원" />}
             style={styles.input}
+            outlineColor={theme.colors.border}
+            activeOutlineColor={theme.colors.primary}
             autoCorrect={false}
             autoComplete="off"
             autoCapitalize="none"
@@ -427,7 +475,10 @@ export default function TransactionsScreen() {
             visible={categoryMenuVisible}
             onDismiss={() => setCategoryMenuVisible(false)}
             anchor={
-              <Button mode="outlined" onPress={() => setCategoryMenuVisible(true)} style={styles.categoryButton}>{editCategory ? editCategory.name : '카테고리 선택'}</Button>
+              <TouchableOpacity style={styles.categoryButton} onPress={() => setCategoryMenuVisible(true)}>
+                <RNText style={styles.categoryButtonText}>{editCategory ? editCategory.name : '카테고리 선택'}</RNText>
+                <Ionicons name="chevron-down" size={20} color={theme.colors.textSecondary} />
+              </TouchableOpacity>
             }
           >
             {categories.map((category) => (
@@ -448,6 +499,8 @@ export default function TransactionsScreen() {
             value={editDate}
             onChangeText={setEditDate}
             style={styles.input}
+            outlineColor={theme.colors.border}
+            activeOutlineColor={theme.colors.primary}
             keyboardType="default"
             autoCorrect={false}
             autoComplete="off"
@@ -464,6 +517,8 @@ export default function TransactionsScreen() {
             multiline
             numberOfLines={2}
             style={styles.input}
+            outlineColor={theme.colors.border}
+            activeOutlineColor={theme.colors.primary}
             keyboardType="default"
             autoCorrect={false}
             autoComplete="off"
@@ -473,149 +528,288 @@ export default function TransactionsScreen() {
           />
 
           <View style={styles.modalButtons}>
-            <Button onPress={() => setEditModalVisible(false)} style={styles.modalButton}>취소</Button>
-            <Button mode="contained" onPress={handleSaveEdit} style={styles.modalButton}>저장</Button>
+            <TouchableOpacity style={styles.cancelBtn} onPress={() => setEditModalVisible(false)}>
+              <RNText style={styles.cancelBtnText}>취소</RNText>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.saveBtn} onPress={handleSaveEdit}>
+              <RNText style={styles.saveBtnText}>저장</RNText>
+            </TouchableOpacity>
           </View>
         </Modal>
       </Portal>
     </View>
-    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#f5f5f5',
-  },
   container: {
     flex: 1,
+    backgroundColor: theme.colors.background,
   },
   centered: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: theme.colors.background,
   },
+
+  // 헤더
+  header: {
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+    borderBottomLeftRadius: theme.borderRadius.xxl,
+    borderBottomRightRadius: theme.borderRadius.xxl,
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: '#fff',
+    marginBottom: 16,
+  },
+
+  // 월 선택기
   monthSelector: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#fff',
-    paddingHorizontal: 8,
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    marginBottom: 16,
+  },
+  monthArrow: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  disabledArrow: {
+    backgroundColor: 'rgba(255,255,255,0.1)',
   },
   monthInfo: {
-    flex: 1,
     alignItems: 'center',
   },
   monthText: {
-    fontWeight: 'bold',
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#fff',
   },
-  currentMonthButton: {
+  currentMonthBtn: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.8)',
     marginTop: 4,
   },
-  filterContainer: {
-    backgroundColor: '#fff',
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 8,
-  },
-  searchbar: {
-    marginBottom: 12,
-  },
-  chipContainer: {
+
+  // 검색창
+  searchContainer: {
     flexDirection: 'row',
-    gap: 8,
+    alignItems: 'center',
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.lg,
+    paddingHorizontal: 16,
+    height: 48,
   },
-  chip: {
-    marginRight: 8,
+  searchInput: {
+    flex: 1,
+    marginLeft: 12,
+    fontSize: 15,
+    color: theme.colors.text,
   },
+
+  // 필터
+  filterContainer: {
+    flexDirection: 'row',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    gap: 10,
+  },
+  filterChip: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: theme.borderRadius.full,
+    backgroundColor: theme.colors.surface,
+    ...theme.shadows.sm,
+  },
+  filterChipActive: {
+    backgroundColor: theme.colors.primary,
+  },
+  filterChipText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: theme.colors.textSecondary,
+  },
+  filterChipTextActive: {
+    color: '#fff',
+  },
+
+  // 스크롤 뷰
   scrollView: {
     flex: 1,
   },
-  card: {
-    marginHorizontal: 16,
-    marginVertical: 6,
+  scrollContent: {
+    paddingHorizontal: 20,
   },
-  cardContent: {
-    paddingVertical: 12,
-  },
-  transactionRow: {
+
+  // 거래 카드
+  transactionCard: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.lg,
+    padding: 16,
+    marginBottom: 12,
+    ...theme.shadows.sm,
   },
   transactionLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
   },
-  categoryDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
+  categoryIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
     marginRight: 12,
   },
   transactionInfo: {
     flex: 1,
   },
   categoryName: {
-    fontWeight: '600',
+    fontSize: 15,
+    fontWeight: '700',
+    color: theme.colors.text,
   },
   description: {
-    color: '#6b7280',
+    fontSize: 13,
+    color: theme.colors.textSecondary,
     marginTop: 2,
   },
   date: {
-    color: '#9ca3af',
+    fontSize: 12,
+    color: theme.colors.textMuted,
     marginTop: 2,
   },
   transactionRight: {
     alignItems: 'flex-end',
   },
   amount: {
-    fontWeight: 'bold',
-    marginBottom: 4,
+    fontSize: 16,
+    fontWeight: '700',
   },
   actionButtons: {
     flexDirection: 'row',
-    marginTop: -8,
+    marginTop: 4,
+    gap: 4,
   },
+  actionBtn: {
+    padding: 4,
+  },
+
+  // 빈 상태
   emptyContainer: {
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 60,
   },
-  emptyText: {
-    color: '#6b7280',
+  emptyIcon: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: theme.colors.surfaceVariant,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
   },
+  emptyText: {
+    fontSize: 15,
+    color: theme.colors.textSecondary,
+  },
+
+  // 모달
   modal: {
-    backgroundColor: 'white',
-    padding: 20,
+    backgroundColor: theme.colors.surface,
+    padding: 24,
     margin: 20,
-    borderRadius: 8,
+    borderRadius: theme.borderRadius.xl,
   },
   modalTitle: {
-    marginBottom: 16,
-    fontWeight: 'bold',
+    fontSize: 20,
+    fontWeight: '700',
+    color: theme.colors.text,
+    marginBottom: 20,
   },
-  segmentedButtons: {
+  typeSelector: {
+    flexDirection: 'row',
     marginBottom: 16,
+    gap: 12,
+  },
+  typeBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: theme.borderRadius.md,
+    backgroundColor: theme.colors.surfaceVariant,
+    alignItems: 'center',
+  },
+  typeBtnActiveIncome: {
+    backgroundColor: theme.colors.income,
+  },
+  typeBtnActiveExpense: {
+    backgroundColor: theme.colors.expense,
+  },
+  typeBtnText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: theme.colors.textSecondary,
+  },
+  typeBtnTextActive: {
+    color: '#fff',
   },
   input: {
     marginBottom: 12,
+    backgroundColor: theme.colors.surface,
   },
   categoryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.borderRadius.sm,
     marginBottom: 12,
+  },
+  categoryButtonText: {
+    fontSize: 15,
+    color: theme.colors.text,
   },
   modalButtons: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
     marginTop: 8,
+    gap: 12,
   },
-  modalButton: {
-    marginLeft: 8,
+  cancelBtn: {
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: theme.borderRadius.md,
+    backgroundColor: theme.colors.surfaceVariant,
+  },
+  cancelBtnText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: theme.colors.textSecondary,
+  },
+  saveBtn: {
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: theme.borderRadius.md,
+    backgroundColor: theme.colors.primary,
+  },
+  saveBtnText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#fff',
   },
 });

@@ -1,12 +1,16 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, ScrollView, StyleSheet, RefreshControl, Pressable, Clipboard, Alert } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Card, Text, ActivityIndicator, IconButton, Button, Portal, Modal, Divider } from 'react-native-paper';
+import { View, ScrollView, StyleSheet, RefreshControl, Pressable, Clipboard, Alert, TouchableOpacity } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Text, ActivityIndicator, Portal, Modal, Divider } from 'react-native-paper';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 import { format, addMonths, subMonths } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { database, Transaction } from '../lib/db/database';
+import { theme } from '../lib/theme';
 
 export default function DashboardScreen() {
+  const insets = useSafeAreaInsets();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [monthSummary, setMonthSummary] = useState({ income: 0, expense: 0 });
@@ -111,7 +115,7 @@ export default function DashboardScreen() {
         const categoryStats = groupStats.flatMap(g => g.categories);
         setSelectedCategory({
           name: title,
-          color: '#ef4444',
+          color: theme.colors.expense,
           total: total,
           transactions: filteredTransactions,
           showCategoryGroups: true,
@@ -120,7 +124,7 @@ export default function DashboardScreen() {
       } else {
         setSelectedCategory({
           name: title,
-          color: '#10b981',
+          color: theme.colors.income,
           total: total,
           transactions: filteredTransactions,
         });
@@ -171,7 +175,7 @@ export default function DashboardScreen() {
   if (loading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" />
+        <ActivityIndicator size="large" color={theme.colors.primary} />
       </View>
     );
   }
@@ -183,560 +187,602 @@ export default function DashboardScreen() {
     month === new Date().getMonth() + 1;
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <ScrollView
-        style={styles.container}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
+    <View style={styles.container}>
+      {/* 헤더 - Dokterian 스타일 그라데이션 */}
+      <LinearGradient
+        colors={theme.gradients.header as [string, string]}
+        style={[styles.header, { paddingTop: insets.top + 16 }]}
       >
-      {/* 월별 선택 헤더 */}
-      <View style={styles.monthSelector}>
-        <IconButton
-          icon="chevron-left"
-          size={24}
-          onPress={goToPreviousMonth}
-        />
-        <View style={styles.monthInfo}>
-          <Text variant="titleLarge" style={styles.monthText}>
-            {format(selectedDate, 'yyyy년 M월', { locale: ko })}
-          </Text>
-          {!isCurrentMonth && (
-            <Button mode="text" compact onPress={goToCurrentMonth} style={styles.currentMonthButton}>이번 달로</Button>
-          )}
+        <View style={styles.headerContent}>
+          <Text style={styles.headerGreeting}>안녕하세요!</Text>
+          <Text style={styles.headerTitle}>가계부</Text>
         </View>
-        <IconButton
-          icon="chevron-right"
-          size={24}
-          onPress={goToNextMonth}
-          disabled={isCurrentMonth}
-        />
-      </View>
 
-      {/* 이번 달 요약 */}
-      <Card style={styles.card}>
-        <Card.Content>
+        {/* 월 선택 */}
+        <View style={styles.monthSelector}>
+          <TouchableOpacity onPress={goToPreviousMonth} style={styles.monthArrow}>
+            <Ionicons name="chevron-back" size={24} color="#fff" />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={goToCurrentMonth} style={styles.monthDisplay}>
+            <Text style={styles.monthText}>
+              {format(selectedDate, 'yyyy년 M월', { locale: ko })}
+            </Text>
+            {!isCurrentMonth && (
+              <View style={styles.todayBadge}>
+                <Text style={styles.todayBadgeText}>이번 달</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={goToNextMonth}
+            style={styles.monthArrow}
+            disabled={isCurrentMonth}
+          >
+            <Ionicons
+              name="chevron-forward"
+              size={24}
+              color={isCurrentMonth ? 'rgba(255,255,255,0.3)' : '#fff'}
+            />
+          </TouchableOpacity>
+        </View>
+      </LinearGradient>
+
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={[theme.colors.primary]}
+            tintColor={theme.colors.primary}
+          />
+        }
+        showsVerticalScrollIndicator={false}
+      >
+        {/* 요약 카드 - Dokterian 스타일 */}
+        <View style={styles.summaryCard}>
+          <View style={styles.balanceSection}>
+            <Text style={styles.balanceLabel}>이번 달 잔액</Text>
+            <Text style={[
+              styles.balanceAmount,
+              { color: balance >= 0 ? theme.colors.income : theme.colors.expense }
+            ]}>
+              {balance >= 0 ? '+' : ''}{Math.round(balance).toLocaleString()}원
+            </Text>
+          </View>
+
           <View style={styles.summaryRow}>
             <Pressable
               style={({ pressed }) => [
                 styles.summaryItem,
+                styles.incomeItem,
                 pressed && styles.summaryItemPressed
               ]}
               onPress={() => handleSummaryClick('income', '수입')}
             >
-              <Text variant="bodyMedium" style={styles.label}>수입</Text>
-              <Text variant="titleMedium" style={styles.incomeText}>
-                +{Math.round(monthSummary.income).toLocaleString()}원
-              </Text>
+              <View style={[styles.summaryIcon, { backgroundColor: theme.colors.income + '20' }]}>
+                <Ionicons name="arrow-down" size={20} color={theme.colors.income} />
+              </View>
+              <View style={styles.summaryInfo}>
+                <Text style={styles.summaryLabel}>수입</Text>
+                <Text style={[styles.summaryAmount, { color: theme.colors.income }]}>
+                  +{Math.round(monthSummary.income).toLocaleString()}원
+                </Text>
+              </View>
             </Pressable>
 
             <Pressable
               style={({ pressed }) => [
                 styles.summaryItem,
+                styles.expenseItem,
                 pressed && styles.summaryItemPressed
               ]}
-              onPress={() => handleSummaryClick('expense', '총 지출')}
+              onPress={() => handleSummaryClick('expense', '지출')}
             >
-              <Text variant="bodyMedium" style={styles.label}>총 지출</Text>
-              <Text variant="titleMedium" style={styles.expenseText}>
-                -{Math.round(monthSummary.expense).toLocaleString()}원
-              </Text>
+              <View style={[styles.summaryIcon, { backgroundColor: theme.colors.expense + '20' }]}>
+                <Ionicons name="arrow-up" size={20} color={theme.colors.expense} />
+              </View>
+              <View style={styles.summaryInfo}>
+                <Text style={styles.summaryLabel}>지출</Text>
+                <Text style={[styles.summaryAmount, { color: theme.colors.expense }]}>
+                  -{Math.round(monthSummary.expense).toLocaleString()}원
+                </Text>
+              </View>
             </Pressable>
           </View>
+        </View>
 
-          <View style={styles.expenseDetailContainer}>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.groupChipsScroll}>
+        {/* 지출 그룹 - Dokterian 카드 스타일 */}
+        {groupStats.length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>지출 카테고리</Text>
+            <View style={styles.groupGrid}>
               {groupStats.map((group) => (
                 <Pressable
                   key={group.groupId}
                   style={({ pressed }) => [
-                    styles.groupChip,
-                    { borderColor: group.groupColor },
-                    pressed && styles.groupChipPressed
+                    styles.groupCard,
+                    pressed && styles.groupCardPressed
                   ]}
                   onPress={() => handleGroupClick(group.groupId, group.groupName, group.groupColor, group.groupIcon)}
                 >
-                  <Text style={[styles.groupChipIcon]}>{group.groupIcon}</Text>
-                  <View style={styles.groupChipText}>
-                    <Text variant="bodySmall" style={styles.groupChipLabel}>{group.groupName}</Text>
-                    <Text variant="bodyMedium" style={[styles.groupChipAmount, { color: group.groupColor }]}>
-                      {Math.round(group.total).toLocaleString()}원
-                    </Text>
+                  <View style={[styles.groupIconCircle, { backgroundColor: group.groupColor + '20' }]}>
+                    <Text style={styles.groupIcon}>{group.groupIcon || '📁'}</Text>
                   </View>
+                  <Text style={styles.groupName} numberOfLines={1}>{group.groupName}</Text>
+                  <Text style={[styles.groupAmount, { color: group.groupColor }]}>
+                    {Math.round(group.total).toLocaleString()}원
+                  </Text>
                 </Pressable>
               ))}
-            </ScrollView>
+            </View>
           </View>
+        )}
 
-          <View style={styles.balanceContainer}>
-            <Text variant="bodyMedium" style={styles.label}>잔액</Text>
-            <Text
-              variant="headlineSmall"
-              style={[
-                styles.balanceText,
-                { color: balance >= 0 ? '#10b981' : '#ef4444' }
-              ]}
-            >
-              {balance >= 0 ? '+' : ''}{Math.round(balance).toLocaleString()}원
-            </Text>
-          </View>
-        </Card.Content>
-      </Card>
-
-      {/* 최근 거래 내역 */}
-      {recentTransactions.length > 0 && (
-        <Card style={styles.card}>
-          <Card.Content>
-            <Text variant="titleMedium" style={styles.cardTitle}>
-              최근 거래 내역
-            </Text>
-            {recentTransactions.map((transaction) => (
-              <View key={transaction.id} style={styles.transactionItem}>
-                <View style={styles.transactionLeft}>
-                  <View
-                    style={[
-                      styles.categoryDot,
-                      { backgroundColor: transaction.categoryColor || '#6b7280' }
-                    ]}
-                  />
+        {/* 최근 거래 내역 - Dokterian 리스트 스타일 */}
+        {recentTransactions.length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>최근 거래</Text>
+            <View style={styles.transactionList}>
+              {recentTransactions.map((transaction) => (
+                <View key={transaction.id} style={styles.transactionItem}>
+                  <View style={[
+                    styles.transactionIcon,
+                    { backgroundColor: (transaction.categoryColor || theme.colors.textMuted) + '20' }
+                  ]}>
+                    <View style={[
+                      styles.transactionDot,
+                      { backgroundColor: transaction.categoryColor || theme.colors.textMuted }
+                    ]} />
+                  </View>
                   <View style={styles.transactionInfo}>
-                    <Text variant="bodyMedium" numberOfLines={1} ellipsizeMode="tail">
+                    <Text style={styles.transactionCategory} numberOfLines={1}>
                       {transaction.categoryName}
                     </Text>
                     {transaction.description && (
-                      <Text variant="bodySmall" style={styles.description} numberOfLines={1} ellipsizeMode="tail">
+                      <Text style={styles.transactionDesc} numberOfLines={1}>
                         {transaction.description}
                       </Text>
                     )}
-                    <Text variant="bodySmall" style={styles.date}>
+                    <Text style={styles.transactionDate}>
                       {format(new Date(transaction.date), 'M월 d일 (E)', { locale: ko })}
                     </Text>
                   </View>
-                </View>
-                <Text
-                  variant="bodyLarge"
-                  style={[
-                    styles.transactionAmount,
-                    { color: transaction.type === 'income' ? '#10b981' : '#ef4444' }
-                  ]}
-                >
-                  {transaction.type === 'income' ? '+' : '-'}
-                  {Math.round(transaction.amount).toLocaleString()}원
-                </Text>
-              </View>
-            ))}
-          </Card.Content>
-        </Card>
-      )}
-
-      {recentTransactions.length === 0 && groupStats.length === 0 && (
-        <View style={styles.emptyContainer}>
-          <Text variant="bodyLarge" style={styles.emptyText}>
-            거래 내역이 없습니다.
-          </Text>
-          <Text variant="bodyMedium" style={styles.emptySubtext}>
-            하단의 + 버튼을 눌러 거래를 추가해보세요!
-          </Text>
-        </View>
-      )}
-
-      {/* 카테고리 상세 모달 */}
-      <Portal>
-        <Modal
-          visible={modalVisible}
-          onDismiss={() => setModalVisible(false)}
-          contentContainerStyle={styles.modalContainer}
-        >
-          {selectedCategory && (
-            <ScrollView style={styles.modalContent}>
-              {/* 모달 헤더 */}
-              <View style={styles.modalHeader}>
-                <View style={styles.modalTitleRow}>
-                  <View
+                  <Text
                     style={[
-                      styles.modalCategoryDot,
-                      { backgroundColor: selectedCategory.color }
+                      styles.transactionAmount,
+                      { color: transaction.type === 'income' ? theme.colors.income : theme.colors.expense }
                     ]}
-                  />
-                  <Text variant="titleLarge" style={styles.modalTitle}>
-                    {selectedCategory.name}
+                  >
+                    {transaction.type === 'income' ? '+' : '-'}
+                    {Math.round(transaction.amount).toLocaleString()}원
                   </Text>
                 </View>
-                <Text variant="headlineSmall" style={styles.modalTotal}>
-                  {Math.round(selectedCategory.total).toLocaleString()}원
-                </Text>
-                <Text variant="bodyMedium" style={styles.modalCount}>
-                  총 {selectedCategory.transactions.length}건
-                </Text>
-              </View>
+              ))}
+            </View>
+          </View>
+        )}
 
-              <Divider style={styles.modalDivider} />
+        {recentTransactions.length === 0 && groupStats.length === 0 && (
+          <View style={styles.emptyContainer}>
+            <View style={styles.emptyIcon}>
+              <Ionicons name="wallet-outline" size={64} color={theme.colors.textMuted} />
+            </View>
+            <Text style={styles.emptyText}>거래 내역이 없습니다</Text>
+            <Text style={styles.emptySubtext}>하단의 + 버튼을 눌러 거래를 추가해보세요!</Text>
+          </View>
+        )}
 
-              {/* 거래 내역 목록 */}
-              {selectedCategory.transactions.length === 0 ? (
-                <View style={styles.emptyContainer}>
-                  <Text variant="bodyLarge" style={styles.emptyText}>
-                    거래 내역이 없습니다.
+        {/* 카테고리 상세 모달 */}
+        <Portal>
+          <Modal
+            visible={modalVisible}
+            onDismiss={() => setModalVisible(false)}
+            contentContainerStyle={styles.modalContainer}
+          >
+            {selectedCategory && (
+              <ScrollView style={styles.modalContent}>
+                {/* 모달 헤더 */}
+                <View style={styles.modalHeader}>
+                  <View style={styles.modalTitleRow}>
+                    <View
+                      style={[
+                        styles.modalCategoryDot,
+                        { backgroundColor: selectedCategory.color }
+                      ]}
+                    />
+                    <Text style={styles.modalTitle}>
+                      {selectedCategory.name}
+                    </Text>
+                  </View>
+                  <Text style={[styles.modalTotal, { color: selectedCategory.color }]}>
+                    {Math.round(selectedCategory.total).toLocaleString()}원
+                  </Text>
+                  <Text style={styles.modalCount}>
+                    총 {selectedCategory.transactions.length}건
                   </Text>
                 </View>
-              ) : selectedCategory.showCategoryGroups && selectedCategory.categoryStats ? (
-                // 카테고리별 그룹화 뷰 (지출 클릭 시)
-                selectedCategory.categoryStats.map((stat: any, statIndex: number) => {
-                  const categoryTransactions = selectedCategory.transactions.filter(
-                    (tx: Transaction) => tx.categoryName === stat.categoryName
-                  );
 
-                  if (categoryTransactions.length === 0) return null;
+                <Divider style={styles.modalDivider} />
 
-                  return (
-                    <View key={statIndex} style={styles.categoryGroupContainer}>
-                      {/* 카테고리 헤더 */}
-                      <View style={styles.categoryGroupHeader}>
-                        <View style={styles.categoryGroupTitleRow}>
-                          <View
-                            style={[
-                              styles.categoryDot,
-                              { backgroundColor: stat.categoryColor }
-                            ]}
-                          />
-                          <Text variant="titleMedium" style={styles.categoryGroupTitle}>
-                            {stat.categoryName}
+                {/* 거래 내역 목록 */}
+                {selectedCategory.transactions.length === 0 ? (
+                  <View style={styles.emptyContainer}>
+                    <Text style={styles.emptyText}>
+                      거래 내역이 없습니다.
+                    </Text>
+                  </View>
+                ) : selectedCategory.showCategoryGroups && selectedCategory.categoryStats ? (
+                  // 카테고리별 그룹화 뷰 (지출 클릭 시)
+                  selectedCategory.categoryStats.map((stat: any, statIndex: number) => {
+                    const categoryTransactions = selectedCategory.transactions.filter(
+                      (tx: Transaction) => tx.categoryName === stat.categoryName
+                    );
+
+                    if (categoryTransactions.length === 0) return null;
+
+                    return (
+                      <View key={statIndex} style={styles.categoryGroupContainer}>
+                        {/* 카테고리 헤더 */}
+                        <View style={styles.categoryGroupHeader}>
+                          <View style={styles.categoryGroupTitleRow}>
+                            <View
+                              style={[
+                                styles.categoryDot,
+                                { backgroundColor: stat.categoryColor }
+                              ]}
+                            />
+                            <Text style={styles.categoryGroupTitle}>
+                              {stat.categoryName}
+                            </Text>
+                          </View>
+                          <Text style={[styles.categoryGroupTotal, { color: stat.categoryColor }]}>
+                            {Math.round(stat.total).toLocaleString()}원
                           </Text>
                         </View>
-                        <Text variant="titleSmall" style={styles.categoryGroupTotal}>
-                          {Math.round(stat.total).toLocaleString()}원
-                        </Text>
-                      </View>
 
-                      {/* 카테고리 내 거래 목록 */}
-                      {categoryTransactions.map((transaction, txIndex) => (
-                        <View key={transaction.id}>
-                          <View style={styles.transactionRow}>
-                            <Pressable
-                              style={styles.modalTransactionLeft}
-                              onLongPress={() => {
-                                const text = `${transaction.description || transaction.merchant || '거래'}`;
-                                copyToClipboard(text, '거래 내용');
-                              }}
-                              delayLongPress={1000}
-                            >
-                              <Text variant="bodyMedium" style={styles.transactionDescription} numberOfLines={1} ellipsizeMode="tail">
-                                {transaction.description || transaction.merchant || '거래'}
-                              </Text>
-                              <Text variant="bodySmall" style={styles.transactionDate}>
-                                {format(new Date(transaction.date), 'M월 d일 (E)', { locale: ko })}
-                              </Text>
-                              {transaction.merchant && transaction.description !== transaction.merchant && (
-                                <Text variant="bodySmall" style={styles.transactionMerchant} numberOfLines={1} ellipsizeMode="tail">
-                                  {transaction.merchant}
-                                </Text>
-                              )}
-                            </Pressable>
-                            <Pressable
-                              onLongPress={() => {
-                                const amountText = `-${Math.round(transaction.amount).toLocaleString()}원`;
-                                copyToClipboard(amountText, '금액');
-                              }}
-                              delayLongPress={1000}
-                            >
-                              <Text
-                                variant="bodyLarge"
-                                style={[
-                                  styles.transactionAmount,
-                                  { color: '#ef4444' }
-                                ]}
+                        {/* 카테고리 내 거래 목록 */}
+                        {categoryTransactions.map((transaction, txIndex) => (
+                          <View key={transaction.id}>
+                            <View style={styles.modalTransactionRow}>
+                              <Pressable
+                                style={styles.modalTransactionLeft}
+                                onLongPress={() => {
+                                  const text = `${transaction.description || transaction.merchant || '거래'}`;
+                                  copyToClipboard(text, '거래 내용');
+                                }}
+                                delayLongPress={1000}
                               >
+                                <Text style={styles.modalTransactionDesc} numberOfLines={1}>
+                                  {transaction.description || transaction.merchant || '거래'}
+                                </Text>
+                                <Text style={styles.modalTransactionDate}>
+                                  {format(new Date(transaction.date), 'M월 d일 (E)', { locale: ko })}
+                                </Text>
+                              </Pressable>
+                              <Text style={[styles.modalTransactionAmount, { color: theme.colors.expense }]}>
                                 -{Math.round(transaction.amount).toLocaleString()}원
                               </Text>
-                            </Pressable>
+                            </View>
+                            {txIndex < categoryTransactions.length - 1 && (
+                              <Divider style={styles.transactionDivider} />
+                            )}
                           </View>
-                          {txIndex < categoryTransactions.length - 1 && (
-                            <Divider style={styles.transactionDivider} />
-                          )}
-                        </View>
-                      ))}
+                        ))}
 
-                      {statIndex < selectedCategory.categoryStats.length - 1 && (
-                        <Divider style={styles.categoryGroupDivider} />
-                      )}
-                    </View>
-                  );
-                })
-              ) : (
-                // 일반 거래 목록 뷰
-                selectedCategory.transactions.map((transaction, index) => (
-                  <View key={transaction.id}>
-                    <View style={styles.transactionRow}>
-                      <Pressable
-                        style={styles.modalTransactionLeft}
-                        onLongPress={() => {
-                          const text = `${transaction.description || transaction.merchant || '거래'}`;
-                          copyToClipboard(text, '거래 내용');
-                        }}
-                        delayLongPress={1000}
-                      >
-                        <Text variant="bodyLarge" style={styles.transactionDescription} numberOfLines={1} ellipsizeMode="tail">
-                          {transaction.description || transaction.merchant || '거래'}
-                        </Text>
-                        <Text variant="bodySmall" style={styles.transactionDate}>
-                          {format(new Date(transaction.date), 'M월 d일 (E)', { locale: ko })}
-                        </Text>
-                        {transaction.merchant && transaction.description !== transaction.merchant && (
-                          <Text variant="bodySmall" style={styles.transactionMerchant} numberOfLines={1} ellipsizeMode="tail">
-                            {transaction.merchant}
-                          </Text>
+                        {statIndex < selectedCategory.categoryStats!.length - 1 && (
+                          <Divider style={styles.categoryGroupDivider} />
                         )}
-                      </Pressable>
-                      <Pressable
-                        onLongPress={() => {
-                          const amountText = `${transaction.type === 'income' ? '+' : '-'}${Math.round(transaction.amount).toLocaleString()}원`;
-                          copyToClipboard(amountText, '금액');
-                        }}
-                        delayLongPress={1000}
-                      >
+                      </View>
+                    );
+                  })
+                ) : (
+                  // 일반 거래 목록 뷰
+                  selectedCategory.transactions.map((transaction, index) => (
+                    <View key={transaction.id}>
+                      <View style={styles.modalTransactionRow}>
+                        <Pressable
+                          style={styles.modalTransactionLeft}
+                          onLongPress={() => {
+                            const text = `${transaction.description || transaction.merchant || '거래'}`;
+                            copyToClipboard(text, '거래 내용');
+                          }}
+                          delayLongPress={1000}
+                        >
+                          <Text style={styles.modalTransactionDesc} numberOfLines={1}>
+                            {transaction.description || transaction.merchant || '거래'}
+                          </Text>
+                          <Text style={styles.modalTransactionDate}>
+                            {format(new Date(transaction.date), 'M월 d일 (E)', { locale: ko })}
+                          </Text>
+                        </Pressable>
                         <Text
-                          variant="titleMedium"
                           style={[
-                            styles.transactionAmount,
-                            { color: transaction.type === 'income' ? '#10b981' : '#ef4444' }
+                            styles.modalTransactionAmount,
+                            { color: transaction.type === 'income' ? theme.colors.income : theme.colors.expense }
                           ]}
                         >
                           {transaction.type === 'income' ? '+' : '-'}
                           {Math.round(transaction.amount).toLocaleString()}원
                         </Text>
-                      </Pressable>
+                      </View>
+                      {index < selectedCategory.transactions.length - 1 && (
+                        <Divider style={styles.transactionDivider} />
+                      )}
                     </View>
-                    {index < selectedCategory.transactions.length - 1 && (
-                      <Divider style={styles.transactionDivider} />
-                    )}
-                  </View>
-                ))
-              )}
+                  ))
+                )}
 
-              <Button
-                mode="contained"
-                onPress={() => setModalVisible(false)}
-                style={styles.modalCloseButton}
-                buttonColor="#6366f1"
-                contentStyle={{ paddingVertical: 8 }}
-              >
-                닫기
-              </Button>
-            </ScrollView>
-          )}
-        </Modal>
-
-      </Portal>
-    </ScrollView>
-    </SafeAreaView>
+                <TouchableOpacity
+                  style={styles.modalCloseButton}
+                  onPress={() => setModalVisible(false)}
+                >
+                  <Text style={styles.modalCloseButtonText}>닫기</Text>
+                </TouchableOpacity>
+              </ScrollView>
+            )}
+          </Modal>
+        </Portal>
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#f5f5f5',
-  },
   container: {
     flex: 1,
+    backgroundColor: theme.colors.background,
   },
   centered: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: theme.colors.background,
+  },
+  // 헤더 - Dokterian 스타일
+  header: {
+    paddingBottom: 24,
+    paddingHorizontal: 20,
+    borderBottomLeftRadius: 32,
+    borderBottomRightRadius: 32,
+  },
+  headerContent: {
+    marginBottom: 20,
+  },
+  headerGreeting: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.8)',
+    marginBottom: 4,
+  },
+  headerTitle: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#fff',
   },
   monthSelector: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#fff',
-    paddingHorizontal: 8,
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    justifyContent: 'center',
   },
-  monthInfo: {
-    flex: 1,
-    alignItems: 'center',
+  monthArrow: {
+    padding: 8,
   },
-  monthText: {
-    fontWeight: 'bold',
-  },
-  currentMonthButton: {
-    marginTop: 4,
-  },
-  card: {
-    margin: 16,
-    marginBottom: 0,
-  },
-  cardTitle: {
-    marginBottom: 16,
-    fontWeight: 'bold',
-    flex: 1,
-  },
-  cardTitleRow: {
+  monthDisplay: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+  },
+  monthText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  todayBadge: {
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 12,
+    marginLeft: 8,
+  },
+  todayBadgeText: {
+    fontSize: 10,
+    color: '#fff',
+  },
+  // 스크롤 영역
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 100,
+  },
+  // 요약 카드
+  summaryCard: {
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.xl,
+    padding: 20,
+    marginBottom: 20,
+    ...theme.shadows.md,
+  },
+  balanceSection: {
+    alignItems: 'center',
+    marginBottom: 20,
+    paddingBottom: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.divider,
+  },
+  balanceLabel: {
+    fontSize: 14,
+    color: theme.colors.textSecondary,
     marginBottom: 8,
   },
-  settingsIcon: {
-    margin: 0,
+  balanceAmount: {
+    fontSize: 32,
+    fontWeight: '700',
   },
   summaryRow: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginBottom: 12,
+    gap: 12,
   },
   summaryItem: {
+    flex: 1,
+    flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    minWidth: 120,
+    padding: 16,
+    borderRadius: theme.borderRadius.lg,
+  },
+  incomeItem: {
+    backgroundColor: theme.colors.income + '10',
+  },
+  expenseItem: {
+    backgroundColor: theme.colors.expense + '10',
   },
   summaryItemPressed: {
-    backgroundColor: '#f3f4f6',
+    opacity: 0.7,
   },
-  label: {
-    color: '#6b7280',
+  summaryIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  summaryInfo: {
+    flex: 1,
+  },
+  summaryLabel: {
+    fontSize: 12,
+    color: theme.colors.textSecondary,
     marginBottom: 4,
   },
-  incomeText: {
-    color: '#10b981',
-    fontWeight: 'bold',
+  summaryAmount: {
+    fontSize: 16,
+    fontWeight: '700',
   },
-  expenseText: {
-    color: '#ef4444',
-    fontWeight: 'bold',
+  // 섹션
+  section: {
+    marginBottom: 20,
   },
-  expenseDetailContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: theme.colors.text,
     marginBottom: 16,
   },
-  expenseDetailRow: {
+  // 그룹 그리드
+  groupGrid: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
-    flex: 1,
-    paddingVertical: 12,
-    backgroundColor: '#f9fafb',
-    borderRadius: 8,
+    flexWrap: 'wrap',
+    gap: 12,
   },
-  expenseSettingsIcon: {
-    margin: 0,
-    marginLeft: 4,
-  },
-  expenseDetailItem: {
+  groupCard: {
+    width: '47%',
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.lg,
+    padding: 16,
     alignItems: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    flex: 1,
+    ...theme.shadows.sm,
   },
-  expenseDetailItemPressed: {
-    backgroundColor: '#e5e7eb',
+  groupCardPressed: {
+    opacity: 0.7,
   },
-  expenseDetailLabel: {
-    color: '#9ca3af',
+  groupIconCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  groupIcon: {
+    fontSize: 24,
+  },
+  groupName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: theme.colors.text,
     marginBottom: 4,
+    textAlign: 'center',
   },
-  fixedExpenseText: {
-    color: '#f59e0b',
-    fontWeight: '600',
+  groupAmount: {
+    fontSize: 14,
+    fontWeight: '700',
   },
-  variableExpenseText: {
-    color: '#8b5cf6',
-    fontWeight: '600',
-  },
-  balanceContainer: {
-    alignItems: 'center',
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#e5e7eb',
-  },
-  balanceText: {
-    fontWeight: 'bold',
-    marginTop: 4,
-  },
-  categoryItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 4,
-    borderRadius: 8,
-  },
-  categoryItemPressed: {
-    backgroundColor: '#f3f4f6',
-  },
-  categoryLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  categoryDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    marginRight: 8,
-  },
-  categoryRight: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-  },
-  categoryAmount: {
-    fontWeight: '600',
-    marginRight: 4,
-  },
-  categoryPercentage: {
-    color: '#6b7280',
+  // 거래 목록
+  transactionList: {
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.lg,
+    ...theme.shadows.sm,
   },
   transactionItem: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 12,
+    padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
+    borderBottomColor: theme.colors.divider,
   },
-  transactionLeft: {
-    flexDirection: 'row',
+  transactionIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     alignItems: 'center',
-    flex: 1,
-    marginRight: 8,
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  transactionDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
   },
   transactionInfo: {
     flex: 1,
-    marginLeft: 12,
   },
-  description: {
-    color: '#6b7280',
-    marginTop: 2,
+  transactionCategory: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: theme.colors.text,
+    marginBottom: 2,
   },
-  date: {
-    color: '#9ca3af',
+  transactionDesc: {
+    fontSize: 13,
+    color: theme.colors.textSecondary,
+    marginBottom: 2,
+  },
+  transactionDate: {
     fontSize: 12,
-    marginTop: 2,
+    color: theme.colors.textMuted,
   },
   transactionAmount: {
-    fontWeight: 'bold',
+    fontSize: 15,
+    fontWeight: '700',
   },
+  // 빈 상태
   emptyContainer: {
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 60,
   },
+  emptyIcon: {
+    marginBottom: 16,
+  },
   emptyText: {
-    color: '#6b7280',
+    fontSize: 18,
+    fontWeight: '600',
+    color: theme.colors.textSecondary,
     marginBottom: 8,
   },
   emptySubtext: {
-    color: '#9ca3af',
+    fontSize: 14,
+    color: theme.colors.textMuted,
   },
+  // 모달
   modalContainer: {
-    backgroundColor: 'white',
+    backgroundColor: theme.colors.surface,
     margin: 20,
-    borderRadius: 12,
+    borderRadius: theme.borderRadius.xl,
     maxHeight: '80%',
   },
   modalContent: {
@@ -758,20 +804,24 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   modalTitle: {
-    fontWeight: 'bold',
+    fontSize: 20,
+    fontWeight: '700',
+    color: theme.colors.text,
   },
   modalTotal: {
-    fontWeight: 'bold',
-    color: '#ef4444',
+    fontSize: 28,
+    fontWeight: '700',
     marginBottom: 8,
   },
   modalCount: {
-    color: '#6b7280',
+    fontSize: 14,
+    color: theme.colors.textSecondary,
   },
   modalDivider: {
     marginVertical: 16,
+    backgroundColor: theme.colors.divider,
   },
-  transactionRow: {
+  modalTransactionRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
@@ -781,24 +831,23 @@ const styles = StyleSheet.create({
     flex: 1,
     marginRight: 16,
   },
-  transactionDescription: {
+  modalTransactionDesc: {
+    fontSize: 15,
     fontWeight: '600',
+    color: theme.colors.text,
     marginBottom: 4,
   },
-  transactionDate: {
-    color: '#9ca3af',
+  modalTransactionDate: {
     fontSize: 12,
+    color: theme.colors.textMuted,
   },
-  transactionMerchant: {
-    color: '#6b7280',
-    fontSize: 12,
-    marginTop: 2,
-  },
-  transactionAmount: {
-    fontWeight: 'bold',
+  modalTransactionAmount: {
+    fontSize: 15,
+    fontWeight: '700',
   },
   transactionDivider: {
     marginVertical: 4,
+    backgroundColor: theme.colors.divider,
   },
   categoryGroupContainer: {
     marginBottom: 8,
@@ -809,8 +858,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 12,
     paddingHorizontal: 12,
-    backgroundColor: '#f9fafb',
-    borderRadius: 8,
+    backgroundColor: theme.colors.surfaceVariant,
+    borderRadius: theme.borderRadius.md,
     marginBottom: 8,
   },
   categoryGroupTitleRow: {
@@ -818,229 +867,36 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flex: 1,
   },
+  categoryDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    marginRight: 8,
+  },
   categoryGroupTitle: {
+    fontSize: 15,
     fontWeight: '600',
-    color: '#1f2937',
+    color: theme.colors.text,
   },
   categoryGroupTotal: {
-    fontWeight: 'bold',
-    color: '#ef4444',
+    fontSize: 15,
+    fontWeight: '700',
   },
   categoryGroupDivider: {
     marginVertical: 16,
-    backgroundColor: '#e5e7eb',
+    backgroundColor: theme.colors.border,
     height: 2,
   },
   modalCloseButton: {
+    backgroundColor: theme.colors.primary,
+    paddingVertical: 16,
+    borderRadius: theme.borderRadius.lg,
+    alignItems: 'center',
     marginTop: 20,
-    marginBottom: 32,
-    marginHorizontal: 16,
-    borderWidth: 2,
-    borderColor: '#6366f1',
-    borderRadius: 8,
   },
-  settingsDescription: {
-    color: '#6b7280',
-    marginTop: 8,
-  },
-  sectionLabel: {
-    fontWeight: 'bold',
-    marginBottom: 12,
-    color: '#374151',
-  },
-  categorySettingItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 12,
-    paddingHorizontal: 8,
-    borderRadius: 8,
-    backgroundColor: '#f9fafb',
-    marginBottom: 8,
-  },
-  categorySettingLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  settingsDivider: {
-    marginVertical: 16,
-  },
-  emptySettingsText: {
-    color: '#9ca3af',
-    fontStyle: 'italic',
-    marginBottom: 8,
-    paddingHorizontal: 8,
-  },
-  sectionHint: {
-    color: '#9ca3af',
-    marginBottom: 12,
-    fontSize: 12,
-  },
-  categorySettingRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  settingActionButton: {
-    margin: 0,
-    marginRight: 4,
-  },
-  excludeChip: {
-    height: 22,
-    backgroundColor: '#f3f4f6',
-    marginLeft: 8,
-  },
-  excludeChipText: {
-    fontSize: 10,
-    color: '#6b7280',
-    marginVertical: 0,
-  },
-  fixedChip: {
-    height: 22,
-    backgroundColor: '#fef3c7',
-    marginLeft: 8,
-  },
-  fixedChipText: {
-    fontSize: 10,
-    color: '#d97706',
-    marginVertical: 0,
-  },
-  settingsLegend: {
-    padding: 12,
-    backgroundColor: '#f9fafb',
-    borderRadius: 8,
-    marginBottom: 8,
-  },
-  legendText: {
-    color: '#6b7280',
-    marginBottom: 4,
-  },
-  // 그룹 칩 스타일
-  groupChipsScroll: {
-    flex: 1,
-  },
-  groupChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    marginRight: 8,
-    backgroundColor: '#f9fafb',
-  },
-  groupChipPressed: {
-    backgroundColor: '#e5e7eb',
-  },
-  groupChipIcon: {
+  modalCloseButtonText: {
     fontSize: 16,
-    marginRight: 6,
-  },
-  groupChipText: {
-    alignItems: 'flex-start',
-  },
-  groupChipLabel: {
-    color: '#6b7280',
-    fontSize: 11,
-  },
-  groupChipAmount: {
-    fontWeight: '600',
-    fontSize: 13,
-  },
-  // 카드 타이틀 그룹 스타일
-  cardTitlePressable: {
-    flex: 1,
-  },
-  groupTotalText: {
-    fontWeight: 'bold',
-    marginTop: 4,
-  },
-  // 그룹 관리 모달 스타일
-  addGroupButton: {
-    marginBottom: 16,
-  },
-  groupSection: {
-    marginBottom: 16,
-    paddingBottom: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
-  },
-  groupHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 8,
-  },
-  groupHeaderLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  groupHeaderRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  groupIcon: {
-    fontSize: 18,
-    marginRight: 8,
-  },
-  groupTitle: {
-    fontWeight: 'bold',
-  },
-  groupActionButton: {
-    margin: 0,
-  },
-  // 그룹 추가/수정 모달 스타일
-  inputLabel: {
-    marginBottom: 8,
-    fontWeight: '600',
-  },
-  nativeInput: {
-    borderWidth: 1,
-    borderColor: '#d1d5db',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    fontSize: 16,
-    backgroundColor: '#fff',
-    marginBottom: 16,
-    color: '#1f2937',
-  },
-  colorLabel: {
-    marginBottom: 8,
-    fontWeight: '600',
-  },
-  colorPicker: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginBottom: 16,
-  },
-  colorOption: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-  },
-  colorOptionSelected: {
-    borderWidth: 3,
-    borderColor: '#1f2937',
-  },
-  groupModalContent: {
-    padding: 20,
-  },
-  groupModalButtons: {
-    flexDirection: 'row',
-    gap: 8,
-    justifyContent: 'flex-end',
-    marginTop: 16,
-  },
-  modalButtons: {
-    flexDirection: 'row',
-    gap: 8,
-    justifyContent: 'flex-end',
-    marginTop: 16,
-    marginBottom: 24,
-  },
-  modalButton: {
-    flex: 1,
+    fontWeight: '700',
+    color: '#fff',
   },
 });

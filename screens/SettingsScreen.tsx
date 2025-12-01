@@ -1,22 +1,32 @@
 import React, { useState, useEffect } from 'react';
-import { View, ScrollView, StyleSheet, Alert, ActivityIndicator } from 'react-native';
+import {
+  View,
+  ScrollView,
+  StyleSheet,
+  Alert,
+  ActivityIndicator,
+  Text as RNText,
+  TouchableOpacity,
+} from 'react-native';
 import {
   Text,
-  Card,
   Button,
-  List,
-  Divider,
   TextInput,
   Dialog,
   Portal,
   RadioButton,
+  List,
 } from 'react-native-paper';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { database } from '../lib/db/database';
 import { backupManager } from '../lib/backup';
 import { googleDriveManager, GoogleDriveFile } from '../lib/googleDrive';
 import { useGoogleAuth } from '../lib/hooks/useGoogleAuth';
 import GoogleOAuthWebView from '../components/GoogleOAuthWebView';
+import { theme } from '../lib/theme';
 
 export default function SettingsScreen({ navigation }: any) {
   // Google OAuth 훅 사용 (WebView 기반)
@@ -288,91 +298,142 @@ export default function SettingsScreen({ navigation }: any) {
     }
   };
 
+  const insets = useSafeAreaInsets();
+
+  const SettingItem = ({
+    icon,
+    title,
+    subtitle,
+    onPress,
+    rightIcon = 'chevron-forward',
+    iconColor = theme.colors.primary,
+    disabled = false,
+  }: {
+    icon: string;
+    title: string;
+    subtitle?: string;
+    onPress?: () => void;
+    rightIcon?: string;
+    iconColor?: string;
+    disabled?: boolean;
+  }) => (
+    <TouchableOpacity
+      style={[styles.settingItem, disabled && styles.settingItemDisabled]}
+      onPress={onPress}
+      disabled={disabled}
+    >
+      <View style={[styles.settingIconContainer, { backgroundColor: `${iconColor}20` }]}>
+        <Ionicons name={icon as any} size={20} color={iconColor} />
+      </View>
+      <View style={styles.settingContent}>
+        <RNText style={styles.settingTitle}>{title}</RNText>
+        {subtitle && <RNText style={styles.settingSubtitle}>{subtitle}</RNText>}
+      </View>
+      <Ionicons name={rightIcon as any} size={20} color={theme.colors.textMuted} />
+    </TouchableOpacity>
+  );
+
   return (
     <View style={styles.container}>
-      <ScrollView style={styles.scrollView}>
-        <Text style={styles.sectionTitle}>설정</Text>
+      {/* Dokterian 스타일 헤더 */}
+      <LinearGradient
+        colors={theme.gradients.header as [string, string]}
+        style={[styles.header, { paddingTop: insets.top + 16 }]}
+      >
+        <RNText style={styles.headerTitle}>설정</RNText>
+      </LinearGradient>
 
-        <Card style={styles.card}>
-          <Card.Content>
-            <Text variant="titleMedium" style={styles.cardTitle}>
-              AI 설정 (OCR)
-            </Text>
-            <List.Item
+      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
+        {/* AI 설정 섹션 */}
+        <View style={styles.section}>
+          <RNText style={styles.sectionTitle}>AI 설정 (OCR)</RNText>
+          <View style={styles.card}>
+            <SettingItem
+              icon="hardware-chip"
               title="AI API 키 설정"
-              description={`현재 설정: ${aiProvider === 'openai' ? 'OpenAI' : 'Google Gemini'}`}
-              left={(props) => <List.Icon {...props} icon="robot" />}
+              subtitle={`현재: ${aiProvider === 'openai' ? 'OpenAI' : 'Google Gemini'}`}
               onPress={() => setShowApiDialog(true)}
             />
-          </Card.Content>
-        </Card>
+          </View>
+        </View>
 
-        <Card style={styles.card}>
-          <Card.Content>
-            <Text variant="titleMedium" style={styles.cardTitle}>
-              데이터 관리
-            </Text>
-            <List.Item
+        {/* 데이터 관리 섹션 */}
+        <View style={styles.section}>
+          <RNText style={styles.sectionTitle}>데이터 관리</RNText>
+          <View style={styles.card}>
+            <SettingItem
+              icon="cloud-upload"
               title="백업"
-              description="데이터를 백업합니다"
-              left={(props) => <List.Icon {...props} icon="backup-restore" />}
+              subtitle="데이터를 백업합니다"
               onPress={() => setShowBackupDialog(true)}
               disabled={backupLoading}
+              iconColor={theme.colors.income}
             />
-            <Divider />
-            <List.Item
+            <View style={styles.divider} />
+            <SettingItem
+              icon="cloud-download"
               title="복원"
-              description="백업된 데이터를 복원합니다"
-              left={(props) => <List.Icon {...props} icon="restore" />}
+              subtitle="백업된 데이터를 복원합니다"
               onPress={() => setShowRestoreDialog(true)}
               disabled={backupLoading}
+              iconColor={theme.colors.info}
             />
-            <Divider />
-            <List.Item
+            <View style={styles.divider} />
+            <SettingItem
+              icon="logo-google"
               title="Google Drive 연결"
-              description={isGoogleLoggedIn ? '연결됨 (탭하여 해제)' : '탭하여 연결'}
-              left={(props) => <List.Icon {...props} icon="google-drive" />}
+              subtitle={isGoogleLoggedIn ? '연결됨 (탭하여 해제)' : '탭하여 연결'}
               onPress={handleGoogleAuth}
+              iconColor="#4285F4"
             />
-            <Divider />
-            <List.Item
+            <View style={styles.divider} />
+            <SettingItem
+              icon="trash"
               title="데이터 초기화"
-              description="모든 데이터를 삭제합니다"
-              left={(props) => <List.Icon {...props} icon="delete-forever" />}
+              subtitle="모든 데이터를 삭제합니다"
               onPress={handleResetData}
+              iconColor={theme.colors.expense}
             />
-          </Card.Content>
-        </Card>
+          </View>
+        </View>
 
+        {/* 로딩 오버레이 */}
         {backupLoading && (
           <View style={styles.loadingOverlay}>
-            <ActivityIndicator size="large" color="#6366f1" />
-            <Text style={styles.loadingText}>처리 중...</Text>
+            <View style={styles.loadingBox}>
+              <ActivityIndicator size="large" color={theme.colors.primary} />
+              <RNText style={styles.loadingText}>처리 중...</RNText>
+            </View>
           </View>
         )}
 
-        <Card style={styles.card}>
-          <Card.Content>
-            <Text variant="titleMedium" style={styles.cardTitle}>
-              앱 정보
-            </Text>
-            <List.Item
+        {/* 앱 정보 섹션 */}
+        <View style={styles.section}>
+          <RNText style={styles.sectionTitle}>앱 정보</RNText>
+          <View style={styles.card}>
+            <SettingItem
+              icon="information-circle"
               title="버전"
-              description="1.0.0"
-              left={(props) => <List.Icon {...props} icon="information" />}
+              subtitle="1.0.0"
+              rightIcon="checkmark-circle"
             />
-            <Divider />
-            <List.Item
+            <View style={styles.divider} />
+            <SettingItem
+              icon="person"
               title="개발자"
-              description="가계부 모바일 앱"
-              left={(props) => <List.Icon {...props} icon="account" />}
+              subtitle="가계부 모바일 앱"
+              rightIcon="heart"
+              iconColor={theme.colors.accent}
             />
-          </Card.Content>
-        </Card>
+          </View>
+        </View>
 
-        <Text style={styles.footerText}>
+        {/* 푸터 */}
+        <RNText style={styles.footerText}>
           © 2025 가계부 모바일 앱
-        </Text>
+        </RNText>
+
+        <View style={{ height: 40 }} />
       </ScrollView>
 
       {/* AI API 키 설정 다이얼로그 */}
@@ -558,36 +619,103 @@ export default function SettingsScreen({ navigation }: any) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: theme.colors.background,
   },
+
+  // 헤더
+  header: {
+    paddingHorizontal: 20,
+    paddingBottom: 24,
+    borderBottomLeftRadius: theme.borderRadius.xxl,
+    borderBottomRightRadius: theme.borderRadius.xxl,
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: '#fff',
+  },
+
+  // 스크롤뷰
   scrollView: {
     flex: 1,
   },
+  scrollContent: {
+    paddingHorizontal: 20,
+    paddingTop: 20,
+  },
+
+  // 섹션
+  section: {
+    marginBottom: 24,
+  },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    padding: 16,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
-  },
-  card: {
-    margin: 16,
-    marginTop: 8,
-  },
-  cardTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: theme.colors.textSecondary,
     marginBottom: 12,
+    marginLeft: 4,
   },
+
+  // 카드
+  card: {
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.lg,
+    overflow: 'hidden',
+    ...theme.shadows.sm,
+  },
+
+  // 설정 아이템
+  settingItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+  },
+  settingItemDisabled: {
+    opacity: 0.5,
+  },
+  settingIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  settingContent: {
+    flex: 1,
+  },
+  settingTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: theme.colors.text,
+  },
+  settingSubtitle: {
+    fontSize: 13,
+    color: theme.colors.textSecondary,
+    marginTop: 2,
+  },
+
+  // 구분선
+  divider: {
+    height: 1,
+    backgroundColor: theme.colors.divider,
+    marginLeft: 68,
+  },
+
+  // 푸터
   footerText: {
     textAlign: 'center',
-    padding: 32,
-    color: '#666',
+    padding: 24,
+    color: theme.colors.textMuted,
+    fontSize: 13,
   },
+
+  // 다이얼로그
   dialogContent: {
     padding: 16,
   },
   dialogSubtitle: {
-    color: '#666',
+    color: theme.colors.textSecondary,
     marginBottom: 16,
   },
   label: {
@@ -604,14 +732,15 @@ const styles = StyleSheet.create({
   },
   input: {
     marginBottom: 12,
+    backgroundColor: theme.colors.surface,
   },
   hint: {
-    color: '#666',
+    color: theme.colors.textSecondary,
     marginTop: -8,
     marginBottom: 12,
   },
   backupHint: {
-    color: '#666',
+    color: theme.colors.textSecondary,
     marginTop: 12,
     lineHeight: 18,
   },
@@ -625,22 +754,32 @@ const styles = StyleSheet.create({
   emptyText: {
     textAlign: 'center',
     padding: 24,
-    color: '#666',
+    color: theme.colors.textSecondary,
   },
+
+  // 로딩 오버레이
   loadingOverlay: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 1000,
   },
+  loadingBox: {
+    backgroundColor: theme.colors.surface,
+    padding: 32,
+    borderRadius: theme.borderRadius.xl,
+    alignItems: 'center',
+    ...theme.shadows.lg,
+  },
   loadingText: {
-    marginTop: 12,
-    color: '#6366f1',
-    fontSize: 16,
+    marginTop: 16,
+    color: theme.colors.primary,
+    fontSize: 15,
+    fontWeight: '600',
   },
 });

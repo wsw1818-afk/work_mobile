@@ -1,10 +1,14 @@
 import React, { useState, useCallback } from 'react';
-import { View, ScrollView, StyleSheet, RefreshControl, Alert, Modal, KeyboardAvoidingView, Platform, TouchableWithoutFeedback, Keyboard } from 'react-native';
-import { Text, Card, Button, TextInput, ProgressBar, FAB, Chip } from 'react-native-paper';
+import { View, ScrollView, StyleSheet, RefreshControl, Alert, Modal, KeyboardAvoidingView, Platform, TouchableWithoutFeedback, Keyboard, TouchableOpacity } from 'react-native';
+import { Text, Button, TextInput, ProgressBar, FAB, ActivityIndicator } from 'react-native-paper';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { format } from 'date-fns';
 import { database, Budget, Category } from '../lib/db/database';
 import { Picker } from '@react-native-picker/picker';
+import { theme } from '../lib/theme';
 
 interface BudgetWithSpent extends Budget {
   spent: number;
@@ -12,6 +16,7 @@ interface BudgetWithSpent extends Budget {
 }
 
 export default function BudgetsScreen() {
+  const insets = useSafeAreaInsets();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [budgets, setBudgets] = useState<BudgetWithSpent[]>([]);
@@ -158,23 +163,60 @@ export default function BudgetsScreen() {
     c => !budgets.some(b => b.categoryId === c.id)
   );
 
+  if (loading) {
+    return (
+      <View style={styles.centered}>
+        <ActivityIndicator size="large" color={theme.colors.primary} />
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
-      {/* 월 선택 */}
-      <View style={styles.monthSelector}>
-        <Button mode="text" onPress={() => changeMonth('prev')}>이전</Button>
-        <Text variant="titleLarge">{currentMonth}</Text>
-        <Button mode="text" onPress={() => changeMonth('next')}>다음</Button>
-      </View>
+      {/* 헤더 그라데이션 */}
+      <LinearGradient
+        colors={theme.gradients.header as [string, string]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={[styles.header, { paddingTop: insets.top + theme.spacing.md }]}
+      >
+        <Text style={styles.headerTitle}>예산 관리</Text>
+        <Text style={styles.headerSubtitle}>월별 예산을 설정하고 관리하세요</Text>
+
+        {/* 월 선택 */}
+        <View style={styles.monthSelector}>
+          <TouchableOpacity style={styles.monthButton} onPress={() => changeMonth('prev')}>
+            <Ionicons name="chevron-back" size={24} color="#fff" />
+          </TouchableOpacity>
+          <View style={styles.monthDisplay}>
+            <Ionicons name="calendar" size={18} color="#fff" />
+            <Text style={styles.monthText}>{currentMonth}</Text>
+          </View>
+          <TouchableOpacity style={styles.monthButton} onPress={() => changeMonth('next')}>
+            <Ionicons name="chevron-forward" size={24} color="#fff" />
+          </TouchableOpacity>
+        </View>
+      </LinearGradient>
 
       {/* 전체 예산 요약 */}
-      <Card style={styles.summaryCard}>
-        <Card.Content>
-          <Text variant="titleMedium" style={styles.summaryTitle}>전체 예산 현황</Text>
-          <View style={styles.summaryRow}>
-            <Text>예산: {Math.round(totalBudget).toLocaleString()}원</Text>
-            <Text>사용: {Math.round(totalSpent).toLocaleString()}원</Text>
+      <View style={styles.summaryCard}>
+        <View style={styles.summaryHeader}>
+          <Ionicons name="wallet" size={20} color={theme.colors.primary} />
+          <Text style={styles.summaryTitle}>전체 예산 현황</Text>
+        </View>
+        <View style={styles.summaryRow}>
+          <View style={styles.summaryItem}>
+            <Text style={styles.summaryLabel}>예산</Text>
+            <Text style={styles.summaryValue}>{Math.round(totalBudget).toLocaleString()}원</Text>
           </View>
+          <View style={styles.summaryItem}>
+            <Text style={styles.summaryLabel}>사용</Text>
+            <Text style={[styles.summaryValue, { color: getProgressColor(totalPercentage) }]}>
+              {Math.round(totalSpent).toLocaleString()}원
+            </Text>
+          </View>
+        </View>
+        <View style={styles.progressContainer}>
           <ProgressBar
             progress={Math.min(totalPercentage / 100, 1)}
             color={getProgressColor(totalPercentage)}
@@ -183,57 +225,86 @@ export default function BudgetsScreen() {
           <Text style={styles.percentageText}>
             {totalPercentage.toFixed(1)}% 사용
           </Text>
-        </Card.Content>
-      </Card>
+        </View>
+      </View>
 
       <ScrollView
         style={styles.scrollView}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        contentContainerStyle={styles.scrollContent}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[theme.colors.primary]} />}
+        showsVerticalScrollIndicator={false}
       >
         {budgets.length === 0 ? (
-          <Card style={styles.emptyCard}>
-            <Card.Content>
-              <Text style={styles.emptyText}>이번 달 예산이 설정되지 않았습니다.</Text>
-              <Text style={styles.emptySubtext}>아래 + 버튼을 눌러 예산을 추가하세요.</Text>
-            </Card.Content>
-          </Card>
+          <View style={styles.emptyCard}>
+            <Ionicons name="calculator-outline" size={48} color={theme.colors.textMuted} />
+            <Text style={styles.emptyText}>이번 달 예산이 설정되지 않았습니다</Text>
+            <Text style={styles.emptySubtext}>+ 버튼을 눌러 예산을 추가하세요</Text>
+          </View>
         ) : (
           budgets.map((budget) => (
-            <Card key={budget.id} style={styles.budgetCard}>
-              <Card.Content>
-                <View style={styles.budgetHeader}>
-                  <Text variant="titleMedium">{budget.categoryName}</Text>
-                  <Chip mode="flat" style={{ backgroundColor: budget.percentage >= 100 ? '#fee2e2' : budget.percentage >= 80 ? '#fef3c7' : '#d1fae5' }}>{budget.percentage.toFixed(0)}%</Chip>
+            <View key={budget.id} style={styles.budgetCard}>
+              <View style={styles.budgetHeader}>
+                <View style={styles.budgetTitleRow}>
+                  <View style={[styles.categoryDot, { backgroundColor: budget.percentage >= 100 ? theme.colors.expense : theme.colors.primary }]} />
+                  <Text style={styles.budgetCategoryName}>{budget.categoryName}</Text>
                 </View>
-
-                <View style={styles.amountRow}>
-                  <Text>예산: {Math.round(budget.limitAmount).toLocaleString()}원</Text>
-                  <Text style={{ color: budget.percentage >= 100 ? '#ef4444' : '#000' }}>
-                    사용: {Math.round(budget.spent).toLocaleString()}원
+                <View style={[
+                  styles.percentageBadge,
+                  { backgroundColor: budget.percentage >= 100 ? 'rgba(239, 68, 68, 0.1)' : budget.percentage >= 80 ? 'rgba(245, 158, 11, 0.1)' : 'rgba(16, 185, 129, 0.1)' }
+                ]}>
+                  <Text style={[
+                    styles.percentageBadgeText,
+                    { color: getProgressColor(budget.percentage) }
+                  ]}>
+                    {budget.percentage.toFixed(0)}%
                   </Text>
                 </View>
+              </View>
 
-                <ProgressBar
-                  progress={Math.min(budget.percentage / 100, 1)}
-                  color={getProgressColor(budget.percentage)}
-                  style={styles.progressBar}
-                />
+              <View style={styles.amountRow}>
+                <View style={styles.amountItem}>
+                  <Text style={styles.amountLabel}>예산</Text>
+                  <Text style={styles.amountValue}>{Math.round(budget.limitAmount).toLocaleString()}원</Text>
+                </View>
+                <View style={styles.amountItem}>
+                  <Text style={styles.amountLabel}>사용</Text>
+                  <Text style={[styles.amountValue, { color: getProgressColor(budget.percentage) }]}>
+                    {Math.round(budget.spent).toLocaleString()}원
+                  </Text>
+                </View>
+              </View>
 
-                {budget.percentage >= 100 && (
+              <ProgressBar
+                progress={Math.min(budget.percentage / 100, 1)}
+                color={getProgressColor(budget.percentage)}
+                style={styles.budgetProgressBar}
+              />
+
+              {budget.percentage >= 100 && (
+                <View style={styles.warningBox}>
+                  <Ionicons name="warning" size={16} color={theme.colors.expense} />
                   <Text style={styles.warningText}>
-                    ⚠️ 예산을 {Math.round((budget.spent - budget.limitAmount)).toLocaleString()}원 초과했습니다!
+                    예산을 {Math.round((budget.spent - budget.limitAmount)).toLocaleString()}원 초과했습니다
                   </Text>
-                )}
-                {budget.percentage >= 80 && budget.percentage < 100 && (
+                </View>
+              )}
+              {budget.percentage >= 80 && budget.percentage < 100 && (
+                <View style={styles.cautionBox}>
+                  <Ionicons name="alert-circle" size={16} color={theme.colors.warning} />
                   <Text style={styles.cautionText}>
-                    주의: 남은 예산 {Math.round((budget.limitAmount - budget.spent)).toLocaleString()}원
+                    남은 예산: {Math.round((budget.limitAmount - budget.spent)).toLocaleString()}원
                   </Text>
-                )}
-              </Card.Content>
-              <Card.Actions>
-                <Button onPress={() => handleDeleteBudget(budget)}>삭제</Button>
-              </Card.Actions>
-            </Card>
+                </View>
+              )}
+
+              <TouchableOpacity
+                style={styles.deleteButton}
+                onPress={() => handleDeleteBudget(budget)}
+              >
+                <Ionicons name="trash-outline" size={18} color={theme.colors.expense} />
+                <Text style={styles.deleteButtonText}>삭제</Text>
+              </TouchableOpacity>
+            </View>
           ))
         )}
       </ScrollView>
@@ -242,6 +313,7 @@ export default function BudgetsScreen() {
       <FAB
         style={styles.fab}
         icon="plus"
+        color="#fff"
         onPress={() => {
           if (availableCategories.length === 0) {
             Alert.alert('알림', '모든 카테고리에 예산이 설정되었습니다.');
@@ -305,99 +377,264 @@ export default function BudgetsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: theme.colors.background,
+  },
+  centered: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: theme.colors.background,
+  },
+  header: {
+    paddingHorizontal: theme.spacing.lg,
+    paddingTop: theme.spacing.md,
+    paddingBottom: theme.spacing.lg,
+    borderBottomLeftRadius: theme.borderRadius.xl,
+    borderBottomRightRadius: theme.borderRadius.xl,
+  },
+  headerTitle: {
+    fontSize: theme.fontSize.xxl,
+    fontWeight: theme.fontWeight.bold,
+    color: '#fff',
+    marginBottom: theme.spacing.xs,
+  },
+  headerSubtitle: {
+    fontSize: theme.fontSize.md,
+    color: 'rgba(255, 255, 255, 0.9)',
   },
   monthSelector: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
     alignItems: 'center',
-    padding: 16,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    marginTop: theme.spacing.md,
+    gap: theme.spacing.md,
+  },
+  monthButton: {
+    width: 40,
+    height: 40,
+    borderRadius: theme.borderRadius.full,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  monthDisplay: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.sm,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    borderRadius: theme.borderRadius.lg,
+  },
+  monthText: {
+    fontSize: theme.fontSize.lg,
+    fontWeight: theme.fontWeight.semibold,
+    color: '#fff',
   },
   summaryCard: {
-    margin: 16,
-    marginBottom: 8,
+    backgroundColor: theme.colors.surface,
+    marginHorizontal: theme.spacing.lg,
+    marginTop: -theme.spacing.md,
+    borderRadius: theme.borderRadius.lg,
+    padding: theme.spacing.md,
+    ...theme.shadows.md,
+  },
+  summaryHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+    marginBottom: theme.spacing.md,
   },
   summaryTitle: {
-    marginBottom: 12,
-    fontWeight: 'bold',
+    fontSize: theme.fontSize.md,
+    fontWeight: theme.fontWeight.semibold,
+    color: theme.colors.text,
   },
   summaryRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 8,
+  },
+  summaryItem: {
+    flex: 1,
+  },
+  summaryLabel: {
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.textSecondary,
+    marginBottom: theme.spacing.xs,
+  },
+  summaryValue: {
+    fontSize: theme.fontSize.lg,
+    fontWeight: theme.fontWeight.bold,
+    color: theme.colors.text,
+  },
+  progressContainer: {
+    marginTop: theme.spacing.md,
   },
   progressBar: {
-    height: 12,
-    borderRadius: 6,
-    marginTop: 8,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: theme.colors.surfaceVariant,
   },
   percentageText: {
     textAlign: 'right',
-    marginTop: 4,
-    fontSize: 12,
-    color: '#666',
+    marginTop: theme.spacing.xs,
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.textSecondary,
   },
   scrollView: {
     flex: 1,
   },
+  scrollContent: {
+    padding: theme.spacing.lg,
+    paddingTop: theme.spacing.md,
+    paddingBottom: 100,
+  },
   emptyCard: {
-    margin: 16,
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.lg,
+    padding: theme.spacing.xl,
+    alignItems: 'center',
+    ...theme.shadows.sm,
   },
   emptyText: {
+    fontSize: theme.fontSize.lg,
+    color: theme.colors.textSecondary,
+    marginTop: theme.spacing.md,
     textAlign: 'center',
-    fontSize: 16,
-    marginBottom: 8,
   },
   emptySubtext: {
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.textMuted,
+    marginTop: theme.spacing.xs,
     textAlign: 'center',
-    color: '#666',
   },
   budgetCard: {
-    margin: 16,
-    marginTop: 8,
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.lg,
+    padding: theme.spacing.md,
+    marginBottom: theme.spacing.md,
+    ...theme.shadows.sm,
   },
   budgetHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: theme.spacing.md,
+  },
+  budgetTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+  },
+  categoryDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+  },
+  budgetCategoryName: {
+    fontSize: theme.fontSize.lg,
+    fontWeight: theme.fontWeight.semibold,
+    color: theme.colors.text,
+  },
+  percentageBadge: {
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: theme.spacing.xs,
+    borderRadius: theme.borderRadius.full,
+  },
+  percentageBadgeText: {
+    fontSize: theme.fontSize.sm,
+    fontWeight: theme.fontWeight.bold,
   },
   amountRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 8,
+    marginBottom: theme.spacing.sm,
+  },
+  amountItem: {
+    flex: 1,
+  },
+  amountLabel: {
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.textSecondary,
+    marginBottom: 2,
+  },
+  amountValue: {
+    fontSize: theme.fontSize.md,
+    fontWeight: theme.fontWeight.semibold,
+    color: theme.colors.text,
+  },
+  budgetProgressBar: {
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: theme.colors.surfaceVariant,
+  },
+  warningBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+    marginTop: theme.spacing.sm,
+    padding: theme.spacing.sm,
+    backgroundColor: 'rgba(239, 68, 68, 0.08)',
+    borderRadius: theme.borderRadius.sm,
   },
   warningText: {
-    color: '#ef4444',
-    marginTop: 8,
-    fontWeight: 'bold',
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.expense,
+    fontWeight: theme.fontWeight.medium,
+  },
+  cautionBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+    marginTop: theme.spacing.sm,
+    padding: theme.spacing.sm,
+    backgroundColor: 'rgba(245, 158, 11, 0.08)',
+    borderRadius: theme.borderRadius.sm,
   },
   cautionText: {
-    color: '#f59e0b',
-    marginTop: 8,
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.warning,
+    fontWeight: theme.fontWeight.medium,
+  },
+  deleteButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: theme.spacing.xs,
+    marginTop: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.divider,
+  },
+  deleteButtonText: {
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.expense,
+    fontWeight: theme.fontWeight.medium,
   },
   fab: {
     position: 'absolute',
-    margin: 16,
+    margin: theme.spacing.lg,
     right: 0,
     bottom: 0,
-    backgroundColor: '#6366f1',
+    backgroundColor: theme.colors.primary,
+    ...theme.shadows.lg,
   },
   label: {
-    marginBottom: 8,
-    color: '#666',
+    marginBottom: theme.spacing.sm,
+    fontSize: theme.fontSize.md,
+    color: theme.colors.textSecondary,
+    fontWeight: theme.fontWeight.medium,
   },
   pickerContainer: {
     borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 4,
-    marginBottom: 16,
+    borderColor: theme.colors.border,
+    borderRadius: theme.borderRadius.sm,
+    marginBottom: theme.spacing.md,
+    backgroundColor: theme.colors.surface,
   },
   input: {
-    marginBottom: 16,
+    marginBottom: theme.spacing.md,
+    backgroundColor: theme.colors.surface,
   },
   modalContainer: {
     flex: 1,
@@ -409,16 +646,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   modalContent: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 20,
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.lg,
+    padding: theme.spacing.lg,
     width: '90%',
     maxHeight: '80%',
   },
   modalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 16,
+    fontSize: theme.fontSize.xl,
+    fontWeight: theme.fontWeight.bold,
+    color: theme.colors.text,
+    marginBottom: theme.spacing.md,
   },
   modalScrollView: {
     maxHeight: 400,
@@ -426,8 +664,8 @@ const styles = StyleSheet.create({
   modalActions: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
-    gap: 8,
-    marginTop: 16,
+    gap: theme.spacing.sm,
+    marginTop: theme.spacing.md,
   },
   modalButton: {
     minWidth: 80,
