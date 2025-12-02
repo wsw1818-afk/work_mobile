@@ -303,6 +303,25 @@ export default function ReceiptScreen({ navigation }: any) {
 
   return (
     <View style={styles.safeArea}>
+      {/* 헤더 */}
+      <LinearGradient
+        colors={theme.gradients.header as [string, string]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={[styles.header, { paddingTop: insets.top + theme.spacing.md }]}
+      >
+        <View style={styles.headerRow}>
+          <TouchableOpacity
+            style={styles.menuButton}
+            onPress={() => navigation.openDrawer()}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="menu" size={24} color="#fff" />
+          </TouchableOpacity>
+          <RNText style={styles.headerTitle}>영수증 스캔</RNText>
+        </View>
+      </LinearGradient>
+
       <View style={styles.container}>
         <ScrollView
           style={styles.scrollView}
@@ -389,7 +408,7 @@ export default function ReceiptScreen({ navigation }: any) {
         </ScrollView>
 
         {/* FAB 버튼 */}
-        <TouchableOpacity style={styles.fab} onPress={openUploadModal} activeOpacity={0.8}>
+        <TouchableOpacity style={[styles.fab, { bottom: insets.bottom + 16 }]} onPress={openUploadModal} activeOpacity={0.8}>
           <LinearGradient
             colors={theme.gradients.header as any}
             start={{ x: 0, y: 0 }}
@@ -670,20 +689,23 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingTop: theme.spacing.md,
-    paddingBottom: theme.spacing.xl,
+    paddingBottom: theme.spacing.lg,
     paddingHorizontal: theme.spacing.lg,
     borderBottomLeftRadius: theme.borderRadius.xl,
     borderBottomRightRadius: theme.borderRadius.xl,
   },
-  headerTitle: {
-    fontSize: theme.fontSize.xxl,
-    fontWeight: theme.fontWeight.bold as any,
-    color: '#fff',
-    marginBottom: theme.spacing.xs,
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
-  headerSubtitle: {
-    fontSize: theme.fontSize.sm,
-    color: 'rgba(255, 255, 255, 0.9)',
+  menuButton: {
+    padding: theme.spacing.xs,
+    marginRight: theme.spacing.sm,
+  },
+  headerTitle: {
+    fontSize: theme.fontSize.xl,
+    fontWeight: '700',
+    color: '#fff',
   },
   container: {
     flex: 1,
@@ -837,11 +859,11 @@ const styles = StyleSheet.create({
   },
   fab: {
     position: 'absolute',
-    right: theme.spacing.md,
-    bottom: theme.spacing.md,
+    right: 16,
+    bottom: 16,
     borderRadius: theme.borderRadius.full,
     overflow: 'hidden',
-    ...theme.shadows.md,
+    ...theme.shadows.lg,
   },
   fabGradient: {
     flexDirection: 'row',

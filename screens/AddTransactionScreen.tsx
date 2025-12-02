@@ -21,7 +21,8 @@ import { format } from 'date-fns';
 import { database, Category, Account } from '../lib/db/database';
 import { theme } from '../lib/theme';
 
-export default function AddTransactionScreen() {
+export default function AddTransactionScreen({ navigation }: any) {
+  const insets = useSafeAreaInsets();
   const [type, setType] = useState<'income' | 'expense'>('expense');
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
@@ -115,8 +116,6 @@ export default function AddTransactionScreen() {
     }
   };
 
-  const insets = useSafeAreaInsets();
-
   return (
     <KeyboardAvoidingView
       style={styles.container}
@@ -125,9 +124,18 @@ export default function AddTransactionScreen() {
       {/* Dokterian 스타일 헤더 */}
       <LinearGradient
         colors={theme.gradients.header as [string, string]}
-        style={[styles.header, { paddingTop: insets.top + 16 }]}
+        style={[styles.header, { paddingTop: insets.top + theme.spacing.md }]}
       >
-        <RNText style={styles.headerTitle}>거래 추가</RNText>
+        <View style={styles.headerRow}>
+          <TouchableOpacity
+            style={styles.menuButton}
+            onPress={() => navigation.getParent()?.openDrawer()}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="menu" size={24} color="#fff" />
+          </TouchableOpacity>
+          <RNText style={styles.headerTitle}>거래 추가</RNText>
+        </View>
 
         {/* 수입/지출 토글 */}
         <View style={styles.typeToggle}>
@@ -342,11 +350,19 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: theme.borderRadius.xxl,
     borderBottomRightRadius: theme.borderRadius.xxl,
   },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  menuButton: {
+    padding: theme.spacing.xs,
+    marginRight: theme.spacing.sm,
+  },
   headerTitle: {
-    fontSize: 24,
-    fontWeight: '800',
+    fontSize: theme.fontSize.xl,
+    fontWeight: '700',
     color: '#fff',
-    marginBottom: 20,
   },
 
   // 유형 토글

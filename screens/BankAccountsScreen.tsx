@@ -8,7 +8,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { database, BankAccount, Account } from '../lib/db/database';
 import { theme } from '../lib/theme';
 
-export default function BankAccountsScreen() {
+export default function BankAccountsScreen({ navigation }: any) {
   const insets = useSafeAreaInsets();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -251,6 +251,25 @@ export default function BankAccountsScreen() {
 
   return (
     <View style={styles.container}>
+      {/* 헤더 */}
+      <LinearGradient
+        colors={theme.gradients.header as [string, string]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={[styles.header, { paddingTop: insets.top + theme.spacing.md }]}
+      >
+        <View style={styles.headerRow}>
+          <TouchableOpacity
+            style={styles.menuButton}
+            onPress={() => navigation.openDrawer()}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="menu" size={24} color="#fff" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>통장/결제수단</Text>
+        </View>
+      </LinearGradient>
+
       {/* 총 자산 요약 카드 */}
       <View style={styles.summaryCardTop}>
         <View style={styles.summaryRow}>
@@ -484,7 +503,8 @@ export default function BankAccountsScreen() {
           },
         ]}
         onStateChange={({ open }) => setFabOpen(open)}
-        fabStyle={styles.fab}
+        style={{ paddingBottom: insets.bottom, paddingRight: 0 }}
+        fabStyle={styles.fabButton}
       />
 
       {/* 통장 추가 모달 */}
@@ -742,20 +762,22 @@ const styles = StyleSheet.create({
   header: {
     paddingHorizontal: theme.spacing.lg,
     paddingTop: theme.spacing.md,
-    paddingBottom: theme.spacing.xl,
+    paddingBottom: theme.spacing.lg,
     borderBottomLeftRadius: theme.borderRadius.xl,
     borderBottomRightRadius: theme.borderRadius.xl,
   },
-  headerTitle: {
-    fontSize: theme.fontSize.xxl,
-    fontWeight: theme.fontWeight.bold,
-    color: '#fff',
-    marginBottom: theme.spacing.xs,
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
-  headerSubtitle: {
-    fontSize: theme.fontSize.md,
-    color: 'rgba(255, 255, 255, 0.9)',
-    marginBottom: theme.spacing.md,
+  menuButton: {
+    padding: theme.spacing.xs,
+    marginRight: theme.spacing.sm,
+  },
+  headerTitle: {
+    fontSize: theme.fontSize.xl,
+    fontWeight: '700',
+    color: '#fff',
   },
   summaryCardTop: {
     backgroundColor: theme.colors.surface,
@@ -1049,7 +1071,15 @@ const styles = StyleSheet.create({
     height: 100,
   },
   fab: {
+    position: 'absolute',
+    right: 16,
+    bottom: 16,
     backgroundColor: theme.colors.primary,
+    ...theme.shadows.lg,
+  },
+  fabButton: {
+    backgroundColor: theme.colors.primary,
+    ...theme.shadows.lg,
   },
   input: {
     marginBottom: theme.spacing.md,

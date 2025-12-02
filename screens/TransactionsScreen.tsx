@@ -47,7 +47,8 @@ function useDebounce<T>(value: T, delay: number): T {
   return debouncedValue;
 }
 
-export default function TransactionsScreen() {
+export default function TransactionsScreen({ navigation }: any) {
+  const insets = useSafeAreaInsets();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -236,8 +237,6 @@ export default function TransactionsScreen() {
     Alert.alert('복사 완료', `${label}이(가) 복사되었습니다.`);
   };
 
-  const insets = useSafeAreaInsets();
-
   if (loading) {
     return (
       <View style={styles.centered}>
@@ -257,9 +256,18 @@ export default function TransactionsScreen() {
       {/* Dokterian 스타일 헤더 */}
       <LinearGradient
         colors={theme.gradients.header as [string, string]}
-        style={[styles.header, { paddingTop: insets.top + 16 }]}
+        style={[styles.header, { paddingTop: insets.top + theme.spacing.md }]}
       >
-        <RNText style={styles.headerTitle}>거래내역</RNText>
+        <View style={styles.headerRow}>
+          <TouchableOpacity
+            style={styles.menuButton}
+            onPress={() => navigation.getParent()?.openDrawer()}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="menu" size={24} color="#fff" />
+          </TouchableOpacity>
+          <RNText style={styles.headerTitle}>거래내역</RNText>
+        </View>
 
         {/* 월 선택기 */}
         <View style={styles.monthSelector}>
@@ -560,11 +568,19 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: theme.borderRadius.xxl,
     borderBottomRightRadius: theme.borderRadius.xxl,
   },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: '#fff',
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
     marginBottom: 16,
+  },
+  menuButton: {
+    padding: theme.spacing.xs,
+    marginRight: theme.spacing.sm,
+  },
+  headerTitle: {
+    fontSize: theme.fontSize.xl,
+    fontWeight: '700',
+    color: '#fff',
   },
 
   // 월 선택기

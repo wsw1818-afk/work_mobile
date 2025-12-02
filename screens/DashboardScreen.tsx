@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, memo } from 'react';
 import { View, ScrollView, StyleSheet, RefreshControl, Pressable, Clipboard, Alert, TouchableOpacity } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text, ActivityIndicator, Portal, Modal, Divider } from 'react-native-paper';
@@ -9,7 +9,66 @@ import { ko } from 'date-fns/locale';
 import { database, Transaction } from '../lib/db/database';
 import { theme } from '../lib/theme';
 
-export default function DashboardScreen() {
+// 거래 항목 메모이제이션 컴포넌트
+const TransactionItem = memo(({ transaction }: { transaction: Transaction }) => (
+  <View style={styles.transactionItem}>
+    <View style={[
+      styles.transactionIcon,
+      { backgroundColor: (transaction.categoryColor || theme.colors.textMuted) + '20' }
+    ]}>
+      <View style={[
+        styles.transactionDot,
+        { backgroundColor: transaction.categoryColor || theme.colors.textMuted }
+      ]} />
+    </View>
+    <View style={styles.transactionInfo}>
+      <Text style={styles.transactionCategory} numberOfLines={1}>
+        {transaction.categoryName}
+      </Text>
+      {transaction.description && (
+        <Text style={styles.transactionDesc} numberOfLines={1}>
+          {transaction.description}
+        </Text>
+      )}
+      <Text style={styles.transactionDate}>
+        {format(new Date(transaction.date), 'M월 d일 (E)', { locale: ko })}
+      </Text>
+    </View>
+    <Text
+      style={[
+        styles.transactionAmount,
+        { color: transaction.type === 'income' ? theme.colors.income : theme.colors.expense }
+      ]}
+    >
+      {transaction.type === 'income' ? '+' : '-'}
+      {Math.round(transaction.amount).toLocaleString()}원
+    </Text>
+  </View>
+));
+
+// 그룹 카드 메모이제이션 컴포넌트
+const GroupCard = memo(({ group, onPress }: {
+  group: { groupId: number; groupName: string; groupColor: string; groupIcon: string | null; total: number };
+  onPress: () => void;
+}) => (
+  <Pressable
+    style={({ pressed }) => [
+      styles.groupCard,
+      pressed && styles.groupCardPressed
+    ]}
+    onPress={onPress}
+  >
+    <View style={[styles.groupIconCircle, { backgroundColor: group.groupColor + '20' }]}>
+      <Text style={styles.groupIcon}>{group.groupIcon || '📁'}</Text>
+    </View>
+    <Text style={styles.groupName} numberOfLines={1}>{group.groupName}</Text>
+    <Text style={[styles.groupAmount, { color: group.groupColor }]}>
+      {Math.round(group.total).toLocaleString()}원
+    </Text>
+  </Pressable>
+));
+
+export default function DashboardScreen({ navigation }: any) {
   const insets = useSafeAreaInsets();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -50,20 +109,25 @@ export default function DashboardScreen() {
 
   // 월별 선택 기능
   const [selectedDate, setSelectedDate] = useState(new Date());
-  const year = selectedDate.getFullYear();
-  const month = selectedDate.getMonth() + 1;
 
-  const goToPreviousMonth = () => {
-    setSelectedDate(subMonths(selectedDate, 1));
-  };
+  // useMemo로 year, month 계산 최적화
+  const { year, month } = useMemo(() => ({
+    year: selectedDate.getFullYear(),
+    month: selectedDate.getMonth() + 1,
+  }), [selectedDate]);
 
-  const goToNextMonth = () => {
-    setSelectedDate(addMonths(selectedDate, 1));
-  };
+  // useCallback으로 월 변경 함수 최적화
+  const goToPreviousMonth = useCallback(() => {
+    setSelectedDate(prev => subMonths(prev, 1));
+  }, []);
 
-  const goToCurrentMonth = () => {
+  const goToNextMonth = useCallback(() => {
+    setSelectedDate(prev => addMonths(prev, 1));
+  }, []);
+
+  const goToCurrentMonth = useCallback(() => {
     setSelectedDate(new Date());
-  };
+  }, []);
 
   const loadData = useCallback(async () => {
     try {
@@ -171,6 +235,13 @@ export default function DashboardScreen() {
     Alert.alert('복사 완료', `${label}이(가) 복사되었습니다.`);
   };
 
+  // useMemo로 계산값 최적화 (훅은 조건문 전에 호출해야 함)
+  const balance = useMemo(() => monthSummary.income - monthSummary.expense, [monthSummary]);
+
+  const isCurrentMonth = useMemo(() => {
+    const now = new Date();
+    return year === now.getFullYear() && month === now.getMonth() + 1;
+  }, [year, month]);
 
   if (loading) {
     return (
@@ -180,14 +251,27 @@ export default function DashboardScreen() {
     );
   }
 
-  const balance = monthSummary.income - monthSummary.expense;
-
-  const isCurrentMonth =
-    year === new Date().getFullYear() &&
-    month === new Date().getMonth() + 1;
-
   return (
     <View style={styles.container}>
+      {/* 헤더 */}
+      <LinearGradient
+        colors={theme.gradients.header as [string, string]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={[styles.header, { paddingTop: insets.top + theme.spacing.md }]}
+      >
+        <View style={styles.headerRow}>
+          <TouchableOpacity
+            style={styles.menuButton}
+            onPress={() => navigation.getParent()?.openDrawer()}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="menu" size={24} color="#fff" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>대시보드</Text>
+        </View>
+      </LinearGradient>
+
       {/* 월 선택 */}
       <View style={styles.monthSelectorContainer}>
           <TouchableOpacity onPress={goToPreviousMonth} style={styles.monthArrowNew}>
@@ -282,72 +366,29 @@ export default function DashboardScreen() {
           </View>
         </View>
 
-        {/* 지출 그룹 - Dokterian 카드 스타일 */}
+        {/* 지출 그룹 - Dokterian 카드 스타일 (메모이제이션 적용) */}
         {groupStats.length > 0 && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>지출 카테고리</Text>
             <View style={styles.groupGrid}>
               {groupStats.map((group) => (
-                <Pressable
+                <GroupCard
                   key={group.groupId}
-                  style={({ pressed }) => [
-                    styles.groupCard,
-                    pressed && styles.groupCardPressed
-                  ]}
+                  group={group}
                   onPress={() => handleGroupClick(group.groupId, group.groupName, group.groupColor, group.groupIcon)}
-                >
-                  <View style={[styles.groupIconCircle, { backgroundColor: group.groupColor + '20' }]}>
-                    <Text style={styles.groupIcon}>{group.groupIcon || '📁'}</Text>
-                  </View>
-                  <Text style={styles.groupName} numberOfLines={1}>{group.groupName}</Text>
-                  <Text style={[styles.groupAmount, { color: group.groupColor }]}>
-                    {Math.round(group.total).toLocaleString()}원
-                  </Text>
-                </Pressable>
+                />
               ))}
             </View>
           </View>
         )}
 
-        {/* 최근 거래 내역 - Dokterian 리스트 스타일 */}
+        {/* 최근 거래 내역 - Dokterian 리스트 스타일 (메모이제이션 적용) */}
         {recentTransactions.length > 0 && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>최근 거래</Text>
             <View style={styles.transactionList}>
               {recentTransactions.map((transaction) => (
-                <View key={transaction.id} style={styles.transactionItem}>
-                  <View style={[
-                    styles.transactionIcon,
-                    { backgroundColor: (transaction.categoryColor || theme.colors.textMuted) + '20' }
-                  ]}>
-                    <View style={[
-                      styles.transactionDot,
-                      { backgroundColor: transaction.categoryColor || theme.colors.textMuted }
-                    ]} />
-                  </View>
-                  <View style={styles.transactionInfo}>
-                    <Text style={styles.transactionCategory} numberOfLines={1}>
-                      {transaction.categoryName}
-                    </Text>
-                    {transaction.description && (
-                      <Text style={styles.transactionDesc} numberOfLines={1}>
-                        {transaction.description}
-                      </Text>
-                    )}
-                    <Text style={styles.transactionDate}>
-                      {format(new Date(transaction.date), 'M월 d일 (E)', { locale: ko })}
-                    </Text>
-                  </View>
-                  <Text
-                    style={[
-                      styles.transactionAmount,
-                      { color: transaction.type === 'income' ? theme.colors.income : theme.colors.expense }
-                    ]}
-                  >
-                    {transaction.type === 'income' ? '+' : '-'}
-                    {Math.round(transaction.amount).toLocaleString()}원
-                  </Text>
-                </View>
+                <TransactionItem key={transaction.id} transaction={transaction} />
               ))}
             </View>
           </View>
@@ -531,10 +572,23 @@ const styles = StyleSheet.create({
   },
   // 헤더 - Dokterian 스타일
   header: {
-    paddingBottom: 24,
     paddingHorizontal: 20,
-    borderBottomLeftRadius: 32,
-    borderBottomRightRadius: 32,
+    paddingBottom: 20,
+    borderBottomLeftRadius: theme.borderRadius.xxl,
+    borderBottomRightRadius: theme.borderRadius.xxl,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  menuButton: {
+    padding: theme.spacing.xs,
+    marginRight: theme.spacing.sm,
+  },
+  headerTitle: {
+    fontSize: theme.fontSize.xl,
+    fontWeight: '700',
+    color: '#fff',
   },
   headerContent: {
     marginBottom: 20,

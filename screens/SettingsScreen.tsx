@@ -335,6 +335,25 @@ export default function SettingsScreen({ navigation }: any) {
 
   return (
     <View style={styles.container}>
+      {/* 헤더 */}
+      <LinearGradient
+        colors={theme.gradients.header as [string, string]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={[styles.header, { paddingTop: insets.top + theme.spacing.md }]}
+      >
+        <View style={styles.headerRow}>
+          <TouchableOpacity
+            style={styles.menuButton}
+            onPress={() => navigation.openDrawer()}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="menu" size={24} color="#fff" />
+          </TouchableOpacity>
+          <RNText style={styles.headerTitle}>설정</RNText>
+        </View>
+      </LinearGradient>
+
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
         {/* AI 설정 섹션 */}
         <View style={styles.section}>
@@ -617,13 +636,21 @@ const styles = StyleSheet.create({
   // 헤더
   header: {
     paddingHorizontal: 20,
-    paddingBottom: 24,
+    paddingBottom: 20,
     borderBottomLeftRadius: theme.borderRadius.xxl,
     borderBottomRightRadius: theme.borderRadius.xxl,
   },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  menuButton: {
+    padding: theme.spacing.xs,
+    marginRight: theme.spacing.sm,
+  },
   headerTitle: {
-    fontSize: 24,
-    fontWeight: '800',
+    fontSize: theme.fontSize.xl,
+    fontWeight: '700',
     color: '#fff',
   },
 

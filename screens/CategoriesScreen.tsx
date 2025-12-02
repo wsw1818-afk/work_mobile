@@ -48,7 +48,7 @@ const PRESET_COLORS = [
   '#8b5cf6', '#ec4899', '#f43f5e', '#14b8a6', '#06b6d4',
 ];
 
-export default function CategoriesScreen() {
+export default function CategoriesScreen({ navigation }: any) {
   const insets = useSafeAreaInsets();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -236,15 +236,23 @@ export default function CategoriesScreen() {
 
   return (
     <View style={styles.safeArea}>
-      {/* 헤더 그라데이션 */}
+      {/* 헤더 그라데이션 (컴팩트) */}
       <LinearGradient
         colors={theme.gradients.header as [string, string]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={[styles.header, { paddingTop: insets.top + theme.spacing.md }]}
       >
-        <Text style={styles.headerTitle}>카테고리</Text>
-        <Text style={styles.headerSubtitle}>수입/지출 카테고리를 관리하세요</Text>
+        <View style={styles.headerRow}>
+          <TouchableOpacity
+            style={styles.menuButton}
+            onPress={() => navigation.getParent()?.openDrawer()}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="menu" size={24} color="#fff" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>카테고리</Text>
+        </View>
 
         {/* 타입 선택 버튼 */}
         <View style={styles.typeSelector}>
@@ -395,7 +403,7 @@ export default function CategoriesScreen() {
       {/* 추가 버튼 */}
       <FAB
         icon="plus"
-        style={styles.fab}
+        style={[styles.fab, { bottom: insets.bottom + 16 }]}
         color="#fff"
         onPress={() => setAddModalVisible(true)}
       />
@@ -688,26 +696,28 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingHorizontal: theme.spacing.lg,
-    paddingTop: theme.spacing.md,
-    paddingBottom: theme.spacing.lg,
+    paddingTop: theme.spacing.xs,
+    paddingBottom: theme.spacing.md,
     borderBottomLeftRadius: theme.borderRadius.xl,
     borderBottomRightRadius: theme.borderRadius.xl,
   },
-  headerTitle: {
-    fontSize: theme.fontSize.xxl,
-    fontWeight: theme.fontWeight.bold,
-    color: '#fff',
-    marginBottom: theme.spacing.xs,
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: theme.spacing.sm,
   },
-  headerSubtitle: {
-    fontSize: theme.fontSize.md,
-    color: 'rgba(255, 255, 255, 0.9)',
-    marginBottom: theme.spacing.md,
+  menuButton: {
+    padding: theme.spacing.xs,
+    marginRight: theme.spacing.sm,
+  },
+  headerTitle: {
+    fontSize: theme.fontSize.xl,
+    fontWeight: '700',
+    color: '#fff',
   },
   typeSelector: {
     flexDirection: 'row',
     gap: theme.spacing.sm,
-    marginTop: theme.spacing.sm,
   },
   typeButton: {
     flex: 1,
@@ -848,9 +858,8 @@ const styles = StyleSheet.create({
   },
   fab: {
     position: 'absolute',
-    margin: theme.spacing.lg,
-    right: 0,
-    bottom: 0,
+    right: 16,
+    bottom: 16,
     backgroundColor: theme.colors.primary,
     ...theme.shadows.lg,
   },

@@ -2,11 +2,14 @@ import React, { useState, useCallback } from 'react';
 import { View, ScrollView, StyleSheet, RefreshControl, Alert, TouchableOpacity, Modal, KeyboardAvoidingView, Platform, TouchableWithoutFeedback, Keyboard } from 'react-native';
 import { Text, Card, Button, TextInput, FAB, Chip, RadioButton, Switch } from 'react-native-paper';
 import { useFocusEffect } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Picker } from '@react-native-picker/picker';
 import { format } from 'date-fns';
 import { database, RecurringTransaction, Category, Account } from '../lib/db/database';
+import { theme } from '../lib/theme';
 
 export default function RecurringScreen() {
+  const insets = useSafeAreaInsets();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [recurring, setRecurring] = useState<RecurringTransaction[]>([]);
@@ -184,8 +187,9 @@ export default function RecurringScreen() {
       </ScrollView>
 
       <FAB
-        style={styles.fab}
+        style={[styles.fab, { bottom: insets.bottom + 16 }]}
         icon="plus"
+        color="#fff"
         onPress={() => setAddDialogVisible(true)}
       />
 
@@ -420,10 +424,10 @@ const styles = StyleSheet.create({
   },
   fab: {
     position: 'absolute',
-    margin: 16,
-    right: 0,
-    bottom: 0,
-    backgroundColor: '#6366f1',
+    right: 16,
+    bottom: 16,
+    backgroundColor: theme.colors.primary,
+    ...theme.shadows.lg,
   },
   input: {
     marginBottom: 12,

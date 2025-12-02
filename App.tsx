@@ -55,38 +55,50 @@ function CustomDrawerContent(props: DrawerContentComponentProps) {
   );
 }
 
+// 탭 아이콘 렌더링 함수 (메모이제이션용)
+const getTabBarIcon = (route: { name: string }, focused: boolean, color: string, size: number) => {
+  let iconName: keyof typeof Ionicons.glyphMap = 'home';
+
+  if (route.name === 'Dashboard') {
+    iconName = focused ? 'home' : 'home-outline';
+  } else if (route.name === 'Add') {
+    iconName = focused ? 'add-circle' : 'add-circle-outline';
+  } else if (route.name === 'Transactions') {
+    iconName = focused ? 'list' : 'list-outline';
+  } else if (route.name === 'Categories') {
+    iconName = focused ? 'grid' : 'grid-outline';
+  }
+
+  // Add 탭은 특별한 스타일 적용
+  if (route.name === 'Add') {
+    return (
+      <View style={focused ? styles.addButtonActive : styles.addButton}>
+        <Ionicons name={iconName} size={28} color={focused ? '#fff' : theme.colors.primary} />
+      </View>
+    );
+  }
+
+  return <Ionicons name={iconName} size={size} color={color} />;
+};
+
 // 하단 탭 네비게이터 (메인 화면들)
 function MainTabs() {
+  const insets = useSafeAreaInsets();
+
+  // tabBarStyle을 useMemo로 메모이제이션
+  const tabBarStyle = React.useMemo(() => ({
+    ...styles.tabBar,
+    height: 60 + insets.bottom,
+    paddingBottom: insets.bottom + 6,
+  }), [insets.bottom]);
+
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
-        tabBarIcon: ({ focused, color, size }) => {
-          let iconName: keyof typeof Ionicons.glyphMap = 'home';
-
-          if (route.name === 'Dashboard') {
-            iconName = focused ? 'home' : 'home-outline';
-          } else if (route.name === 'Add') {
-            iconName = focused ? 'add-circle' : 'add-circle-outline';
-          } else if (route.name === 'Transactions') {
-            iconName = focused ? 'list' : 'list-outline';
-          } else if (route.name === 'Categories') {
-            iconName = focused ? 'grid' : 'grid-outline';
-          }
-
-          // Add 탭은 특별한 스타일 적용
-          if (route.name === 'Add') {
-            return (
-              <View style={focused ? styles.addButtonActive : styles.addButton}>
-                <Ionicons name={iconName} size={28} color={focused ? '#fff' : theme.colors.primary} />
-              </View>
-            );
-          }
-
-          return <Ionicons name={iconName} size={size} color={color} />;
-        },
+        tabBarIcon: ({ focused, color, size }) => getTabBarIcon(route, focused, color, size),
         tabBarActiveTintColor: theme.colors.primary,
         tabBarInactiveTintColor: theme.colors.textSecondary,
-        tabBarStyle: styles.tabBar,
+        tabBarStyle,
         tabBarLabelStyle: styles.tabBarLabel,
         headerShown: false,
       })}
@@ -178,7 +190,7 @@ export default function App() {
             drawerInactiveTintColor: theme.colors.textSecondary,
             drawerActiveBackgroundColor: `${theme.colors.primary}15`,
             drawerLabelStyle: {
-              marginLeft: -16,
+              marginLeft: 0,
               fontSize: 15,
               fontWeight: '500',
             },
@@ -195,6 +207,7 @@ export default function App() {
             component={MainTabs}
             options={{
               title: '가계부',
+              headerShown: false,
               drawerIcon: ({ color, size }) => (
                 <Ionicons name="home" size={size} color={color} />
               ),
@@ -207,6 +220,7 @@ export default function App() {
             component={BudgetsScreen}
             options={{
               title: '예산 관리',
+              headerShown: false,
               drawerIcon: ({ color, size }) => (
                 <Ionicons name="pie-chart" size={size} color={color} />
               ),
@@ -219,6 +233,7 @@ export default function App() {
             component={BankAccountsScreen}
             options={{
               title: '통장/결제수단',
+              headerShown: false,
               drawerIcon: ({ color, size }) => (
                 <Ionicons name="wallet" size={size} color={color} />
               ),
@@ -244,6 +259,7 @@ export default function App() {
             component={ReceiptScreen}
             options={{
               title: '영수증 스캔',
+              headerShown: false,
               drawerIcon: ({ color, size }) => (
                 <Ionicons name="camera" size={size} color={color} />
               ),
@@ -256,6 +272,7 @@ export default function App() {
             component={ImportScreen}
             options={{
               title: '거래 가져오기',
+              headerShown: false,
               drawerIcon: ({ color, size }) => (
                 <Ionicons name="document" size={size} color={color} />
               ),
@@ -268,6 +285,7 @@ export default function App() {
             component={SettingsScreen}
             options={{
               title: '설정',
+              headerShown: false,
               drawerIcon: ({ color, size }) => (
                 <Ionicons name="settings" size={size} color={color} />
               ),
@@ -306,7 +324,7 @@ const styles = StyleSheet.create({
     color: theme.colors.text,
   },
 
-  // 탭바
+  // 탭바 (높이와 paddingBottom은 useSafeAreaInsets로 동적 적용)
   tabBar: {
     backgroundColor: theme.colors.surface,
     borderTopWidth: 0,
@@ -315,8 +333,6 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: -4 },
     shadowOpacity: 0.1,
     shadowRadius: 12,
-    height: 60,
-    paddingBottom: 6,
     paddingTop: 6,
   },
   tabBarLabel: {

@@ -15,7 +15,7 @@ interface BudgetWithSpent extends Budget {
   percentage: number;
 }
 
-export default function BudgetsScreen() {
+export default function BudgetsScreen({ navigation }: any) {
   const insets = useSafeAreaInsets();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -173,6 +173,25 @@ export default function BudgetsScreen() {
 
   return (
     <View style={styles.container}>
+      {/* 헤더 */}
+      <LinearGradient
+        colors={theme.gradients.header as [string, string]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={[styles.header, { paddingTop: insets.top + theme.spacing.md }]}
+      >
+        <View style={styles.headerRow}>
+          <TouchableOpacity
+            style={styles.menuButton}
+            onPress={() => navigation.openDrawer()}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="menu" size={24} color="#fff" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>예산 관리</Text>
+        </View>
+      </LinearGradient>
+
       {/* 월 선택 */}
       <View style={styles.monthSelectorContainer}>
         <TouchableOpacity style={styles.monthButton} onPress={() => changeMonth('prev')}>
@@ -300,7 +319,7 @@ export default function BudgetsScreen() {
 
       {/* 예산 추가 FAB */}
       <FAB
-        style={styles.fab}
+        style={[styles.fab, { bottom: insets.bottom + 16 }]}
         icon="plus"
         color="#fff"
         onPress={() => {
@@ -381,15 +400,18 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: theme.borderRadius.xl,
     borderBottomRightRadius: theme.borderRadius.xl,
   },
-  headerTitle: {
-    fontSize: theme.fontSize.xxl,
-    fontWeight: theme.fontWeight.bold,
-    color: '#fff',
-    marginBottom: theme.spacing.xs,
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
-  headerSubtitle: {
-    fontSize: theme.fontSize.md,
-    color: 'rgba(255, 255, 255, 0.9)',
+  menuButton: {
+    padding: theme.spacing.xs,
+    marginRight: theme.spacing.sm,
+  },
+  headerTitle: {
+    fontSize: theme.fontSize.xl,
+    fontWeight: '700',
+    color: '#fff',
   },
   monthSelectorContainer: {
     flexDirection: 'row',
@@ -611,9 +633,8 @@ const styles = StyleSheet.create({
   },
   fab: {
     position: 'absolute',
-    margin: theme.spacing.lg,
-    right: 0,
-    bottom: 0,
+    right: 16,
+    bottom: 16,
     backgroundColor: theme.colors.primary,
     ...theme.shadows.lg,
   },

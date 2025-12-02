@@ -292,15 +292,16 @@ export default function RulesScreen({ navigation }: any) {
         end={{ x: 1, y: 1 }}
         style={[styles.header, { paddingTop: insets.top + theme.spacing.md }]}
       >
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="arrow-back" size={24} color="#fff" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>규칙 설정</Text>
-        <Text style={styles.headerSubtitle}>자동 분류 및 제외 규칙을 관리하세요</Text>
+        <View style={styles.headerRow}>
+          <TouchableOpacity
+            style={styles.menuButton}
+            onPress={() => navigation.openDrawer()}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="menu" size={24} color="#fff" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>자동 분류 규칙</Text>
+        </View>
       </LinearGradient>
 
       {/* 탭 선택 */}
@@ -470,7 +471,7 @@ export default function RulesScreen({ navigation }: any) {
       </ScrollView>
 
       <FAB
-        style={styles.fab}
+        style={[styles.fab, { bottom: insets.bottom + 16 }]}
         icon="plus"
         color="#fff"
         onPress={() => openAddDialog(activeTab === 'category' ? 'category' : 'exclusion')}
@@ -605,20 +606,18 @@ const styles = StyleSheet.create({
     paddingTop: theme.spacing.md,
     paddingBottom: theme.spacing.lg,
   },
-  backButton: {
-    marginBottom: theme.spacing.sm,
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  menuButton: {
     padding: theme.spacing.xs,
-    alignSelf: 'flex-start',
+    marginRight: theme.spacing.sm,
   },
   headerTitle: {
-    fontSize: theme.fontSize.xxl,
-    fontWeight: theme.fontWeight.bold,
+    fontSize: theme.fontSize.xl,
+    fontWeight: '700',
     color: '#fff',
-    marginBottom: theme.spacing.xs,
-  },
-  headerSubtitle: {
-    fontSize: theme.fontSize.md,
-    color: 'rgba(255, 255, 255, 0.9)',
   },
   tabContainer: {
     flexDirection: 'row',
@@ -774,9 +773,8 @@ const styles = StyleSheet.create({
   },
   fab: {
     position: 'absolute',
-    margin: theme.spacing.lg,
-    right: 0,
-    bottom: 0,
+    right: 16,
+    bottom: 16,
     backgroundColor: theme.colors.primary,
     ...theme.shadows.lg,
   },
