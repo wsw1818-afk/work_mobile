@@ -30,8 +30,10 @@ import {
 } from '../lib/excel-parser';
 import { applyCategoryRulesBulk } from '../lib/auto-categorize';
 import { database, ExclusionPattern } from '../lib/db/database';
+import { useTheme } from '../lib/ThemeContext';
 
 export default function ImportScreen({ navigation }: any) {
+  const { theme: currentTheme } = useTheme();
   const insets = useSafeAreaInsets();
   const [loading, setLoading] = useState(false);
   const [parseResults, setParseResults] = useState<ParseResult[]>([]);
@@ -397,10 +399,10 @@ export default function ImportScreen({ navigation }: any) {
   };
 
   return (
-    <View style={styles.safeArea}>
+    <View style={[styles.safeArea, { backgroundColor: currentTheme.colors.background }]}>
       {/* 헤더 */}
       <LinearGradient
-        colors={theme.gradients.header as [string, string]}
+        colors={currentTheme.gradients.header as [string, string]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={[styles.header, { paddingTop: insets.top + theme.spacing.md }]}
@@ -534,6 +536,7 @@ export default function ImportScreen({ navigation }: any) {
                   <DataTable.Header style={styles.tableHeader}>
                     <DataTable.Title style={styles.column}><Text style={styles.headerText}>파일명</Text></DataTable.Title>
                     <DataTable.Title style={styles.column}><Text style={styles.headerText}>날짜</Text></DataTable.Title>
+                    <DataTable.Title style={styles.columnSmall}><Text style={styles.headerText}>시간</Text></DataTable.Title>
                     <DataTable.Title style={styles.column}><Text style={styles.headerText}>금액</Text></DataTable.Title>
                     <DataTable.Title style={styles.column}><Text style={styles.headerText}>유형</Text></DataTable.Title>
                     <DataTable.Title style={styles.column}><Text style={styles.headerText}>가맹점</Text></DataTable.Title>
@@ -547,8 +550,11 @@ export default function ImportScreen({ navigation }: any) {
                       <DataTable.Cell style={styles.column}>
                         <Text style={styles.cellText}>{tx.date}</Text>
                       </DataTable.Cell>
+                      <DataTable.Cell style={styles.columnSmall}>
+                        <Text style={styles.cellText}>{tx.time || '-'}</Text>
+                      </DataTable.Cell>
                       <DataTable.Cell style={styles.column}>
-                        <Text style={styles.cellText}>{Math.round(tx.amount).toLocaleString()}원</Text>
+                        <Text style={styles.cellText} numberOfLines={1}>{Math.round(tx.amount).toLocaleString()}원</Text>
                       </DataTable.Cell>
                       <DataTable.Cell style={styles.column}>
                         <View style={tx.type === 'income' ? styles.incomeChip : styles.expenseChip}>
@@ -594,6 +600,7 @@ export default function ImportScreen({ navigation }: any) {
                         <DataTable style={styles.dataTable}>
                           <DataTable.Header style={styles.tableHeader}>
                             <DataTable.Title style={styles.column}><Text style={styles.headerText}>날짜</Text></DataTable.Title>
+                            <DataTable.Title style={styles.columnSmall}><Text style={styles.headerText}>시간</Text></DataTable.Title>
                             <DataTable.Title style={styles.column}><Text style={styles.headerText}>금액</Text></DataTable.Title>
                             <DataTable.Title style={styles.column}><Text style={styles.headerText}>내용</Text></DataTable.Title>
                           </DataTable.Header>
@@ -603,8 +610,11 @@ export default function ImportScreen({ navigation }: any) {
                               <DataTable.Cell style={styles.column}>
                                 <Text style={styles.cellText}>{tx.date}</Text>
                               </DataTable.Cell>
+                              <DataTable.Cell style={styles.columnSmall}>
+                                <Text style={styles.cellText}>{tx.time || '-'}</Text>
+                              </DataTable.Cell>
                               <DataTable.Cell style={styles.column}>
-                                <Text style={styles.incomeAmount}>+{Math.round(tx.amount).toLocaleString()}원</Text>
+                                <Text style={styles.incomeAmount} numberOfLines={1}>+{Math.round(tx.amount).toLocaleString()}원</Text>
                               </DataTable.Cell>
                               <DataTable.Cell style={styles.column}>
                                 <Text style={styles.cellText}>{tx.merchant || tx.memo || '-'}</Text>
@@ -628,7 +638,6 @@ export default function ImportScreen({ navigation }: any) {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: theme.colors.background,
   },
   header: {
     paddingTop: theme.spacing.md,
@@ -811,6 +820,9 @@ const styles = StyleSheet.create({
   },
   column: {
     minWidth: 100,
+  },
+  columnSmall: {
+    minWidth: 80,
   },
   incomeChip: {
     backgroundColor: 'rgba(16, 185, 129, 0.1)',

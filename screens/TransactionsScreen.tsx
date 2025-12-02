@@ -29,6 +29,7 @@ import { format, addMonths, subMonths } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { database, Transaction, Category } from '../lib/db/database';
 import { theme } from '../lib/theme';
+import { useTheme } from '../lib/ThemeContext';
 
 // 검색 debounce 훅
 function useDebounce<T>(value: T, delay: number): T {
@@ -49,6 +50,7 @@ function useDebounce<T>(value: T, delay: number): T {
 
 export default function TransactionsScreen({ navigation }: any) {
   const insets = useSafeAreaInsets();
+  const { theme: currentTheme } = useTheme();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -239,8 +241,8 @@ export default function TransactionsScreen({ navigation }: any) {
 
   if (loading) {
     return (
-      <View style={styles.centered}>
-        <ActivityIndicator size="large" color={theme.colors.primary} />
+      <View style={[styles.centered, { backgroundColor: currentTheme.colors.background }]}>
+        <ActivityIndicator size="large" color={currentTheme.colors.primary} />
       </View>
     );
   }
@@ -252,11 +254,11 @@ export default function TransactionsScreen({ navigation }: any) {
     month === new Date().getMonth() + 1;
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: currentTheme.colors.background }]}>
       {/* Dokterian 스타일 헤더 */}
       <LinearGradient
-        colors={theme.gradients.header as [string, string]}
-        style={[styles.header, { paddingTop: insets.top + theme.spacing.md }]}
+        colors={currentTheme.gradients.header as [string, string]}
+        style={[styles.header, { paddingTop: insets.top + currentTheme.spacing.md }]}
       >
         <View style={styles.headerRow}>
           <TouchableOpacity
@@ -294,18 +296,18 @@ export default function TransactionsScreen({ navigation }: any) {
         </View>
 
         {/* 검색창 */}
-        <View style={styles.searchContainer}>
-          <Ionicons name="search" size={20} color={theme.colors.textSecondary} />
+        <View style={[styles.searchContainer, { backgroundColor: currentTheme.colors.surface }]}>
+          <Ionicons name="search" size={20} color={currentTheme.colors.textSecondary} />
           <TextInput
-            style={styles.searchInput}
+            style={[styles.searchInput, { color: currentTheme.colors.text }]}
             placeholder="검색..."
-            placeholderTextColor={theme.colors.textSecondary}
+            placeholderTextColor={currentTheme.colors.textSecondary}
             value={searchQuery}
             onChangeText={setSearchQuery}
           />
           {searchQuery.length > 0 && (
             <TouchableOpacity onPress={() => setSearchQuery('')}>
-              <Ionicons name="close-circle" size={20} color={theme.colors.textSecondary} />
+              <Ionicons name="close-circle" size={20} color={currentTheme.colors.textSecondary} />
             </TouchableOpacity>
           )}
         </View>
@@ -318,12 +320,14 @@ export default function TransactionsScreen({ navigation }: any) {
             key={type}
             style={[
               styles.filterChip,
-              filterType === type && styles.filterChipActive,
+              { backgroundColor: currentTheme.colors.surface },
+              filterType === type && { backgroundColor: currentTheme.colors.primary },
             ]}
             onPress={() => setFilterType(type)}
           >
             <RNText style={[
               styles.filterChipText,
+              { color: currentTheme.colors.textSecondary },
               filterType === type && styles.filterChipTextActive,
             ]}>
               {type === 'all' ? '전체' : type === 'income' ? '수입' : '지출'}
@@ -340,16 +344,16 @@ export default function TransactionsScreen({ navigation }: any) {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor={theme.colors.primary}
+            tintColor={currentTheme.colors.primary}
           />
         }
       >
         {filteredTransactions.length === 0 ? (
           <View style={styles.emptyContainer}>
-            <View style={styles.emptyIcon}>
-              <Ionicons name="receipt-outline" size={48} color={theme.colors.textSecondary} />
+            <View style={[styles.emptyIcon, { backgroundColor: currentTheme.colors.surfaceVariant }]}>
+              <Ionicons name="receipt-outline" size={48} color={currentTheme.colors.textSecondary} />
             </View>
-            <RNText style={styles.emptyText}>
+            <RNText style={[styles.emptyText, { color: currentTheme.colors.textSecondary }]}>
               {searchQuery || filterType !== 'all'
                 ? '검색 결과가 없습니다.'
                 : '거래 내역이 없습니다.'}
@@ -362,7 +366,7 @@ export default function TransactionsScreen({ navigation }: any) {
               onLongPress={() => handleLongPress(transaction)}
               delayLongPress={1000}
             >
-              <View style={styles.transactionCard}>
+              <View style={[styles.transactionCard, { backgroundColor: currentTheme.colors.surface }]}>
                 <Pressable
                   style={styles.transactionLeft}
                   onLongPress={() => {
@@ -374,25 +378,25 @@ export default function TransactionsScreen({ navigation }: any) {
                   <View
                     style={[
                       styles.categoryIcon,
-                      { backgroundColor: `${transaction.categoryColor || theme.colors.primary}20` },
+                      { backgroundColor: `${transaction.categoryColor || currentTheme.colors.primary}20` },
                     ]}
                   >
                     <Ionicons
                       name={transaction.type === 'income' ? 'trending-up' : 'cart'}
                       size={20}
-                      color={transaction.categoryColor || theme.colors.primary}
+                      color={transaction.categoryColor || currentTheme.colors.primary}
                     />
                   </View>
                   <View style={styles.transactionInfo}>
-                    <RNText style={styles.categoryName}>
+                    <RNText style={[styles.categoryName, { color: currentTheme.colors.text }]}>
                       {transaction.categoryName}
                     </RNText>
                     {transaction.description && (
-                      <RNText style={styles.description} numberOfLines={1}>
+                      <RNText style={[styles.description, { color: currentTheme.colors.textSecondary }]} numberOfLines={1}>
                         {transaction.description}
                       </RNText>
                     )}
-                    <RNText style={styles.date}>
+                    <RNText style={[styles.date, { color: currentTheme.colors.textMuted }]}>
                       {format(new Date(transaction.date), 'M월 d일 (E)', { locale: ko })}
                     </RNText>
                   </View>
@@ -409,8 +413,9 @@ export default function TransactionsScreen({ navigation }: any) {
                     <RNText
                       style={[
                         styles.amount,
-                        { color: transaction.type === 'income' ? theme.colors.income : theme.colors.expense },
+                        { color: transaction.type === 'income' ? currentTheme.colors.income : currentTheme.colors.expense },
                       ]}
+                      numberOfLines={1}
                     >
                       {transaction.type === 'income' ? '+' : '-'}
                       {Math.round(transaction.amount).toLocaleString()}원
@@ -421,13 +426,13 @@ export default function TransactionsScreen({ navigation }: any) {
                       style={styles.actionBtn}
                       onPress={() => handleEdit(transaction)}
                     >
-                      <Ionicons name="create-outline" size={18} color={theme.colors.textSecondary} />
+                      <Ionicons name="create-outline" size={18} color={currentTheme.colors.textSecondary} />
                     </TouchableOpacity>
                     <TouchableOpacity
                       style={styles.actionBtn}
                       onPress={() => handleDelete(transaction)}
                     >
-                      <Ionicons name="trash-outline" size={18} color={theme.colors.expense} />
+                      <Ionicons name="trash-outline" size={18} color={currentTheme.colors.expense} />
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -443,22 +448,22 @@ export default function TransactionsScreen({ navigation }: any) {
         <Modal
           visible={editModalVisible}
           onDismiss={() => setEditModalVisible(false)}
-          contentContainerStyle={styles.modal}
+          contentContainerStyle={[styles.modal, { backgroundColor: currentTheme.colors.surface }]}
         >
-          <RNText style={styles.modalTitle}>거래 수정</RNText>
+          <RNText style={[styles.modalTitle, { color: currentTheme.colors.text }]}>거래 수정</RNText>
 
           <View style={styles.typeSelector}>
             <TouchableOpacity
-              style={[styles.typeBtn, editType === 'income' && styles.typeBtnActiveIncome]}
+              style={[styles.typeBtn, { backgroundColor: currentTheme.colors.surfaceVariant }, editType === 'income' && { backgroundColor: currentTheme.colors.income }]}
               onPress={() => handleTypeChangeInEdit('income')}
             >
-              <RNText style={[styles.typeBtnText, editType === 'income' && styles.typeBtnTextActive]}>수입</RNText>
+              <RNText style={[styles.typeBtnText, { color: currentTheme.colors.textSecondary }, editType === 'income' && styles.typeBtnTextActive]}>수입</RNText>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.typeBtn, editType === 'expense' && styles.typeBtnActiveExpense]}
+              style={[styles.typeBtn, { backgroundColor: currentTheme.colors.surfaceVariant }, editType === 'expense' && { backgroundColor: currentTheme.colors.expense }]}
               onPress={() => handleTypeChangeInEdit('expense')}
             >
-              <RNText style={[styles.typeBtnText, editType === 'expense' && styles.typeBtnTextActive]}>지출</RNText>
+              <RNText style={[styles.typeBtnText, { color: currentTheme.colors.textSecondary }, editType === 'expense' && styles.typeBtnTextActive]}>지출</RNText>
             </TouchableOpacity>
           </View>
 
@@ -469,9 +474,10 @@ export default function TransactionsScreen({ navigation }: any) {
             onChangeText={setEditAmount}
             keyboardType="numeric"
             right={<PaperInput.Affix text="원" />}
-            style={styles.input}
-            outlineColor={theme.colors.border}
-            activeOutlineColor={theme.colors.primary}
+            style={[styles.input, { backgroundColor: currentTheme.colors.surface }]}
+            outlineColor={currentTheme.colors.border}
+            activeOutlineColor={currentTheme.colors.primary}
+            textColor={currentTheme.colors.text}
             autoCorrect={false}
             autoComplete="off"
             autoCapitalize="none"
@@ -483,9 +489,9 @@ export default function TransactionsScreen({ navigation }: any) {
             visible={categoryMenuVisible}
             onDismiss={() => setCategoryMenuVisible(false)}
             anchor={
-              <TouchableOpacity style={styles.categoryButton} onPress={() => setCategoryMenuVisible(true)}>
-                <RNText style={styles.categoryButtonText}>{editCategory ? editCategory.name : '카테고리 선택'}</RNText>
-                <Ionicons name="chevron-down" size={20} color={theme.colors.textSecondary} />
+              <TouchableOpacity style={[styles.categoryButton, { borderColor: currentTheme.colors.border }]} onPress={() => setCategoryMenuVisible(true)}>
+                <RNText style={[styles.categoryButtonText, { color: currentTheme.colors.text }]}>{editCategory ? editCategory.name : '카테고리 선택'}</RNText>
+                <Ionicons name="chevron-down" size={20} color={currentTheme.colors.textSecondary} />
               </TouchableOpacity>
             }
           >
@@ -506,9 +512,10 @@ export default function TransactionsScreen({ navigation }: any) {
             label="날짜"
             value={editDate}
             onChangeText={setEditDate}
-            style={styles.input}
-            outlineColor={theme.colors.border}
-            activeOutlineColor={theme.colors.primary}
+            style={[styles.input, { backgroundColor: currentTheme.colors.surface }]}
+            outlineColor={currentTheme.colors.border}
+            activeOutlineColor={currentTheme.colors.primary}
+            textColor={currentTheme.colors.text}
             keyboardType="default"
             autoCorrect={false}
             autoComplete="off"
@@ -524,9 +531,10 @@ export default function TransactionsScreen({ navigation }: any) {
             onChangeText={setEditDescription}
             multiline
             numberOfLines={2}
-            style={styles.input}
-            outlineColor={theme.colors.border}
-            activeOutlineColor={theme.colors.primary}
+            style={[styles.input, { backgroundColor: currentTheme.colors.surface }]}
+            outlineColor={currentTheme.colors.border}
+            activeOutlineColor={currentTheme.colors.primary}
+            textColor={currentTheme.colors.text}
             keyboardType="default"
             autoCorrect={false}
             autoComplete="off"
@@ -536,10 +544,10 @@ export default function TransactionsScreen({ navigation }: any) {
           />
 
           <View style={styles.modalButtons}>
-            <TouchableOpacity style={styles.cancelBtn} onPress={() => setEditModalVisible(false)}>
-              <RNText style={styles.cancelBtnText}>취소</RNText>
+            <TouchableOpacity style={[styles.cancelBtn, { backgroundColor: currentTheme.colors.surfaceVariant }]} onPress={() => setEditModalVisible(false)}>
+              <RNText style={[styles.cancelBtnText, { color: currentTheme.colors.textSecondary }]}>취소</RNText>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.saveBtn} onPress={handleSaveEdit}>
+            <TouchableOpacity style={[styles.saveBtn, { backgroundColor: currentTheme.colors.primary }]} onPress={handleSaveEdit}>
               <RNText style={styles.saveBtnText}>저장</RNText>
             </TouchableOpacity>
           </View>

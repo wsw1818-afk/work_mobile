@@ -7,8 +7,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { database, BankAccount, Account } from '../lib/db/database';
 import { theme } from '../lib/theme';
+import { useTheme } from '../lib/ThemeContext';
 
 export default function BankAccountsScreen({ navigation }: any) {
+  const { theme: currentTheme } = useTheme();
   const insets = useSafeAreaInsets();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -243,17 +245,17 @@ export default function BankAccountsScreen({ navigation }: any) {
 
   if (loading) {
     return (
-      <View style={styles.centered}>
-        <ActivityIndicator size="large" color={theme.colors.primary} />
+      <View style={[styles.centered, { backgroundColor: currentTheme.colors.background }]}>
+        <ActivityIndicator size="large" color={currentTheme.colors.primary} />
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: currentTheme.colors.background }]}>
       {/* 헤더 */}
       <LinearGradient
-        colors={theme.gradients.header as [string, string]}
+        colors={currentTheme.gradients.header as [string, string]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={[styles.header, { paddingTop: insets.top + theme.spacing.md }]}
@@ -275,7 +277,7 @@ export default function BankAccountsScreen({ navigation }: any) {
         <View style={styles.summaryRow}>
           <View style={styles.summaryItem}>
             <Text style={styles.summaryLabelTop}>총 자산</Text>
-            <Text style={styles.totalAmountTop}>{Math.round(totalBalance).toLocaleString()}원</Text>
+            <Text style={styles.totalAmountTop} numberOfLines={1}>{Math.round(totalBalance).toLocaleString()}원</Text>
           </View>
         </View>
         <View style={styles.summaryStats}>
@@ -338,7 +340,7 @@ export default function BankAccountsScreen({ navigation }: any) {
                           {bank.isActive ? '활성' : '비활성'}
                         </Text>
                       </View>
-                      <Text style={styles.balance}>
+                      <Text style={styles.balance} numberOfLines={1}>
                         {Math.round(bank.balance).toLocaleString()}원
                       </Text>
                     </View>
@@ -751,13 +753,11 @@ export default function BankAccountsScreen({ navigation }: any) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background,
   },
   centered: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: theme.colors.background,
   },
   header: {
     paddingHorizontal: theme.spacing.lg,

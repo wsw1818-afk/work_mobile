@@ -19,6 +19,7 @@ import {
 } from 'react-native-paper';
 import { database, Category, ExpenseGroup } from '../lib/db/database';
 import { theme } from '../lib/theme';
+import { useTheme } from '../lib/ThemeContext';
 
 const GROUP_COLORS = [
   '#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#6366f1',
@@ -49,6 +50,7 @@ const PRESET_COLORS = [
 ];
 
 export default function CategoriesScreen({ navigation }: any) {
+  const { theme: currentTheme } = useTheme();
   const insets = useSafeAreaInsets();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -228,17 +230,17 @@ export default function CategoriesScreen({ navigation }: any) {
 
   if (loading) {
     return (
-      <View style={styles.centered}>
-        <ActivityIndicator size="large" color={theme.colors.primary} />
+      <View style={[styles.centered, { backgroundColor: currentTheme.colors.background }]}>
+        <ActivityIndicator size="large" color={currentTheme.colors.primary} />
       </View>
     );
   }
 
   return (
-    <View style={styles.safeArea}>
+    <View style={[styles.safeArea, { backgroundColor: currentTheme.colors.background }]}>
       {/* 헤더 그라데이션 (컴팩트) */}
       <LinearGradient
-        colors={theme.gradients.header as [string, string]}
+        colors={currentTheme.gradients.header as [string, string]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={[styles.header, { paddingTop: insets.top + theme.spacing.md }]}
@@ -266,7 +268,7 @@ export default function CategoriesScreen({ navigation }: any) {
             <Ionicons
               name="add-circle"
               size={18}
-              color={type === 'income' ? theme.colors.primary : 'rgba(255,255,255,0.7)'}
+              color={type === 'income' ? currentTheme.colors.primary : 'rgba(255,255,255,0.7)'}
             />
             <Text
               style={[
@@ -287,7 +289,7 @@ export default function CategoriesScreen({ navigation }: any) {
             <Ionicons
               name="remove-circle"
               size={18}
-              color={type === 'expense' ? theme.colors.primary : 'rgba(255,255,255,0.7)'}
+              color={type === 'expense' ? currentTheme.colors.primary : 'rgba(255,255,255,0.7)'}
             />
             <Text
               style={[
@@ -305,15 +307,15 @@ export default function CategoriesScreen({ navigation }: any) {
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[theme.colors.primary]} />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[currentTheme.colors.primary]} />
         }
         showsVerticalScrollIndicator={false}
       >
         {/* 카테고리 목록 */}
-        <View style={styles.card}>
+        <View style={[styles.card, { backgroundColor: currentTheme.colors.surface }]}>
           {categories.length === 0 ? (
             <View style={styles.emptyContainer}>
-              <Ionicons name="folder-open-outline" size={48} color={theme.colors.textMuted} />
+              <Ionicons name="folder-open-outline" size={48} color={currentTheme.colors.textMuted} />
               <Text style={styles.emptyText}>카테고리가 없습니다</Text>
               <Text style={styles.emptySubtext}>+ 버튼을 눌러 추가하세요</Text>
             </View>
@@ -334,13 +336,13 @@ export default function CategoriesScreen({ navigation }: any) {
                       </Text>
                       <View style={styles.categoryBadges}>
                         {category.groupName ? (
-                          <View style={[styles.categoryChip, { backgroundColor: category.groupColor || theme.colors.surfaceVariant }]}>
+                          <View style={[styles.categoryChip, { backgroundColor: category.groupColor || currentTheme.colors.surfaceVariant }]}>
                             <Text style={styles.categoryChipText}>{category.groupName}</Text>
                           </View>
                         ) : null}
                         {category.excludeFromStats === true ? (
-                          <View style={[styles.categoryChip, { backgroundColor: theme.colors.surfaceVariant }]}>
-                            <Text style={[styles.categoryChipText, { color: theme.colors.textSecondary }]}>집계제외</Text>
+                          <View style={[styles.categoryChip, { backgroundColor: currentTheme.colors.surfaceVariant }]}>
+                            <Text style={[styles.categoryChipText, { color: currentTheme.colors.textSecondary }]}>집계제외</Text>
                           </View>
                         ) : null}
                       </View>
@@ -355,7 +357,7 @@ export default function CategoriesScreen({ navigation }: any) {
                         <Ionicons
                           name={category.showOnDashboard === false ? 'eye-off-outline' : 'eye-outline'}
                           size={20}
-                          color={category.showOnDashboard === false ? theme.colors.textMuted : theme.colors.primary}
+                          color={category.showOnDashboard === false ? currentTheme.colors.textMuted : currentTheme.colors.primary}
                         />
                       </TouchableOpacity>
                     )}
@@ -373,7 +375,7 @@ export default function CategoriesScreen({ navigation }: any) {
                           styles.typeBadgeText,
                           {
                             color:
-                              category.type === 'income' ? theme.colors.income : theme.colors.expense,
+                              category.type === 'income' ? currentTheme.colors.income : currentTheme.colors.expense,
                           },
                         ]}
                       >
@@ -391,7 +393,7 @@ export default function CategoriesScreen({ navigation }: any) {
         {/* 정보 카드 */}
         <View style={styles.infoCard}>
           <View style={styles.infoHeader}>
-            <Ionicons name="information-circle" size={20} color={theme.colors.primary} />
+            <Ionicons name="information-circle" size={20} color={currentTheme.colors.primary} />
             <Text style={styles.infoTitle}>카테고리 정보</Text>
           </View>
           <Text style={styles.infoText}>• 총 {categories.length}개의 카테고리가 등록되어 있습니다.</Text>
@@ -686,13 +688,11 @@ export default function CategoriesScreen({ navigation }: any) {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: theme.colors.background,
   },
   centered: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: theme.colors.background,
   },
   header: {
     paddingHorizontal: theme.spacing.lg,

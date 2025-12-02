@@ -20,8 +20,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { format } from 'date-fns';
 import { database, Category, Account } from '../lib/db/database';
 import { theme } from '../lib/theme';
+import { useTheme } from '../lib/ThemeContext';
 
 export default function AddTransactionScreen({ navigation }: any) {
+  const { theme: currentTheme } = useTheme();
   const insets = useSafeAreaInsets();
   const [type, setType] = useState<'income' | 'expense'>('expense');
   const [amount, setAmount] = useState('');
@@ -118,12 +120,12 @@ export default function AddTransactionScreen({ navigation }: any) {
 
   return (
     <KeyboardAvoidingView
-      style={styles.container}
+      style={[styles.container, { backgroundColor: currentTheme.colors.background }]}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       {/* Dokterian 스타일 헤더 */}
       <LinearGradient
-        colors={theme.gradients.header as [string, string]}
+        colors={currentTheme.gradients.header as [string, string]}
         style={[styles.header, { paddingTop: insets.top + theme.spacing.md }]}
       >
         <View style={styles.headerRow}>
@@ -180,7 +182,7 @@ export default function AddTransactionScreen({ navigation }: any) {
                 onChangeText={setAmount}
                 keyboardType="numeric"
                 placeholder="0"
-                placeholderTextColor={theme.colors.textMuted}
+                placeholderTextColor={currentTheme.colors.textMuted}
               />
               <RNText style={styles.amountUnit}>원</RNText>
             </View>
@@ -208,7 +210,7 @@ export default function AddTransactionScreen({ navigation }: any) {
                 ) : (
                   <RNText style={styles.selectPlaceholder}>카테고리 선택</RNText>
                 )}
-                <Ionicons name="chevron-down" size={20} color={theme.colors.textSecondary} />
+                <Ionicons name="chevron-down" size={20} color={currentTheme.colors.textSecondary} />
               </TouchableOpacity>
             }
           >
@@ -242,14 +244,14 @@ export default function AddTransactionScreen({ navigation }: any) {
                 onPress={() => setAccountMenuVisible(true)}
               >
                 <View style={styles.selectContent}>
-                  <Ionicons name="wallet-outline" size={20} color={theme.colors.primary} />
+                  <Ionicons name="wallet-outline" size={20} color={currentTheme.colors.primary} />
                   <RNText style={styles.selectText}>
                     {selectedAccount
                       ? `${selectedAccount.name}${selectedAccount.last4 ? ` (*${selectedAccount.last4})` : ''}${selectedAccount.bankAccountName ? ` - ${selectedAccount.bankAccountName}` : ''}`
                       : '결제수단 선택'}
                   </RNText>
                 </View>
-                <Ionicons name="chevron-down" size={20} color={theme.colors.textSecondary} />
+                <Ionicons name="chevron-down" size={20} color={currentTheme.colors.textSecondary} />
               </TouchableOpacity>
             }
           >
@@ -270,7 +272,7 @@ export default function AddTransactionScreen({ navigation }: any) {
         <View style={styles.card}>
           <RNText style={styles.label}>날짜</RNText>
           <View style={styles.inputRow}>
-            <Ionicons name="calendar-outline" size={20} color={theme.colors.primary} />
+            <Ionicons name="calendar-outline" size={20} color={currentTheme.colors.primary} />
             <TextInput
               mode="flat"
               value={date}
@@ -292,7 +294,7 @@ export default function AddTransactionScreen({ navigation }: any) {
         <View style={styles.card}>
           <RNText style={styles.label}>메모 (선택)</RNText>
           <View style={styles.memoContainer}>
-            <Ionicons name="document-text-outline" size={20} color={theme.colors.primary} style={{ marginTop: 4 }} />
+            <Ionicons name="document-text-outline" size={20} color={currentTheme.colors.primary} style={{ marginTop: 4 }} />
             <TextInput
               mode="flat"
               value={description}
@@ -316,7 +318,7 @@ export default function AddTransactionScreen({ navigation }: any) {
         <TouchableOpacity
           style={[
             styles.submitButton,
-            { backgroundColor: type === 'income' ? theme.colors.income : theme.colors.expense },
+            { backgroundColor: type === 'income' ? currentTheme.colors.income : currentTheme.colors.expense },
           ]}
           onPress={handleSubmit}
           disabled={loading}
@@ -340,7 +342,6 @@ export default function AddTransactionScreen({ navigation }: any) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background,
   },
 
   // 헤더

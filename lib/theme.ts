@@ -12,6 +12,88 @@
  * - Card: 흰색 (#FFFFFF)
  */
 
+// 라이트 테마 색상
+const lightColors = {
+  // Primary (스카이블루 - Figma 정확한 색상)
+  primary: '#1FB9FC',
+  primaryLight: '#5CCFFF',
+  primaryDark: '#0A9FE0',
+
+  // Accent (핑크)
+  accent: '#DD3E7B',
+  accentLight: '#E96A99',
+
+  // 배경색
+  background: '#F5F5F5',
+  surface: '#FFFFFF',
+  surfaceVariant: '#F8F9FC',
+
+  // 텍스트 (다크네이비)
+  text: '#22315B',
+  textSecondary: '#8C99BE',
+  textMuted: '#B8C0D9',
+  textTertiary: '#A0A8C0',
+
+  // 상태 색상
+  income: '#2ED573',      // 수입 - 밝은 녹색
+  expense: '#FF6B6B',     // 지출 - 밝은 빨강
+  warning: '#FFBE21',     // 경고 - 노랑
+  info: '#1FB9FC',        // 정보 - 프라이머리
+
+  // 구분선
+  border: '#E8ECF4',
+  divider: '#F0F3F8',
+
+  // 버튼
+  buttonPrimary: '#1FB9FC',
+  buttonSecondary: '#22315B',
+  buttonDisabled: '#B8C0D9',
+
+  // 카드 그림자
+  shadow: 'rgba(34, 49, 91, 0.1)',
+};
+
+// 다크 테마 색상
+const darkColors = {
+  // Primary (스카이블루 - 밝기 조정)
+  primary: '#1FB9FC',
+  primaryLight: '#5CCFFF',
+  primaryDark: '#0A9FE0',
+
+  // Accent (핑크)
+  accent: '#E96A99',
+  accentLight: '#FF8AB3',
+
+  // 배경색 (다크)
+  background: '#121212',
+  surface: '#1E1E1E',
+  surfaceVariant: '#2A2A2A',
+
+  // 텍스트 (밝은 색상)
+  text: '#FFFFFF',
+  textSecondary: '#A0A8C0',
+  textMuted: '#6B7280',
+  textTertiary: '#9CA3AF',
+
+  // 상태 색상 (다크 모드에서 더 밝게)
+  income: '#34D399',      // 수입 - 밝은 녹색
+  expense: '#F87171',     // 지출 - 밝은 빨강
+  warning: '#FBBF24',     // 경고 - 노랑
+  info: '#38BDF8',        // 정보 - 프라이머리
+
+  // 구분선 (다크)
+  border: '#374151',
+  divider: '#2D3748',
+
+  // 버튼
+  buttonPrimary: '#1FB9FC',
+  buttonSecondary: '#E5E7EB',
+  buttonDisabled: '#4B5563',
+
+  // 카드 그림자
+  shadow: 'rgba(0, 0, 0, 0.3)',
+};
+
 export const theme = {
   // 메인 색상
   colors: {
@@ -125,5 +207,32 @@ export const theme = {
   },
 };
 
+// 다크 테마용 그라데이션 (단일 색상으로 통일)
+const darkGradients = {
+  primary: ['#1E1E1E', '#1E1E1E'],
+  header: ['#1E1E1E', '#1E1E1E'],
+  accent: ['#1E1E1E', '#1E1E1E'],
+};
+
+// 테마 생성 함수
+export function createTheme(isDark: boolean) {
+  const colors = isDark ? darkColors : lightColors;
+  const gradients = isDark ? darkGradients : theme.gradients;
+
+  return {
+    ...theme,
+    colors: {
+      ...theme.colors,
+      ...colors,
+    },
+    gradients,
+  };
+}
+
+// 라이트/다크 테마 객체
+export const lightTheme = createTheme(false);
+export const darkTheme = createTheme(true);
+
 export type Theme = typeof theme;
+export type ThemeColors = typeof lightColors;
 export default theme;

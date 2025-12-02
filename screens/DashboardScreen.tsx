@@ -8,6 +8,7 @@ import { format, addMonths, subMonths } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { database, Transaction } from '../lib/db/database';
 import { theme } from '../lib/theme';
+import { useTheme } from '../lib/ThemeContext';
 
 // 거래 항목 메모이제이션 컴포넌트
 const TransactionItem = memo(({ transaction }: { transaction: Transaction }) => (
@@ -39,6 +40,7 @@ const TransactionItem = memo(({ transaction }: { transaction: Transaction }) => 
         styles.transactionAmount,
         { color: transaction.type === 'income' ? theme.colors.income : theme.colors.expense }
       ]}
+      numberOfLines={1}
     >
       {transaction.type === 'income' ? '+' : '-'}
       {Math.round(transaction.amount).toLocaleString()}원
@@ -62,7 +64,7 @@ const GroupCard = memo(({ group, onPress }: {
       <Text style={styles.groupIcon}>{group.groupIcon || '📁'}</Text>
     </View>
     <Text style={styles.groupName} numberOfLines={1}>{group.groupName}</Text>
-    <Text style={[styles.groupAmount, { color: group.groupColor }]}>
+    <Text style={[styles.groupAmount, { color: group.groupColor }]} numberOfLines={1}>
       {Math.round(group.total).toLocaleString()}원
     </Text>
   </Pressable>
@@ -70,6 +72,7 @@ const GroupCard = memo(({ group, onPress }: {
 
 export default function DashboardScreen({ navigation }: any) {
   const insets = useSafeAreaInsets();
+  const { theme: currentTheme } = useTheme();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [monthSummary, setMonthSummary] = useState({ income: 0, expense: 0 });
@@ -171,7 +174,8 @@ export default function DashboardScreen({ navigation }: any) {
 
       // 타입별 필터링
       const filteredTransactions = allTransactions.filter(tx => tx.type === type);
-      const total = filteredTransactions.reduce((sum, tx) => sum + tx.amount, 0);
+      // 대시보드와 동일하게 계산 (excludeFromStats인 카테고리 제외)
+      const total = type === 'income' ? monthSummary.income : monthSummary.expense;
 
       // 지출인 경우 그룹별로 정보 전달
       if (type === 'expense') {
@@ -245,20 +249,20 @@ export default function DashboardScreen({ navigation }: any) {
 
   if (loading) {
     return (
-      <View style={styles.centered}>
-        <ActivityIndicator size="large" color={theme.colors.primary} />
+      <View style={[styles.centered, { backgroundColor: currentTheme.colors.background }]}>
+        <ActivityIndicator size="large" color={currentTheme.colors.primary} />
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: currentTheme.colors.background }]}>
       {/* 헤더 */}
       <LinearGradient
-        colors={theme.gradients.header as [string, string]}
+        colors={currentTheme.gradients.header as [string, string]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
-        style={[styles.header, { paddingTop: insets.top + theme.spacing.md }]}
+        style={[styles.header, { paddingTop: insets.top + currentTheme.spacing.md }]}
       >
         <View style={styles.headerRow}>
           <TouchableOpacity
@@ -273,29 +277,29 @@ export default function DashboardScreen({ navigation }: any) {
       </LinearGradient>
 
       {/* 월 선택 */}
-      <View style={styles.monthSelectorContainer}>
-          <TouchableOpacity onPress={goToPreviousMonth} style={styles.monthArrowNew}>
-            <Ionicons name="chevron-back" size={24} color={theme.colors.text} />
+      <View style={[styles.monthSelectorContainer, { backgroundColor: currentTheme.colors.surface }]}>
+          <TouchableOpacity onPress={goToPreviousMonth} style={[styles.monthArrowNew, { backgroundColor: currentTheme.colors.background }]}>
+            <Ionicons name="chevron-back" size={24} color={currentTheme.colors.text} />
           </TouchableOpacity>
           <TouchableOpacity onPress={goToCurrentMonth} style={styles.monthDisplay}>
-            <Text style={styles.monthText}>
+            <Text style={[styles.monthText, { color: currentTheme.colors.text }]}>
               {format(selectedDate, 'yyyy년 M월', { locale: ko })}
             </Text>
             {!isCurrentMonth && (
-              <View style={styles.todayBadge}>
-                <Text style={styles.todayBadgeText}>이번 달</Text>
+              <View style={[styles.todayBadge, { backgroundColor: currentTheme.colors.primary + '20' }]}>
+                <Text style={[styles.todayBadgeText, { color: currentTheme.colors.primary }]}>이번 달</Text>
               </View>
             )}
           </TouchableOpacity>
           <TouchableOpacity
             onPress={goToNextMonth}
-            style={styles.monthArrowNew}
+            style={[styles.monthArrowNew, { backgroundColor: currentTheme.colors.background }]}
             disabled={isCurrentMonth}
           >
             <Ionicons
               name="chevron-forward"
               size={24}
-              color={isCurrentMonth ? theme.colors.textMuted : theme.colors.text}
+              color={isCurrentMonth ? currentTheme.colors.textMuted : currentTheme.colors.text}
             />
           </TouchableOpacity>
       </View>
@@ -307,20 +311,23 @@ export default function DashboardScreen({ navigation }: any) {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            colors={[theme.colors.primary]}
-            tintColor={theme.colors.primary}
+            colors={[currentTheme.colors.primary]}
+            tintColor={currentTheme.colors.primary}
           />
         }
         showsVerticalScrollIndicator={false}
       >
         {/* 요약 카드 - Dokterian 스타일 */}
-        <View style={styles.summaryCard}>
-          <View style={styles.balanceSection}>
-            <Text style={styles.balanceLabel}>이번 달 잔액</Text>
-            <Text style={[
-              styles.balanceAmount,
-              { color: balance >= 0 ? theme.colors.income : theme.colors.expense }
-            ]}>
+        <View style={[styles.summaryCard, { backgroundColor: currentTheme.colors.surface }]}>
+          <View style={[styles.balanceSection, { borderBottomColor: currentTheme.colors.divider }]}>
+            <Text style={[styles.balanceLabel, { color: currentTheme.colors.textSecondary }]}>이번 달 잔액</Text>
+            <Text
+              style={[
+                styles.balanceAmount,
+                { color: balance >= 0 ? currentTheme.colors.income : currentTheme.colors.expense }
+              ]}
+              numberOfLines={1}
+            >
               {balance >= 0 ? '+' : ''}{Math.round(balance).toLocaleString()}원
             </Text>
           </View>
@@ -329,39 +336,45 @@ export default function DashboardScreen({ navigation }: any) {
             <Pressable
               style={({ pressed }) => [
                 styles.summaryItem,
-                styles.incomeItem,
+                { backgroundColor: currentTheme.colors.income + '10' },
                 pressed && styles.summaryItemPressed
               ]}
               onPress={() => handleSummaryClick('income', '수입')}
             >
-              <View style={[styles.summaryIcon, { backgroundColor: theme.colors.income + '20' }]}>
-                <Ionicons name="arrow-down" size={20} color={theme.colors.income} />
+              <View style={[styles.summaryIcon, { backgroundColor: currentTheme.colors.income + '20' }]}>
+                <Ionicons name="arrow-down" size={18} color={currentTheme.colors.income} />
               </View>
-              <View style={styles.summaryInfo}>
-                <Text style={styles.summaryLabel}>수입</Text>
-                <Text style={[styles.summaryAmount, { color: theme.colors.income }]}>
-                  +{Math.round(monthSummary.income).toLocaleString()}원
-                </Text>
-              </View>
+              <Text style={[styles.summaryLabel, { color: currentTheme.colors.textSecondary }]}>수입</Text>
+              <Text
+                style={[styles.summaryAmount, { color: currentTheme.colors.income }]}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.6}
+              >
+                +{Math.round(monthSummary.income).toLocaleString()}원
+              </Text>
             </Pressable>
 
             <Pressable
               style={({ pressed }) => [
                 styles.summaryItem,
-                styles.expenseItem,
+                { backgroundColor: currentTheme.colors.expense + '10' },
                 pressed && styles.summaryItemPressed
               ]}
               onPress={() => handleSummaryClick('expense', '지출')}
             >
-              <View style={[styles.summaryIcon, { backgroundColor: theme.colors.expense + '20' }]}>
-                <Ionicons name="arrow-up" size={20} color={theme.colors.expense} />
+              <View style={[styles.summaryIcon, { backgroundColor: currentTheme.colors.expense + '20' }]}>
+                <Ionicons name="arrow-up" size={18} color={currentTheme.colors.expense} />
               </View>
-              <View style={styles.summaryInfo}>
-                <Text style={styles.summaryLabel}>지출</Text>
-                <Text style={[styles.summaryAmount, { color: theme.colors.expense }]}>
-                  -{Math.round(monthSummary.expense).toLocaleString()}원
-                </Text>
-              </View>
+              <Text style={[styles.summaryLabel, { color: currentTheme.colors.textSecondary }]}>지출</Text>
+              <Text
+                style={[styles.summaryAmount, { color: currentTheme.colors.expense }]}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.6}
+              >
+                -{Math.round(monthSummary.expense).toLocaleString()}원
+              </Text>
             </Pressable>
           </View>
         </View>
@@ -369,7 +382,7 @@ export default function DashboardScreen({ navigation }: any) {
         {/* 지출 그룹 - Dokterian 카드 스타일 (메모이제이션 적용) */}
         {groupStats.length > 0 && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>지출 카테고리</Text>
+            <Text style={[styles.sectionTitle, { color: currentTheme.colors.text }]}>지출 카테고리</Text>
             <View style={styles.groupGrid}>
               {groupStats.map((group) => (
                 <GroupCard
@@ -385,8 +398,8 @@ export default function DashboardScreen({ navigation }: any) {
         {/* 최근 거래 내역 - Dokterian 리스트 스타일 (메모이제이션 적용) */}
         {recentTransactions.length > 0 && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>최근 거래</Text>
-            <View style={styles.transactionList}>
+            <Text style={[styles.sectionTitle, { color: currentTheme.colors.text }]}>최근 거래</Text>
+            <View style={[styles.transactionList, { backgroundColor: currentTheme.colors.surface }]}>
               {recentTransactions.map((transaction) => (
                 <TransactionItem key={transaction.id} transaction={transaction} />
               ))}
@@ -397,10 +410,10 @@ export default function DashboardScreen({ navigation }: any) {
         {recentTransactions.length === 0 && groupStats.length === 0 && (
           <View style={styles.emptyContainer}>
             <View style={styles.emptyIcon}>
-              <Ionicons name="wallet-outline" size={64} color={theme.colors.textMuted} />
+              <Ionicons name="wallet-outline" size={64} color={currentTheme.colors.textMuted} />
             </View>
-            <Text style={styles.emptyText}>거래 내역이 없습니다</Text>
-            <Text style={styles.emptySubtext}>하단의 + 버튼을 눌러 거래를 추가해보세요!</Text>
+            <Text style={[styles.emptyText, { color: currentTheme.colors.textSecondary }]}>거래 내역이 없습니다</Text>
+            <Text style={[styles.emptySubtext, { color: currentTheme.colors.textMuted }]}>하단의 + 버튼을 눌러 거래를 추가해보세요!</Text>
           </View>
         )}
 
@@ -409,7 +422,7 @@ export default function DashboardScreen({ navigation }: any) {
           <Modal
             visible={modalVisible}
             onDismiss={() => setModalVisible(false)}
-            contentContainerStyle={styles.modalContainer}
+            contentContainerStyle={[styles.modalContainer, { backgroundColor: currentTheme.colors.surface }]}
           >
             {selectedCategory && (
               <ScrollView style={styles.modalContent}>
@@ -422,19 +435,19 @@ export default function DashboardScreen({ navigation }: any) {
                         { backgroundColor: selectedCategory.color }
                       ]}
                     />
-                    <Text style={styles.modalTitle}>
+                    <Text style={[styles.modalTitle, { color: currentTheme.colors.text }]}>
                       {selectedCategory.name}
                     </Text>
                   </View>
-                  <Text style={[styles.modalTotal, { color: selectedCategory.color }]}>
+                  <Text style={[styles.modalTotal, { color: selectedCategory.color }]} numberOfLines={1}>
                     {Math.round(selectedCategory.total).toLocaleString()}원
                   </Text>
-                  <Text style={styles.modalCount}>
+                  <Text style={[styles.modalCount, { color: currentTheme.colors.textSecondary }]}>
                     총 {selectedCategory.transactions.length}건
                   </Text>
                 </View>
 
-                <Divider style={styles.modalDivider} />
+                <Divider style={[styles.modalDivider, { backgroundColor: currentTheme.colors.divider }]} />
 
                 {/* 거래 내역 목록 */}
                 {selectedCategory.transactions.length === 0 ? (
@@ -455,7 +468,7 @@ export default function DashboardScreen({ navigation }: any) {
                     return (
                       <View key={statIndex} style={styles.categoryGroupContainer}>
                         {/* 카테고리 헤더 */}
-                        <View style={styles.categoryGroupHeader}>
+                        <View style={[styles.categoryGroupHeader, { backgroundColor: currentTheme.colors.surfaceVariant }]}>
                           <View style={styles.categoryGroupTitleRow}>
                             <View
                               style={[
@@ -463,11 +476,11 @@ export default function DashboardScreen({ navigation }: any) {
                                 { backgroundColor: stat.categoryColor }
                               ]}
                             />
-                            <Text style={styles.categoryGroupTitle}>
+                            <Text style={[styles.categoryGroupTitle, { color: currentTheme.colors.text }]}>
                               {stat.categoryName}
                             </Text>
                           </View>
-                          <Text style={[styles.categoryGroupTotal, { color: stat.categoryColor }]}>
+                          <Text style={[styles.categoryGroupTotal, { color: stat.categoryColor }]} numberOfLines={1}>
                             {Math.round(stat.total).toLocaleString()}원
                           </Text>
                         </View>
@@ -484,25 +497,25 @@ export default function DashboardScreen({ navigation }: any) {
                                 }}
                                 delayLongPress={1000}
                               >
-                                <Text style={styles.modalTransactionDesc} numberOfLines={1}>
+                                <Text style={[styles.modalTransactionDesc, { color: currentTheme.colors.text }]} numberOfLines={1}>
                                   {transaction.description || transaction.merchant || '거래'}
                                 </Text>
-                                <Text style={styles.modalTransactionDate}>
+                                <Text style={[styles.modalTransactionDate, { color: currentTheme.colors.textMuted }]}>
                                   {format(new Date(transaction.date), 'M월 d일 (E)', { locale: ko })}
                                 </Text>
                               </Pressable>
-                              <Text style={[styles.modalTransactionAmount, { color: theme.colors.expense }]}>
+                              <Text style={[styles.modalTransactionAmount, { color: currentTheme.colors.expense }]} numberOfLines={1}>
                                 -{Math.round(transaction.amount).toLocaleString()}원
                               </Text>
                             </View>
                             {txIndex < categoryTransactions.length - 1 && (
-                              <Divider style={styles.transactionDivider} />
+                              <Divider style={[styles.transactionDivider, { backgroundColor: currentTheme.colors.divider }]} />
                             )}
                           </View>
                         ))}
 
                         {statIndex < selectedCategory.categoryStats!.length - 1 && (
-                          <Divider style={styles.categoryGroupDivider} />
+                          <Divider style={[styles.categoryGroupDivider, { backgroundColor: currentTheme.colors.border }]} />
                         )}
                       </View>
                     );
@@ -520,32 +533,33 @@ export default function DashboardScreen({ navigation }: any) {
                           }}
                           delayLongPress={1000}
                         >
-                          <Text style={styles.modalTransactionDesc} numberOfLines={1}>
+                          <Text style={[styles.modalTransactionDesc, { color: currentTheme.colors.text }]} numberOfLines={1}>
                             {transaction.description || transaction.merchant || '거래'}
                           </Text>
-                          <Text style={styles.modalTransactionDate}>
+                          <Text style={[styles.modalTransactionDate, { color: currentTheme.colors.textMuted }]}>
                             {format(new Date(transaction.date), 'M월 d일 (E)', { locale: ko })}
                           </Text>
                         </Pressable>
                         <Text
                           style={[
                             styles.modalTransactionAmount,
-                            { color: transaction.type === 'income' ? theme.colors.income : theme.colors.expense }
+                            { color: transaction.type === 'income' ? currentTheme.colors.income : currentTheme.colors.expense }
                           ]}
+                          numberOfLines={1}
                         >
                           {transaction.type === 'income' ? '+' : '-'}
                           {Math.round(transaction.amount).toLocaleString()}원
                         </Text>
                       </View>
                       {index < selectedCategory.transactions.length - 1 && (
-                        <Divider style={styles.transactionDivider} />
+                        <Divider style={[styles.transactionDivider, { backgroundColor: currentTheme.colors.divider }]} />
                       )}
                     </View>
                   ))
                 )}
 
                 <TouchableOpacity
-                  style={styles.modalCloseButton}
+                  style={[styles.modalCloseButton, { backgroundColor: currentTheme.colors.primary }]}
                   onPress={() => setModalVisible(false)}
                 >
                   <Text style={styles.modalCloseButtonText}>닫기</Text>
@@ -597,11 +611,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: 'rgba(255,255,255,0.8)',
     marginBottom: 4,
-  },
-  headerTitle: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#fff',
   },
   monthSelectorContainer: {
     flexDirection: 'row',
@@ -687,9 +696,10 @@ const styles = StyleSheet.create({
   },
   summaryItem: {
     flex: 1,
-    flexDirection: 'row',
+    flexDirection: 'column',
     alignItems: 'center',
-    padding: 16,
+    justifyContent: 'center',
+    padding: 12,
     borderRadius: theme.borderRadius.lg,
   },
   incomeItem: {
@@ -702,15 +712,12 @@ const styles = StyleSheet.create({
     opacity: 0.7,
   },
   summaryIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 12,
-  },
-  summaryInfo: {
-    flex: 1,
+    marginBottom: 6,
   },
   summaryLabel: {
     fontSize: 12,
@@ -718,8 +725,9 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   summaryAmount: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '700',
+    textAlign: 'center',
   },
   // 섹션
   section: {
@@ -951,7 +959,8 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     borderRadius: theme.borderRadius.lg,
     alignItems: 'center',
-    marginTop: 20,
+    marginTop: 32,
+    marginBottom: 16,
   },
   modalCloseButtonText: {
     fontSize: 16,

@@ -7,8 +7,10 @@ import { Picker } from '@react-native-picker/picker';
 import { format } from 'date-fns';
 import { database, RecurringTransaction, Category, Account } from '../lib/db/database';
 import { theme } from '../lib/theme';
+import { useTheme } from '../lib/ThemeContext';
 
 export default function RecurringScreen() {
+  const { theme: currentTheme } = useTheme();
   const insets = useSafeAreaInsets();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -142,7 +144,7 @@ export default function RecurringScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: currentTheme.colors.background }]}>
       <ScrollView
         style={styles.scrollView}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
@@ -173,7 +175,7 @@ export default function RecurringScreen() {
                   <Chip mode="flat" style={{ backgroundColor: item.isActive ? '#d1fae5' : '#f3f4f6' }}>{item.isActive ? '활성' : '비활성'}</Chip>
                 </View>
 
-                <Text variant="headlineSmall" style={[styles.amount, item.type === 'income' && styles.incomeAmount]}>
+                <Text variant="headlineSmall" style={[styles.amount, item.type === 'income' && styles.incomeAmount]} numberOfLines={1}>
                   {Math.round(item.amount).toLocaleString()}원
                 </Text>
               </Card.Content>
@@ -187,7 +189,7 @@ export default function RecurringScreen() {
       </ScrollView>
 
       <FAB
-        style={[styles.fab, { bottom: insets.bottom + 16 }]}
+        style={[styles.fab, { bottom: insets.bottom + 16, backgroundColor: currentTheme.colors.primary }]}
         icon="plus"
         color="#fff"
         onPress={() => setAddDialogVisible(true)}
@@ -356,7 +358,6 @@ export default function RecurringScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
   },
   scrollView: {
     flex: 1,

@@ -29,8 +29,10 @@ import { analyzeReceiptWithOpenAI, analyzeReceiptWithGemini, OCRResult } from '.
 import { database, Receipt } from '../lib/db/database';
 import { format } from 'date-fns';
 import { ko } from 'date-fns/locale';
+import { useTheme } from '../lib/ThemeContext';
 
 export default function ReceiptScreen({ navigation }: any) {
+  const { theme: currentTheme } = useTheme();
   const insets = useSafeAreaInsets();
 
   // 리스트 관련 상태
@@ -295,17 +297,17 @@ export default function ReceiptScreen({ navigation }: any) {
 
   if (listLoading) {
     return (
-      <View style={styles.centered}>
-        <ActivityIndicator size="large" color={theme.colors.primary} />
+      <View style={[styles.centered, { backgroundColor: currentTheme.colors.background }]}>
+        <ActivityIndicator size="large" color={currentTheme.colors.primary} />
       </View>
     );
   }
 
   return (
-    <View style={styles.safeArea}>
+    <View style={[styles.safeArea, { backgroundColor: currentTheme.colors.background }]}>
       {/* 헤더 */}
       <LinearGradient
-        colors={theme.gradients.header as [string, string]}
+        colors={currentTheme.gradients.header as [string, string]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={[styles.header, { paddingTop: insets.top + theme.spacing.md }]}
@@ -370,7 +372,7 @@ export default function ReceiptScreen({ navigation }: any) {
                       {receipt.ocrAmount && (
                         <View style={styles.detailRow}>
                           <RNText style={styles.detailLabel}>금액</RNText>
-                          <RNText style={styles.detailValue}>
+                          <RNText style={styles.detailValue} numberOfLines={1}>
                             {Math.round(receipt.ocrAmount).toLocaleString()}원
                           </RNText>
                         </View>
@@ -623,7 +625,7 @@ export default function ReceiptScreen({ navigation }: any) {
 
                 <View style={styles.detailInfoRow}>
                   <RNText style={styles.detailInfoLabel}>금액</RNText>
-                  <RNText style={styles.detailInfoValue}>
+                  <RNText style={styles.detailInfoValue} numberOfLines={1}>
                     {selectedReceipt.ocrAmount ? `${Math.round(selectedReceipt.ocrAmount).toLocaleString()}원` : '-'}
                   </RNText>
                 </View>
@@ -685,7 +687,6 @@ export default function ReceiptScreen({ navigation }: any) {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: theme.colors.background,
   },
   header: {
     paddingTop: theme.spacing.md,
@@ -714,7 +715,6 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: theme.colors.background,
   },
   scrollView: {
     flex: 1,

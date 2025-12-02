@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
   Text as RNText,
   TouchableOpacity,
+  Switch,
 } from 'react-native';
 import {
   Text,
@@ -27,8 +28,12 @@ import { googleDriveManager, GoogleDriveFile } from '../lib/googleDrive';
 import { useGoogleAuth } from '../lib/hooks/useGoogleAuth';
 import GoogleOAuthWebView from '../components/GoogleOAuthWebView';
 import { theme } from '../lib/theme';
+import { useTheme } from '../lib/ThemeContext';
 
 export default function SettingsScreen({ navigation }: any) {
+  // 테마 훅 사용
+  const { theme: currentTheme, isDark, themeMode, setThemeMode, toggleTheme } = useTheme();
+
   // Google OAuth 훅 사용 (WebView 기반)
   const {
     isLoggedIn: isGoogleLoggedIn,
@@ -306,8 +311,9 @@ export default function SettingsScreen({ navigation }: any) {
     subtitle,
     onPress,
     rightIcon = 'chevron-forward',
-    iconColor = theme.colors.primary,
+    iconColor = currentTheme.colors.primary,
     disabled = false,
+    rightComponent,
   }: {
     icon: string;
     title: string;
@@ -316,31 +322,42 @@ export default function SettingsScreen({ navigation }: any) {
     rightIcon?: string;
     iconColor?: string;
     disabled?: boolean;
+    rightComponent?: React.ReactNode;
   }) => (
     <TouchableOpacity
       style={[styles.settingItem, disabled && styles.settingItemDisabled]}
       onPress={onPress}
-      disabled={disabled}
+      disabled={disabled || !!rightComponent}
     >
       <View style={[styles.settingIconContainer, { backgroundColor: `${iconColor}20` }]}>
         <Ionicons name={icon as any} size={20} color={iconColor} />
       </View>
       <View style={styles.settingContent}>
-        <RNText style={styles.settingTitle}>{title}</RNText>
-        {subtitle && <RNText style={styles.settingSubtitle}>{subtitle}</RNText>}
+        <RNText style={[styles.settingTitle, { color: currentTheme.colors.text }]}>{title}</RNText>
+        {subtitle && <RNText style={[styles.settingSubtitle, { color: currentTheme.colors.textSecondary }]}>{subtitle}</RNText>}
       </View>
-      <Ionicons name={rightIcon as any} size={20} color={theme.colors.textMuted} />
+      {rightComponent || <Ionicons name={rightIcon as any} size={20} color={currentTheme.colors.textMuted} />}
     </TouchableOpacity>
   );
 
+  // 테마 모드 라벨 가져오기
+  const getThemeModeLabel = () => {
+    switch (themeMode) {
+      case 'light': return '라이트 모드';
+      case 'dark': return '다크 모드';
+      case 'system': return '시스템 설정';
+      default: return '시스템 설정';
+    }
+  };
+
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: currentTheme.colors.background }]}>
       {/* 헤더 */}
       <LinearGradient
-        colors={theme.gradients.header as [string, string]}
+        colors={currentTheme.gradients.header as [string, string]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
-        style={[styles.header, { paddingTop: insets.top + theme.spacing.md }]}
+        style={[styles.header, { paddingTop: insets.top + currentTheme.spacing.md }]}
       >
         <View style={styles.headerRow}>
           <TouchableOpacity
@@ -355,10 +372,31 @@ export default function SettingsScreen({ navigation }: any) {
       </LinearGradient>
 
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
+        {/* 화면 설정 섹션 */}
+        <View style={styles.section}>
+          <RNText style={[styles.sectionTitle, { color: currentTheme.colors.textSecondary }]}>화면 설정</RNText>
+          <View style={[styles.card, { backgroundColor: currentTheme.colors.surface }]}>
+            <SettingItem
+              icon="moon"
+              title="다크 모드"
+              subtitle={getThemeModeLabel()}
+              iconColor={isDark ? '#FFD700' : currentTheme.colors.primary}
+              rightComponent={
+                <Switch
+                  value={isDark}
+                  onValueChange={toggleTheme}
+                  trackColor={{ false: currentTheme.colors.border, true: currentTheme.colors.primary }}
+                  thumbColor={isDark ? '#FFD700' : '#f4f3f4'}
+                />
+              }
+            />
+          </View>
+        </View>
+
         {/* AI 설정 섹션 */}
         <View style={styles.section}>
-          <RNText style={styles.sectionTitle}>AI 설정 (OCR)</RNText>
-          <View style={styles.card}>
+          <RNText style={[styles.sectionTitle, { color: currentTheme.colors.textSecondary }]}>AI 설정 (OCR)</RNText>
+          <View style={[styles.card, { backgroundColor: currentTheme.colors.surface }]}>
             <SettingItem
               icon="hardware-chip"
               title="AI API 키 설정"
@@ -370,26 +408,26 @@ export default function SettingsScreen({ navigation }: any) {
 
         {/* 데이터 관리 섹션 */}
         <View style={styles.section}>
-          <RNText style={styles.sectionTitle}>데이터 관리</RNText>
-          <View style={styles.card}>
+          <RNText style={[styles.sectionTitle, { color: currentTheme.colors.textSecondary }]}>데이터 관리</RNText>
+          <View style={[styles.card, { backgroundColor: currentTheme.colors.surface }]}>
             <SettingItem
               icon="cloud-upload"
               title="백업"
               subtitle="데이터를 백업합니다"
               onPress={() => setShowBackupDialog(true)}
               disabled={backupLoading}
-              iconColor={theme.colors.income}
+              iconColor={currentTheme.colors.income}
             />
-            <View style={styles.divider} />
+            <View style={[styles.divider, { backgroundColor: currentTheme.colors.divider }]} />
             <SettingItem
               icon="cloud-download"
               title="복원"
               subtitle="백업된 데이터를 복원합니다"
               onPress={() => setShowRestoreDialog(true)}
               disabled={backupLoading}
-              iconColor={theme.colors.info}
+              iconColor={currentTheme.colors.info}
             />
-            <View style={styles.divider} />
+            <View style={[styles.divider, { backgroundColor: currentTheme.colors.divider }]} />
             <SettingItem
               icon="logo-google"
               title="Google Drive 연결"
@@ -397,13 +435,13 @@ export default function SettingsScreen({ navigation }: any) {
               onPress={handleGoogleAuth}
               iconColor="#4285F4"
             />
-            <View style={styles.divider} />
+            <View style={[styles.divider, { backgroundColor: currentTheme.colors.divider }]} />
             <SettingItem
               icon="trash"
               title="데이터 초기화"
               subtitle="모든 데이터를 삭제합니다"
               onPress={handleResetData}
-              iconColor={theme.colors.expense}
+              iconColor={currentTheme.colors.expense}
             />
           </View>
         </View>
@@ -411,36 +449,36 @@ export default function SettingsScreen({ navigation }: any) {
         {/* 로딩 오버레이 */}
         {backupLoading && (
           <View style={styles.loadingOverlay}>
-            <View style={styles.loadingBox}>
-              <ActivityIndicator size="large" color={theme.colors.primary} />
-              <RNText style={styles.loadingText}>처리 중...</RNText>
+            <View style={[styles.loadingBox, { backgroundColor: currentTheme.colors.surface }]}>
+              <ActivityIndicator size="large" color={currentTheme.colors.primary} />
+              <RNText style={[styles.loadingText, { color: currentTheme.colors.primary }]}>처리 중...</RNText>
             </View>
           </View>
         )}
 
         {/* 앱 정보 섹션 */}
         <View style={styles.section}>
-          <RNText style={styles.sectionTitle}>앱 정보</RNText>
-          <View style={styles.card}>
+          <RNText style={[styles.sectionTitle, { color: currentTheme.colors.textSecondary }]}>앱 정보</RNText>
+          <View style={[styles.card, { backgroundColor: currentTheme.colors.surface }]}>
             <SettingItem
               icon="information-circle"
               title="버전"
               subtitle="1.0.0"
               rightIcon="checkmark-circle"
             />
-            <View style={styles.divider} />
+            <View style={[styles.divider, { backgroundColor: currentTheme.colors.divider }]} />
             <SettingItem
               icon="person"
               title="개발자"
               subtitle="가계부 모바일 앱"
               rightIcon="heart"
-              iconColor={theme.colors.accent}
+              iconColor={currentTheme.colors.accent}
             />
           </View>
         </View>
 
         {/* 푸터 */}
-        <RNText style={styles.footerText}>
+        <RNText style={[styles.footerText, { color: currentTheme.colors.textMuted }]}>
           © 2025 가계부 모바일 앱
         </RNText>
 

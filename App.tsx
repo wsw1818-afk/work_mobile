@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createDrawerNavigator, DrawerContentScrollView, DrawerItemList, DrawerContentComponentProps } from '@react-navigation/drawer';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Provider as PaperProvider } from 'react-native-paper';
+import { Provider as PaperProvider, MD3DarkTheme, MD3LightTheme } from 'react-native-paper';
 import { View, ActivityIndicator, LogBox, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -11,6 +11,7 @@ import { database } from './lib/db/database';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { setupGlobalErrorHandler, ignoreWarnings } from './lib/error-tracker';
 import { theme } from './lib/theme';
+import { ThemeProvider, useTheme } from './lib/ThemeContext';
 
 // LogBox 완전 비활성화 (디버깅용)
 LogBox.ignoreAllLogs(true);
@@ -34,21 +35,27 @@ const Drawer = createDrawerNavigator();
 
 // 커스텀 드로어 컨텐츠 (Dokterian 스타일)
 function CustomDrawerContent(props: DrawerContentComponentProps) {
+  const { theme: currentTheme, isDark } = useTheme();
+
   return (
-    <View style={{ flex: 1 }}>
+    <View style={{ flex: 1, backgroundColor: currentTheme.colors.background }}>
       <LinearGradient
-        colors={theme.gradients.header as [string, string]}
+        colors={currentTheme.gradients.header as [string, string]}
         style={styles.drawerHeader}
       >
         <View style={styles.drawerLogoContainer}>
-          <View style={styles.drawerLogo}>
-            <Ionicons name="wallet" size={32} color={theme.colors.primary} />
+          <View style={[styles.drawerLogo, { backgroundColor: currentTheme.colors.surface }]}>
+            <Ionicons name="wallet" size={32} color={currentTheme.colors.primary} />
           </View>
         </View>
         <Text style={styles.drawerTitle}>가계부</Text>
         <Text style={styles.drawerSubtitle}>개인 재정 관리</Text>
       </LinearGradient>
-      <DrawerContentScrollView {...props} contentContainerStyle={{ paddingTop: 0 }}>
+      <DrawerContentScrollView
+        {...props}
+        contentContainerStyle={{ paddingTop: 0 }}
+        style={{ backgroundColor: currentTheme.colors.background }}
+      >
         <DrawerItemList {...props} />
       </DrawerContentScrollView>
     </View>
@@ -84,20 +91,22 @@ const getTabBarIcon = (route: { name: string }, focused: boolean, color: string,
 // 하단 탭 네비게이터 (메인 화면들)
 function MainTabs() {
   const insets = useSafeAreaInsets();
+  const { theme: currentTheme, isDark } = useTheme();
 
   // tabBarStyle을 useMemo로 메모이제이션
   const tabBarStyle = React.useMemo(() => ({
     ...styles.tabBar,
+    backgroundColor: currentTheme.colors.surface,
     height: 60 + insets.bottom,
     paddingBottom: insets.bottom + 6,
-  }), [insets.bottom]);
+  }), [insets.bottom, currentTheme.colors.surface]);
 
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
         tabBarIcon: ({ focused, color, size }) => getTabBarIcon(route, focused, color, size),
-        tabBarActiveTintColor: theme.colors.primary,
-        tabBarInactiveTintColor: theme.colors.textSecondary,
+        tabBarActiveTintColor: currentTheme.colors.primary,
+        tabBarInactiveTintColor: currentTheme.colors.textSecondary,
         tabBarStyle,
         tabBarLabelStyle: styles.tabBarLabel,
         headerShown: false,
@@ -130,8 +139,26 @@ function MainTabs() {
   );
 }
 
-export default function App() {
+// 앱 내부 콘텐츠 (ThemeProvider 내부에서 사용)
+function AppContent() {
   const [isReady, setIsReady] = useState(false);
+  const { theme: currentTheme, isDark } = useTheme();
+
+  // React Native Paper 테마 설정
+  const paperTheme = React.useMemo(() => {
+    const baseTheme = isDark ? MD3DarkTheme : MD3LightTheme;
+    return {
+      ...baseTheme,
+      colors: {
+        ...baseTheme.colors,
+        primary: currentTheme.colors.primary,
+        background: currentTheme.colors.background,
+        surface: currentTheme.colors.surface,
+        onSurface: currentTheme.colors.text,
+        onBackground: currentTheme.colors.text,
+      },
+    };
+  }, [isDark, currentTheme]);
 
   useEffect(() => {
     // 전역 에러 핸들러 설정
@@ -158,26 +185,25 @@ export default function App() {
 
   if (!isReady) {
     return (
-      <View style={styles.loadingContainer}>
-        <View style={styles.loadingLogo}>
-          <Ionicons name="wallet" size={48} color={theme.colors.primary} />
+      <View style={[styles.loadingContainer, { backgroundColor: currentTheme.colors.background }]}>
+        <View style={[styles.loadingLogo, { backgroundColor: currentTheme.colors.surface }]}>
+          <Ionicons name="wallet" size={48} color={currentTheme.colors.primary} />
         </View>
-        <ActivityIndicator size="large" color={theme.colors.primary} style={{ marginTop: 20 }} />
-        <Text style={styles.loadingText}>가계부</Text>
+        <ActivityIndicator size="large" color={currentTheme.colors.primary} style={{ marginTop: 20 }} />
+        <Text style={[styles.loadingText, { color: currentTheme.colors.text }]}>가계부</Text>
       </View>
     );
   }
 
   return (
-    <ErrorBoundary>
-      <PaperProvider>
-        <NavigationContainer>
-          <Drawer.Navigator
+    <PaperProvider theme={paperTheme}>
+      <NavigationContainer>
+        <Drawer.Navigator
           initialRouteName="Main"
           drawerContent={(props) => <CustomDrawerContent {...props} />}
           screenOptions={{
             headerStyle: {
-              backgroundColor: theme.colors.primary,
+              backgroundColor: currentTheme.colors.primary,
               elevation: 0,
               shadowOpacity: 0,
             },
@@ -186,9 +212,12 @@ export default function App() {
               fontWeight: '700',
               fontSize: 18,
             },
-            drawerActiveTintColor: theme.colors.primary,
-            drawerInactiveTintColor: theme.colors.textSecondary,
-            drawerActiveBackgroundColor: `${theme.colors.primary}15`,
+            drawerActiveTintColor: currentTheme.colors.primary,
+            drawerInactiveTintColor: currentTheme.colors.textSecondary,
+            drawerActiveBackgroundColor: `${currentTheme.colors.primary}15`,
+            drawerStyle: {
+              backgroundColor: currentTheme.colors.background,
+            },
             drawerLabelStyle: {
               marginLeft: 0,
               fontSize: 15,
@@ -295,6 +324,16 @@ export default function App() {
         </Drawer.Navigator>
       </NavigationContainer>
     </PaperProvider>
+  );
+}
+
+// 메인 App 컴포넌트
+export default function App() {
+  return (
+    <ErrorBoundary>
+      <ThemeProvider>
+        <AppContent />
+      </ThemeProvider>
     </ErrorBoundary>
   );
 }

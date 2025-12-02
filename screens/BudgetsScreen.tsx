@@ -215,11 +215,11 @@ export default function BudgetsScreen({ navigation }: any) {
         <View style={styles.summaryRow}>
           <View style={styles.summaryItem}>
             <Text style={styles.summaryLabel}>예산</Text>
-            <Text style={styles.summaryValue}>{Math.round(totalBudget).toLocaleString()}원</Text>
+            <Text style={styles.summaryValue} numberOfLines={1}>{Math.round(totalBudget).toLocaleString()}원</Text>
           </View>
           <View style={styles.summaryItem}>
             <Text style={styles.summaryLabel}>사용</Text>
-            <Text style={[styles.summaryValue, { color: getProgressColor(totalPercentage) }]}>
+            <Text style={[styles.summaryValue, { color: getProgressColor(totalPercentage) }]} numberOfLines={1}>
               {Math.round(totalSpent).toLocaleString()}원
             </Text>
           </View>
@@ -272,11 +272,11 @@ export default function BudgetsScreen({ navigation }: any) {
               <View style={styles.amountRow}>
                 <View style={styles.amountItem}>
                   <Text style={styles.amountLabel}>예산</Text>
-                  <Text style={styles.amountValue}>{Math.round(budget.limitAmount).toLocaleString()}원</Text>
+                  <Text style={styles.amountValue} numberOfLines={1}>{Math.round(budget.limitAmount).toLocaleString()}원</Text>
                 </View>
                 <View style={styles.amountItem}>
                   <Text style={styles.amountLabel}>사용</Text>
-                  <Text style={[styles.amountValue, { color: getProgressColor(budget.percentage) }]}>
+                  <Text style={[styles.amountValue, { color: getProgressColor(budget.percentage) }]} numberOfLines={1}>
                     {Math.round(budget.spent).toLocaleString()}원
                   </Text>
                 </View>
@@ -291,7 +291,7 @@ export default function BudgetsScreen({ navigation }: any) {
               {budget.percentage >= 100 && (
                 <View style={styles.warningBox}>
                   <Ionicons name="warning" size={16} color={theme.colors.expense} />
-                  <Text style={styles.warningText}>
+                  <Text style={styles.warningText} numberOfLines={1}>
                     예산을 {Math.round((budget.spent - budget.limitAmount)).toLocaleString()}원 초과했습니다
                   </Text>
                 </View>
@@ -299,7 +299,7 @@ export default function BudgetsScreen({ navigation }: any) {
               {budget.percentage >= 80 && budget.percentage < 100 && (
                 <View style={styles.cautionBox}>
                   <Ionicons name="alert-circle" size={16} color={theme.colors.warning} />
-                  <Text style={styles.cautionText}>
+                  <Text style={styles.cautionText} numberOfLines={1}>
                     남은 예산: {Math.round((budget.limitAmount - budget.spent)).toLocaleString()}원
                   </Text>
                 </View>
