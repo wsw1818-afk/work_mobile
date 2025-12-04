@@ -2,7 +2,7 @@
   "expo": {
     "name": "가계부",
     "slug": "gagyebu-native",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "scheme": "gagyebu",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -14,7 +14,10 @@
       "backgroundColor": "#E8F5F3"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "config": {
+        "googleMobileAdsAppId": "ca-app-pub-8246259258904809~1663711660"
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -24,8 +27,12 @@
       "package": "com.anonymous.gagyebunative",
       "permissions": [
         "CAMERA",
-        "RECORD_AUDIO"
-      ]
+        "RECORD_AUDIO",
+        "com.google.android.gms.permission.AD_ID"
+      ],
+      "config": {
+        "googleMobileAdsAppId": "ca-app-pub-8246259258904809~1663711660"
+      }
     },
     "web": {
       "favicon": "./assets/favicon.png"

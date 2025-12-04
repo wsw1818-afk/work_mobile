@@ -12,6 +12,10 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import { setupGlobalErrorHandler, ignoreWarnings } from './lib/error-tracker';
 import { theme } from './lib/theme';
 import { ThemeProvider, useTheme } from './lib/ThemeContext';
+import { AdProvider, useAds } from './lib/AdContext';
+import { TransactionProvider } from './lib/TransactionContext';
+import { LanguageProvider, useLanguage } from './lib/LanguageContext';
+import { AdBanner, AD_BANNER_HEIGHT } from './components/AdBanner';
 
 // LogBox 완전 비활성화 (디버깅용)
 LogBox.ignoreAllLogs(true);
@@ -29,6 +33,7 @@ import RulesScreen from './screens/RulesScreen';
 import SettingsScreen from './screens/SettingsScreen';
 import ReceiptScreen from './screens/ReceiptScreen';
 import ImportScreen from './screens/ImportScreen';
+import HelpScreen from './screens/HelpScreen';
 
 const Tab = createBottomTabNavigator();
 const Drawer = createDrawerNavigator();
@@ -36,6 +41,7 @@ const Drawer = createDrawerNavigator();
 // 커스텀 드로어 컨텐츠 (Dokterian 스타일)
 function CustomDrawerContent(props: DrawerContentComponentProps) {
   const { theme: currentTheme, isDark } = useTheme();
+  const { t } = useLanguage();
 
   return (
     <View style={{ flex: 1, backgroundColor: currentTheme.colors.background }}>
@@ -48,8 +54,8 @@ function CustomDrawerContent(props: DrawerContentComponentProps) {
             <Ionicons name="wallet" size={32} color={currentTheme.colors.primary} />
           </View>
         </View>
-        <Text style={styles.drawerTitle}>가계부</Text>
-        <Text style={styles.drawerSubtitle}>개인 재정 관리</Text>
+        <Text style={styles.drawerTitle}>{t.app.name}</Text>
+        <Text style={styles.drawerSubtitle}>{t.app.subtitle}</Text>
       </LinearGradient>
       <DrawerContentScrollView
         {...props}
@@ -92,8 +98,13 @@ const getTabBarIcon = (route: { name: string }, focused: boolean, color: string,
 function MainTabs() {
   const insets = useSafeAreaInsets();
   const { theme: currentTheme, isDark } = useTheme();
+  const { showAds, isPremium } = useAds();
+  const { t } = useLanguage();
 
-  // tabBarStyle을 useMemo로 메모이제이션
+  // 광고 표시 여부
+  const shouldShowAd = showAds && !isPremium;
+
+  // tabBarStyle을 useMemo로 메모이제이션 (광고 높이 제외)
   const tabBarStyle = React.useMemo(() => ({
     ...styles.tabBar,
     backgroundColor: currentTheme.colors.surface,
@@ -102,40 +113,59 @@ function MainTabs() {
   }), [insets.bottom, currentTheme.colors.surface]);
 
   return (
-    <Tab.Navigator
-      screenOptions={({ route }) => ({
-        tabBarIcon: ({ focused, color, size }) => getTabBarIcon(route, focused, color, size),
-        tabBarActiveTintColor: currentTheme.colors.primary,
-        tabBarInactiveTintColor: currentTheme.colors.textSecondary,
-        tabBarStyle,
-        tabBarLabelStyle: styles.tabBarLabel,
-        headerShown: false,
-      })}
-    >
-      <Tab.Screen
-        name="Dashboard"
-        component={DashboardScreen}
-        options={{ title: '대시보드' }}
-      />
-      <Tab.Screen
-        name="Add"
-        component={AddTransactionScreen}
-        options={{
-          title: '추가',
-          tabBarLabel: () => null, // Add 버튼은 라벨 숨김
-        }}
-      />
-      <Tab.Screen
-        name="Transactions"
-        component={TransactionsScreen}
-        options={{ title: '거래내역' }}
-      />
-      <Tab.Screen
-        name="Categories"
-        component={CategoriesScreen}
-        options={{ title: '카테고리' }}
-      />
-    </Tab.Navigator>
+    <View style={{ flex: 1 }}>
+      {/* 메인 콘텐츠 영역 - 광고 높이만큼 하단 여백 */}
+      <View style={{ flex: 1, marginBottom: shouldShowAd ? AD_BANNER_HEIGHT : 0 }}>
+        <Tab.Navigator
+          screenOptions={({ route }) => ({
+            tabBarIcon: ({ focused, color, size }) => getTabBarIcon(route, focused, color, size),
+            tabBarActiveTintColor: currentTheme.colors.primary,
+            tabBarInactiveTintColor: currentTheme.colors.textSecondary,
+            tabBarStyle,
+            tabBarLabelStyle: styles.tabBarLabel,
+            headerShown: false,
+          })}
+        >
+          <Tab.Screen
+            name="Dashboard"
+            component={DashboardScreen}
+            options={{ title: t.nav.dashboard }}
+          />
+          <Tab.Screen
+            name="Add"
+            component={AddTransactionScreen}
+            options={{
+              title: t.nav.add,
+              tabBarLabel: () => null, // Add 버튼은 라벨 숨김
+            }}
+          />
+          <Tab.Screen
+            name="Transactions"
+            component={TransactionsScreen}
+            options={{ title: t.nav.transactions }}
+          />
+          <Tab.Screen
+            name="Categories"
+            component={CategoriesScreen}
+            options={{ title: t.nav.categories }}
+          />
+        </Tab.Navigator>
+      </View>
+
+      {/* 광고 배너 - 화면 최하단에 고정 */}
+      {shouldShowAd && (
+        <View style={[
+          styles.adBannerContainer,
+          {
+            bottom: 0,
+            paddingBottom: insets.bottom,
+            backgroundColor: currentTheme.colors.surface,
+          }
+        ]}>
+          <AdBanner />
+        </View>
+      )}
+    </View>
   );
 }
 
@@ -143,6 +173,7 @@ function MainTabs() {
 function AppContent() {
   const [isReady, setIsReady] = useState(false);
   const { theme: currentTheme, isDark } = useTheme();
+  const { t } = useLanguage();
 
   // React Native Paper 테마 설정
   const paperTheme = React.useMemo(() => {
@@ -190,7 +221,7 @@ function AppContent() {
           <Ionicons name="wallet" size={48} color={currentTheme.colors.primary} />
         </View>
         <ActivityIndicator size="large" color={currentTheme.colors.primary} style={{ marginTop: 20 }} />
-        <Text style={[styles.loadingText, { color: currentTheme.colors.text }]}>가계부</Text>
+        <Text style={[styles.loadingText, { color: currentTheme.colors.text }]}>{t.app.name}</Text>
       </View>
     );
   }
@@ -235,7 +266,7 @@ function AppContent() {
             name="Main"
             component={MainTabs}
             options={{
-              title: '가계부',
+              title: t.nav.home,
               headerShown: false,
               drawerIcon: ({ color, size }) => (
                 <Ionicons name="home" size={size} color={color} />
@@ -248,7 +279,7 @@ function AppContent() {
             name="Budgets"
             component={BudgetsScreen}
             options={{
-              title: '예산 관리',
+              title: t.nav.budgets,
               headerShown: false,
               drawerIcon: ({ color, size }) => (
                 <Ionicons name="pie-chart" size={size} color={color} />
@@ -261,7 +292,7 @@ function AppContent() {
             name="BankAccounts"
             component={BankAccountsScreen}
             options={{
-              title: '통장/결제수단',
+              title: t.nav.bankAccounts,
               headerShown: false,
               drawerIcon: ({ color, size }) => (
                 <Ionicons name="wallet" size={size} color={color} />
@@ -274,7 +305,7 @@ function AppContent() {
             name="Rules"
             component={RulesScreen}
             options={{
-              title: '자동 분류 규칙',
+              title: t.nav.rules,
               headerShown: false,
               drawerIcon: ({ color, size}) => (
                 <Ionicons name="filter" size={size} color={color} />
@@ -287,7 +318,7 @@ function AppContent() {
             name="Receipt"
             component={ReceiptScreen}
             options={{
-              title: '영수증 스캔',
+              title: t.nav.receipt,
               headerShown: false,
               drawerIcon: ({ color, size }) => (
                 <Ionicons name="camera" size={size} color={color} />
@@ -300,7 +331,7 @@ function AppContent() {
             name="Import"
             component={ImportScreen}
             options={{
-              title: '거래 가져오기',
+              title: t.nav.import,
               headerShown: false,
               drawerIcon: ({ color, size }) => (
                 <Ionicons name="document" size={size} color={color} />
@@ -313,11 +344,22 @@ function AppContent() {
             name="Settings"
             component={SettingsScreen}
             options={{
-              title: '설정',
+              title: t.nav.settings,
               headerShown: false,
               drawerIcon: ({ color, size }) => (
                 <Ionicons name="settings" size={size} color={color} />
               ),
+            }}
+          />
+
+          {/* 도움말 - 드로어에는 표시하지 않고 설정에서 접근 */}
+          <Drawer.Screen
+            name="Help"
+            component={HelpScreen}
+            options={{
+              title: t.help.title,
+              headerShown: false,
+              drawerItemStyle: { display: 'none' }, // 드로어 메뉴에서 숨김
             }}
           />
 
@@ -331,9 +373,15 @@ function AppContent() {
 export default function App() {
   return (
     <ErrorBoundary>
-      <ThemeProvider>
-        <AppContent />
-      </ThemeProvider>
+      <LanguageProvider>
+        <ThemeProvider>
+          <AdProvider>
+            <TransactionProvider>
+              <AppContent />
+            </TransactionProvider>
+          </AdProvider>
+        </ThemeProvider>
+      </LanguageProvider>
     </ErrorBoundary>
   );
 }
@@ -430,5 +478,13 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: 'rgba(255, 255, 255, 0.8)',
     marginTop: 4,
+  },
+
+  // 광고 배너 컨테이너
+  adBannerContainer: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    zIndex: 100,
   },
 });

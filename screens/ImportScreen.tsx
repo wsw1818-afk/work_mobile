@@ -31,10 +31,14 @@ import {
 import { applyCategoryRulesBulk } from '../lib/auto-categorize';
 import { database, ExclusionPattern } from '../lib/db/database';
 import { useTheme } from '../lib/ThemeContext';
+import { useInterstitialAd } from '../components/InterstitialAd';
+import { useTransactionContext } from '../lib/TransactionContext';
 
 export default function ImportScreen({ navigation }: any) {
   const { theme: currentTheme } = useTheme();
   const insets = useSafeAreaInsets();
+  const { forceShowInterstitial, InterstitialAdComponent } = useInterstitialAd();
+  const { notifyTransactionAdded } = useTransactionContext();
   const [loading, setLoading] = useState(false);
   const [parseResults, setParseResults] = useState<ParseResult[]>([]);
   const [previewData, setPreviewData] = useState<any[]>([]);
@@ -273,16 +277,6 @@ export default function ImportScreen({ navigation }: any) {
           onPress: async () => {
             setImporting(true);
             try {
-              // 기본 계좌 가져오기
-              const accounts = await database.getAccounts();
-              const defaultAccount = accounts[0];
-
-              if (!defaultAccount) {
-                Alert.alert('오류', '계좌를 찾을 수 없습니다. 먼저 계좌를 추가해주세요.');
-                setImporting(false);
-                return;
-              }
-
               // 최적화: 가져올 거래의 날짜 범위만 조회 (전체 로드 대신)
               const dates = allTransactions.map(tx => tx.date).filter(Boolean);
               const minDate = dates.length > 0 ? dates.reduce((a, b) => a < b ? a : b) : null;
@@ -331,11 +325,18 @@ export default function ImportScreen({ navigation }: any) {
                 }
 
                 try {
+                  // 파일명 기반으로 카드/은행 분류 (나중에 결제수단/통장 연동 예정)
+                  // tx.account에는 extractCardNameFromFilename에서 추출한 카드/은행명이 들어있음
+                  const sourceType = tx.account || '';
+                  // 은행 관련 키워드가 있으면 '은행', 카드 관련이면 '카드'로 분류
+                  const isBank = /은행|저축|새마을|우체국|농협|수협|신협|산업|기업|하나|국민|신한|우리|SC|씨티|케이|IBK|BNK|DGB|경남|부산|전북|광주|제주/.test(sourceType) && !/카드/.test(sourceType);
+                  const classifiedSource = isBank ? `[은행] ${sourceType}` : `[카드] ${sourceType}`;
+
                   await database.addTransaction({
                     amount: tx.amount,
                     type: tx.type as 'income' | 'expense',
                     categoryId: finalCategoryId,
-                    accountId: defaultAccount.id,
+                    accountId: undefined, // 계좌 연동은 나중에 별도로 진행
                     description: tx.merchant || tx.memo || '',
                     merchant: tx.merchant || '',
                     memo: tx.memo || '',
@@ -343,7 +344,7 @@ export default function ImportScreen({ navigation }: any) {
                     tags: '',
                     isTransfer: false,
                     status: 'confirmed',
-                    cardName: tx.account || '',
+                    cardName: classifiedSource, // 카드/은행 분류 표시
                     cardNumber: '',
                   });
                   successCount++;
@@ -367,6 +368,14 @@ export default function ImportScreen({ navigation }: any) {
                 resultMessage += `\n실패: ${failCount}개`;
               }
 
+              // 거래 추가 알림 (다른 화면 실시간 업데이트)
+              if (successCount > 0) {
+                notifyTransactionAdded();
+              }
+
+              // 전면 광고 표시 (대량 작업 완료 - 자연스러운 타이밍)
+              forceShowInterstitial();
+
               Alert.alert(
                 '가져오기 완료',
                 resultMessage,
@@ -381,7 +390,7 @@ export default function ImportScreen({ navigation }: any) {
                       setAllTransactions([]);
                       setExcludedIncomeTransactions([]);
                       setShowExcludedIncome(false);
-                      setDuplicateInfo({ removed: 0, dbSkipped: 0, incomeExcluded: 0 });
+                      setDuplicateInfo({ removed: 0, dbSkipped: 0, incomeExcluded: 0, patternExcluded: 0 });
                       navigation.navigate('Main');
                     },
                   },
@@ -399,6 +408,9 @@ export default function ImportScreen({ navigation }: any) {
   };
 
   return (
+    <>
+    {/* 전면 광고 컴포넌트 */}
+    {InterstitialAdComponent}
     <View style={[styles.safeArea, { backgroundColor: currentTheme.colors.background }]}>
       {/* 헤더 */}
       <LinearGradient
@@ -632,6 +644,7 @@ export default function ImportScreen({ navigation }: any) {
         </View>
       </ScrollView>
     </View>
+    </>
   );
 }
 

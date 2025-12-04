@@ -30,6 +30,7 @@ import { ko } from 'date-fns/locale';
 import { database, Transaction, Category } from '../lib/db/database';
 import { theme } from '../lib/theme';
 import { useTheme } from '../lib/ThemeContext';
+import { useTransactionContext } from '../lib/TransactionContext';
 
 // 검색 debounce 훅
 function useDebounce<T>(value: T, delay: number): T {
@@ -51,6 +52,7 @@ function useDebounce<T>(value: T, delay: number): T {
 export default function TransactionsScreen({ navigation }: any) {
   const insets = useSafeAreaInsets();
   const { theme: currentTheme } = useTheme();
+  const { lastUpdate, notifyTransactionDeleted, notifyTransactionUpdated } = useTransactionContext();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -104,9 +106,10 @@ export default function TransactionsScreen({ navigation }: any) {
     }
   }, [selectedDate]); // searchQuery, filterType 제거 - 필터링은 useMemo에서 처리
 
+  // lastUpdate가 변경되면 데이터 새로고침 (거래 추가/삭제 시 실시간 반영)
   useEffect(() => {
     loadTransactions();
-  }, [loadTransactions]);
+  }, [loadTransactions, lastUpdate]);
 
   // useMemo로 필터링 최적화 (debounced 검색어 사용)
   const filteredTransactionsMemo = useMemo(() => {
@@ -153,6 +156,8 @@ export default function TransactionsScreen({ navigation }: any) {
           onPress: async () => {
             try {
               await database.deleteTransaction(transaction.id);
+              // 다른 화면에 거래 삭제됨 알림 (실시간 반영)
+              notifyTransactionDeleted();
               loadTransactions();
             } catch (error) {
               console.error('Failed to delete transaction:', error);
@@ -191,6 +196,9 @@ export default function TransactionsScreen({ navigation }: any) {
         description: editDescription,
         date: editDate,
       });
+
+      // 다른 화면에 거래 수정됨 알림 (실시간 반영)
+      notifyTransactionUpdated();
 
       setEditModalVisible(false);
       loadTransactions();

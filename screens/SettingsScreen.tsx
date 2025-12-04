@@ -29,10 +29,18 @@ import { useGoogleAuth } from '../lib/hooks/useGoogleAuth';
 import GoogleOAuthWebView from '../components/GoogleOAuthWebView';
 import { theme } from '../lib/theme';
 import { useTheme } from '../lib/ThemeContext';
+import { useLanguage, LANGUAGES, Language } from '../lib/LanguageContext';
+import { useInterstitialAd } from '../components/InterstitialAd';
 
 export default function SettingsScreen({ navigation }: any) {
   // 테마 훅 사용
   const { theme: currentTheme, isDark, themeMode, setThemeMode, toggleTheme } = useTheme();
+
+  // 언어 훅 사용
+  const { language, setLanguage, t } = useLanguage();
+
+  // 전면 광고 훅
+  const { forceShowInterstitial, InterstitialAdComponent } = useInterstitialAd();
 
   // Google OAuth 훅 사용 (WebView 기반)
   const {
@@ -60,6 +68,9 @@ export default function SettingsScreen({ navigation }: any) {
   const [showRestoreDialog, setShowRestoreDialog] = useState(false);
   const [driveBackups, setDriveBackups] = useState<GoogleDriveFile[]>([]);
   const [showDriveListDialog, setShowDriveListDialog] = useState(false);
+
+  // 언어 선택 다이얼로그 상태
+  const [showLanguageDialog, setShowLanguageDialog] = useState(false);
 
   // accessToken이 변경되면 googleDriveManager에 설정
   useEffect(() => {
@@ -164,6 +175,9 @@ export default function SettingsScreen({ navigation }: any) {
       }
 
       if (result.success) {
+        // 전면 광고 표시 (백업 완료 - 자연스러운 타이밍)
+        forceShowInterstitial();
+
         const message = backupMethod === 'local'
           ? `백업이 완료되었습니다.\n\n파일: ${result.fileName}\n\n앱 내부 저장소에 저장되었습니다.`
           : `백업이 완료되었습니다.\n${result.fileName || ''}`;
@@ -217,6 +231,9 @@ export default function SettingsScreen({ navigation }: any) {
               const result = await googleDriveManager.downloadAndRestore(fileId);
 
               if (result.success && result.stats) {
+                // 전면 광고 표시 (복원 완료 - 자연스러운 타이밍)
+                forceShowInterstitial();
+
                 const statsText = `
 카테고리: ${result.stats.categories}개
 거래: ${result.stats.transactions}개
@@ -282,6 +299,9 @@ export default function SettingsScreen({ navigation }: any) {
       const result = await backupManager.restoreFromFile();
 
       if (result.success && result.stats) {
+        // 전면 광고 표시 (복원 완료 - 자연스러운 타이밍)
+        forceShowInterstitial();
+
         const statsText = `
 카테고리: ${result.stats.categories}개
 계좌: ${result.stats.accounts}개
@@ -351,6 +371,9 @@ export default function SettingsScreen({ navigation }: any) {
   };
 
   return (
+    <>
+    {/* 전면 광고 컴포넌트 */}
+    {InterstitialAdComponent}
     <View style={[styles.container, { backgroundColor: currentTheme.colors.background }]}>
       {/* 헤더 */}
       <LinearGradient
@@ -374,11 +397,11 @@ export default function SettingsScreen({ navigation }: any) {
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
         {/* 화면 설정 섹션 */}
         <View style={styles.section}>
-          <RNText style={[styles.sectionTitle, { color: currentTheme.colors.textSecondary }]}>화면 설정</RNText>
+          <RNText style={[styles.sectionTitle, { color: currentTheme.colors.textSecondary }]}>{t.settings.display}</RNText>
           <View style={[styles.card, { backgroundColor: currentTheme.colors.surface }]}>
             <SettingItem
               icon="moon"
-              title="다크 모드"
+              title={t.settings.darkMode}
               subtitle={getThemeModeLabel()}
               iconColor={isDark ? '#FFD700' : currentTheme.colors.primary}
               rightComponent={
@@ -389,6 +412,14 @@ export default function SettingsScreen({ navigation }: any) {
                   thumbColor={isDark ? '#FFD700' : '#f4f3f4'}
                 />
               }
+            />
+            <View style={[styles.divider, { backgroundColor: currentTheme.colors.divider }]} />
+            <SettingItem
+              icon="language"
+              title={t.settings.language}
+              subtitle={`${LANGUAGES[language].flag} ${LANGUAGES[language].nativeName}`}
+              onPress={() => setShowLanguageDialog(true)}
+              iconColor="#9C27B0"
             />
           </View>
         </View>
@@ -456,21 +487,35 @@ export default function SettingsScreen({ navigation }: any) {
           </View>
         )}
 
+        {/* 도움말 섹션 */}
+        <View style={styles.section}>
+          <RNText style={[styles.sectionTitle, { color: currentTheme.colors.textSecondary }]}>{t.help.title}</RNText>
+          <View style={[styles.card, { backgroundColor: currentTheme.colors.surface }]}>
+            <SettingItem
+              icon="book"
+              title={t.help.title}
+              subtitle={t.help.subtitle}
+              onPress={() => navigation.navigate('Help')}
+              iconColor="#FF9621"
+            />
+          </View>
+        </View>
+
         {/* 앱 정보 섹션 */}
         <View style={styles.section}>
-          <RNText style={[styles.sectionTitle, { color: currentTheme.colors.textSecondary }]}>앱 정보</RNText>
+          <RNText style={[styles.sectionTitle, { color: currentTheme.colors.textSecondary }]}>{t.settings.appInfo}</RNText>
           <View style={[styles.card, { backgroundColor: currentTheme.colors.surface }]}>
             <SettingItem
               icon="information-circle"
-              title="버전"
+              title={t.settings.version}
               subtitle="1.0.0"
               rightIcon="checkmark-circle"
             />
             <View style={[styles.divider, { backgroundColor: currentTheme.colors.divider }]} />
             <SettingItem
               icon="person"
-              title="개발자"
-              subtitle="가계부 모바일 앱"
+              title={t.settings.developer}
+              subtitle={t.app.name}
               rightIcon="heart"
               iconColor={currentTheme.colors.accent}
             />
@@ -648,7 +693,47 @@ export default function SettingsScreen({ navigation }: any) {
             </ScrollView>
           </Dialog.ScrollArea>
           <Dialog.Actions>
-            <Button onPress={() => setShowDriveListDialog(false)}>닫기</Button>
+            <Button onPress={() => setShowDriveListDialog(false)}>{t.common.close}</Button>
+          </Dialog.Actions>
+        </Dialog>
+
+        {/* 언어 선택 다이얼로그 */}
+        <Dialog visible={showLanguageDialog} onDismiss={() => setShowLanguageDialog(false)}>
+          <Dialog.Title>{t.settings.selectLanguage}</Dialog.Title>
+          <Dialog.Content>
+            {(Object.keys(LANGUAGES) as Language[]).map((lang) => (
+              <TouchableOpacity
+                key={lang}
+                style={[
+                  styles.languageItem,
+                  language === lang && styles.languageItemSelected,
+                  { backgroundColor: language === lang ? `${currentTheme.colors.primary}15` : 'transparent' }
+                ]}
+                onPress={() => {
+                  setLanguage(lang);
+                  setShowLanguageDialog(false);
+                }}
+              >
+                <RNText style={styles.languageFlag}>{LANGUAGES[lang].flag}</RNText>
+                <View style={styles.languageTextContainer}>
+                  <RNText style={[
+                    styles.languageNative,
+                    { color: language === lang ? currentTheme.colors.primary : currentTheme.colors.text }
+                  ]}>
+                    {LANGUAGES[lang].nativeName}
+                  </RNText>
+                  <RNText style={[styles.languageEnglish, { color: currentTheme.colors.textSecondary }]}>
+                    {LANGUAGES[lang].name}
+                  </RNText>
+                </View>
+                {language === lang && (
+                  <Ionicons name="checkmark-circle" size={24} color={currentTheme.colors.primary} />
+                )}
+              </TouchableOpacity>
+            ))}
+          </Dialog.Content>
+          <Dialog.Actions>
+            <Button onPress={() => setShowLanguageDialog(false)}>{t.common.close}</Button>
           </Dialog.Actions>
         </Dialog>
 
@@ -662,6 +747,7 @@ export default function SettingsScreen({ navigation }: any) {
         onError={handleOAuthError}
       />
     </View>
+    </>
   );
 }
 
@@ -838,5 +924,33 @@ const styles = StyleSheet.create({
     color: theme.colors.primary,
     fontSize: 15,
     fontWeight: '600',
+  },
+
+  // 언어 선택
+  languageItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 12,
+    marginBottom: 8,
+  },
+  languageItemSelected: {
+    borderWidth: 1,
+    borderColor: theme.colors.primary,
+  },
+  languageFlag: {
+    fontSize: 28,
+    marginRight: 12,
+  },
+  languageTextContainer: {
+    flex: 1,
+  },
+  languageNative: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  languageEnglish: {
+    fontSize: 13,
+    marginTop: 2,
   },
 });

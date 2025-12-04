@@ -1,145 +1,146 @@
 /**
- * Dokterian - Doctor Appointment Mobile App Theme (Figma API 기반 정확한 색상)
+ * Doctor Appointment - Consultation App UI Kit Theme
  *
- * Figma 파일: Dokterian - Doctor Appointment Mobile App (Community)
+ * Figma 파일: Doctor Appointment - Consultation App UI Kit | Case Study (Community)
+ * URL: figma.com/design/E06gDZVKgjfteu9sHVUfZB
  *
- * 색상 팔레트 (Figma에서 추출):
- * - Primary: 스카이블루 (#1FB9FC)
- * - Accent: 핑크 (#DD3E7B)
- * - Text Primary: 다크네이비 (#22315B)
- * - Text Secondary: 연보라 (#8C99BE)
- * - Background: 연한 회색 (#F5F5F5)
- * - Card: 흰색 (#FFFFFF)
+ * 색상 팔레트 (Figma API에서 추출):
+ * - Primary: 틸 블루 (#0B8FAC)
+ * - Gradient: 민트 그린 (#7BC1B7 → #D2EBE7)
+ * - Text Primary: 다크 (#222222)
+ * - Background: 화이트 (#FFFFFF)
+ * - Card: 화이트 (#FFFFFF)
  */
 
 // 라이트 테마 색상
 const lightColors = {
-  // Primary (스카이블루 - Figma 정확한 색상)
-  primary: '#1FB9FC',
-  primaryLight: '#5CCFFF',
-  primaryDark: '#0A9FE0',
+  // Primary (틸 블루 - Figma 추출 색상)
+  primary: '#0B8FAC',
+  primaryLight: '#7BC1B7',
+  primaryDark: '#087A94',
 
-  // Accent (핑크)
-  accent: '#DD3E7B',
-  accentLight: '#E96A99',
+  // Accent (민트 그린)
+  accent: '#7BC1B7',
+  accentLight: '#D2EBE7',
 
   // 배경색
-  background: '#F5F5F5',
+  background: '#F8FAFB',
   surface: '#FFFFFF',
-  surfaceVariant: '#F8F9FC',
+  surfaceVariant: '#F0F5F4',
 
-  // 텍스트 (다크네이비)
-  text: '#22315B',
-  textSecondary: '#8C99BE',
-  textMuted: '#B8C0D9',
-  textTertiary: '#A0A8C0',
+  // 텍스트
+  text: '#222222',
+  textSecondary: '#6B7280',
+  textMuted: '#9CA3AF',
+  textTertiary: '#B0B7C3',
 
   // 상태 색상
-  income: '#2ED573',      // 수입 - 밝은 녹색
-  expense: '#FF6B6B',     // 지출 - 밝은 빨강
-  warning: '#FFBE21',     // 경고 - 노랑
-  info: '#1FB9FC',        // 정보 - 프라이머리
+  income: '#10B981',      // 수입 - 에메랄드 그린
+  expense: '#EF4444',     // 지출 - 레드
+  warning: '#F59E0B',     // 경고 - 앰버
+  info: '#0B8FAC',        // 정보 - 프라이머리
 
   // 구분선
-  border: '#E8ECF4',
-  divider: '#F0F3F8',
+  border: '#E5E7EB',
+  divider: '#F3F4F6',
 
   // 버튼
-  buttonPrimary: '#1FB9FC',
-  buttonSecondary: '#22315B',
-  buttonDisabled: '#B8C0D9',
+  buttonPrimary: '#0B8FAC',
+  buttonSecondary: '#222222',
+  buttonDisabled: '#9CA3AF',
 
   // 카드 그림자
-  shadow: 'rgba(34, 49, 91, 0.1)',
+  shadow: 'rgba(0, 0, 0, 0.08)',
 };
 
 // 다크 테마 색상
 const darkColors = {
-  // Primary (스카이블루 - 밝기 조정)
-  primary: '#1FB9FC',
-  primaryLight: '#5CCFFF',
-  primaryDark: '#0A9FE0',
+  // Primary (틸 블루 - 다크 모드용 밝기 조정)
+  primary: '#0B8FAC',
+  primaryLight: '#7BC1B7',
+  primaryDark: '#087A94',
 
-  // Accent (핑크)
-  accent: '#E96A99',
-  accentLight: '#FF8AB3',
+  // Accent (민트 그린)
+  accent: '#7BC1B7',
+  accentLight: '#D2EBE7',
 
   // 배경색 (다크)
-  background: '#121212',
-  surface: '#1E1E1E',
-  surfaceVariant: '#2A2A2A',
+  background: '#111827',
+  surface: '#1F2937',
+  surfaceVariant: '#374151',
 
   // 텍스트 (밝은 색상)
-  text: '#FFFFFF',
-  textSecondary: '#A0A8C0',
-  textMuted: '#6B7280',
-  textTertiary: '#9CA3AF',
+  text: '#F9FAFB',
+  textSecondary: '#D1D5DB',
+  textMuted: '#9CA3AF',
+  textTertiary: '#6B7280',
 
   // 상태 색상 (다크 모드에서 더 밝게)
-  income: '#34D399',      // 수입 - 밝은 녹색
+  income: '#34D399',      // 수입 - 에메랄드
   expense: '#F87171',     // 지출 - 밝은 빨강
-  warning: '#FBBF24',     // 경고 - 노랑
-  info: '#38BDF8',        // 정보 - 프라이머리
+  warning: '#FBBF24',     // 경고 - 앰버
+  info: '#0B8FAC',        // 정보 - 프라이머리
 
   // 구분선 (다크)
   border: '#374151',
-  divider: '#2D3748',
+  divider: '#4B5563',
 
   // 버튼
-  buttonPrimary: '#1FB9FC',
-  buttonSecondary: '#E5E7EB',
+  buttonPrimary: '#0B8FAC',
+  buttonSecondary: '#F9FAFB',
   buttonDisabled: '#4B5563',
 
   // 카드 그림자
-  shadow: 'rgba(0, 0, 0, 0.3)',
+  shadow: 'rgba(0, 0, 0, 0.4)',
 };
 
 export const theme = {
   // 메인 색상
   colors: {
-    // Primary (스카이블루 - Figma 정확한 색상)
-    primary: '#1FB9FC',
-    primaryLight: '#5CCFFF',
-    primaryDark: '#0A9FE0',
+    // Primary (틸 블루 - Figma 추출 색상)
+    primary: '#0B8FAC',
+    primaryLight: '#7BC1B7',
+    primaryDark: '#087A94',
 
-    // Accent (핑크)
-    accent: '#DD3E7B',
-    accentLight: '#E96A99',
+    // Accent (민트 그린)
+    accent: '#7BC1B7',
+    accentLight: '#D2EBE7',
 
     // 배경색
-    background: '#F5F5F5',
+    background: '#F8FAFB',
     surface: '#FFFFFF',
-    surfaceVariant: '#F8F9FC',
+    surfaceVariant: '#F0F5F4',
 
-    // 텍스트 (다크네이비)
-    text: '#22315B',
-    textSecondary: '#8C99BE',
-    textMuted: '#B8C0D9',
+    // 텍스트
+    text: '#222222',
+    textSecondary: '#6B7280',
+    textMuted: '#9CA3AF',
+    textTertiary: '#B0B7C3',
 
     // 상태 색상
-    income: '#2ED573',      // 수입 - 밝은 녹색
-    expense: '#FF6B6B',     // 지출 - 밝은 빨강
-    warning: '#FFBE21',     // 경고 - 노랑
-    info: '#1FB9FC',        // 정보 - 프라이머리
+    income: '#10B981',      // 수입 - 에메랄드 그린
+    expense: '#EF4444',     // 지출 - 레드
+    warning: '#F59E0B',     // 경고 - 앰버
+    info: '#0B8FAC',        // 정보 - 프라이머리
 
     // 구분선
-    border: '#E8ECF4',
-    divider: '#F0F3F8',
+    border: '#E5E7EB',
+    divider: '#F3F4F6',
 
     // 버튼
-    buttonPrimary: '#1FB9FC',
-    buttonSecondary: '#22315B',
-    buttonDisabled: '#B8C0D9',
+    buttonPrimary: '#0B8FAC',
+    buttonSecondary: '#222222',
+    buttonDisabled: '#9CA3AF',
 
     // 카드 그림자
-    shadow: 'rgba(34, 49, 91, 0.1)',
+    shadow: 'rgba(0, 0, 0, 0.08)',
   },
 
-  // 그라데이션
+  // 그라데이션 (민트 그린 계열)
   gradients: {
-    primary: ['#5CCFFF', '#1FB9FC'],
-    header: ['#1FB9FC', '#0A9FE0'],
-    accent: ['#E96A99', '#DD3E7B'],
+    primary: ['#7BC1B7', '#0B8FAC'],
+    header: ['#0B8FAC', '#087A94'],
+    accent: ['#D2EBE7', '#7BC1B7'],
   },
 
   // 간격
@@ -151,17 +152,17 @@ export const theme = {
     xl: 32,
   },
 
-  // 둥근 모서리 (Dokterian: 부드러운 라운드)
+  // 둥근 모서리 (Doctor Appointment 스타일)
   borderRadius: {
     sm: 8,
     md: 12,
     lg: 16,
     xl: 24,
-    xxl: 32,
+    xxl: 30,
     full: 9999,
   },
 
-  // 폰트 크기 (Nunito 스타일)
+  // 폰트 크기 (Satoshi/Poppins 스타일)
   fontSize: {
     xs: 10,
     sm: 12,
@@ -172,7 +173,7 @@ export const theme = {
     xxxl: 32,
   },
 
-  // 폰트 굵기 (Nunito Bold, ExtraBold)
+  // 폰트 굵기
   fontWeight: {
     normal: '400' as const,
     medium: '500' as const,
@@ -181,37 +182,37 @@ export const theme = {
     extrabold: '800' as const,
   },
 
-  // 그림자 (Dokterian 스타일 - 부드러운 그림자)
+  // 그림자 (Doctor Appointment 스타일 - 부드러운 그림자)
   shadows: {
     sm: {
-      shadowColor: '#22315B',
+      shadowColor: '#000000',
       shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.06,
+      shadowOpacity: 0.05,
       shadowRadius: 8,
       elevation: 2,
     },
     md: {
-      shadowColor: '#22315B',
+      shadowColor: '#000000',
       shadowOffset: { width: 0, height: 4 },
       shadowOpacity: 0.08,
-      shadowRadius: 16,
+      shadowRadius: 12,
       elevation: 4,
     },
     lg: {
-      shadowColor: '#22315B',
-      shadowOffset: { width: 0, height: 8 },
-      shadowOpacity: 0.12,
-      shadowRadius: 24,
+      shadowColor: '#000000',
+      shadowOffset: { width: 0, height: 6 },
+      shadowOpacity: 0.15,
+      shadowRadius: 20,
       elevation: 8,
     },
   },
 };
 
-// 다크 테마용 그라데이션 (단일 색상으로 통일)
+// 다크 테마용 그라데이션 (다크 모드용)
 const darkGradients = {
-  primary: ['#1E1E1E', '#1E1E1E'],
-  header: ['#1E1E1E', '#1E1E1E'],
-  accent: ['#1E1E1E', '#1E1E1E'],
+  primary: ['#1F2937', '#1F2937'],
+  header: ['#1F2937', '#111827'],
+  accent: ['#374151', '#1F2937'],
 };
 
 // 테마 생성 함수

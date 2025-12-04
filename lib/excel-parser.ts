@@ -11,6 +11,7 @@ export interface ColumnMapping {
   source: string; // 원본 컬럼명
   target:
     | 'date'
+    | 'time'
     | 'amount'
     | 'merchant'
     | 'memo'
@@ -512,6 +513,12 @@ export function suggestColumnMapping(headers: string[]): ColumnMapping[] {
     'date', 'transaction date', 'trans date', 'posting date'
   ];
 
+  // 시간 관련 패턴 (별도 컬럼인 경우)
+  const timePatterns = [
+    '거래시간', '이용시간', '승인시간', '시간', '처리시간', '발생시간',
+    'time', 'transaction time', 'trans time'
+  ];
+
   // 금액 관련 패턴
   const amountPatterns = [
     '이용금액', '승인금액', '청구금액', '공급가액', '매출금액', '출금', '입금', '금액',
@@ -566,6 +573,10 @@ export function suggestColumnMapping(headers: string[]): ColumnMapping[] {
     if (datePatterns.some((p) => lowerHeader.includes(p.toLowerCase()))) {
       mapping.push({ source: header, target: 'date' });
     } else if (
+      timePatterns.some((p) => lowerHeader.includes(p.toLowerCase()))
+    ) {
+      mapping.push({ source: header, target: 'time' });
+    } else if (
       !isExcludedAmount &&
       amountPatterns.some((p) => lowerHeader.includes(p.toLowerCase()))
     ) {
@@ -590,6 +601,40 @@ export function suggestColumnMapping(headers: string[]): ColumnMapping[] {
   }
 
   return mapping;
+}
+
+/**
+ * 시간 문자열 추출 (HH:mm:ss 또는 HH:mm 형식)
+ */
+export function extractTime(value: any): string | null {
+  if (!value) return null;
+
+  const str = String(value).trim();
+
+  // 날짜+시간 형식에서 시간 추출 (예: "2024-01-15 14:30:00" -> "14:30:00")
+  if (str.includes(' ')) {
+    const timePart = str.split(' ')[1];
+    if (timePart) {
+      // HH:mm:ss 또는 HH:mm 형식 확인
+      if (/^\d{1,2}:\d{2}(:\d{2})?$/.test(timePart)) {
+        // HH:mm 형식이면 :00 추가
+        if (/^\d{1,2}:\d{2}$/.test(timePart)) {
+          return timePart.padStart(5, '0') + ':00';
+        }
+        return timePart;
+      }
+    }
+  }
+
+  // 시간만 있는 경우 (예: "14:30:00")
+  if (/^\d{1,2}:\d{2}(:\d{2})?$/.test(str)) {
+    if (/^\d{1,2}:\d{2}$/.test(str)) {
+      return str.padStart(5, '0') + ':00';
+    }
+    return str;
+  }
+
+  return null;
 }
 
 /**
@@ -793,6 +838,7 @@ export function inferTransactionType(
  */
 export interface NormalizedTransaction {
   date: string;
+  time?: string; // HH:mm:ss 형식
   amount: number;
   type: 'expense' | 'income';
   merchant?: string;
@@ -826,6 +872,18 @@ export function applyMapping(
       switch (map.target) {
         case 'date':
           normalized.date = normalizeDate(value) || undefined;
+          // 날짜 컬럼에서 시간도 함께 추출 (예: "2024-01-15 14:30:00")
+          const timeFromDate = extractTime(value);
+          if (timeFromDate && !normalized.time) {
+            normalized.time = timeFromDate;
+          }
+          break;
+        case 'time':
+          // 별도 시간 컬럼 처리
+          const timeValue = extractTime(value);
+          if (timeValue) {
+            normalized.time = timeValue;
+          }
           break;
         case 'amount':
           const columnLower = map.source.toLowerCase();

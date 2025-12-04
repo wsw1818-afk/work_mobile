@@ -21,10 +21,14 @@ import { format } from 'date-fns';
 import { database, Category, Account } from '../lib/db/database';
 import { theme } from '../lib/theme';
 import { useTheme } from '../lib/ThemeContext';
+import { useInterstitialAd } from '../components/InterstitialAd';
+import { useTransactionContext } from '../lib/TransactionContext';
 
 export default function AddTransactionScreen({ navigation }: any) {
   const { theme: currentTheme } = useTheme();
   const insets = useSafeAreaInsets();
+  const { showInterstitial, InterstitialAdComponent } = useInterstitialAd();
+  const { notifyTransactionAdded } = useTransactionContext();
   const [type, setType] = useState<'income' | 'expense'>('expense');
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
@@ -98,6 +102,12 @@ export default function AddTransactionScreen({ navigation }: any) {
         date,
       });
 
+      // 다른 화면에 거래 추가됨 알림 (실시간 반영)
+      notifyTransactionAdded();
+
+      // 전면 광고 표시 (5번마다 1번)
+      showInterstitial();
+
       // 성공 알림
       Alert.alert('성공', '거래가 추가되었습니다.', [
         {
@@ -119,6 +129,9 @@ export default function AddTransactionScreen({ navigation }: any) {
   };
 
   return (
+    <>
+    {/* 전면 광고 컴포넌트 */}
+    {InterstitialAdComponent}
     <KeyboardAvoidingView
       style={[styles.container, { backgroundColor: currentTheme.colors.background }]}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -336,6 +349,7 @@ export default function AddTransactionScreen({ navigation }: any) {
         <View style={{ height: 40 }} />
       </ScrollView>
     </KeyboardAvoidingView>
+    </>
   );
 }
 

@@ -9,6 +9,7 @@ import { ko } from 'date-fns/locale';
 import { database, Transaction } from '../lib/db/database';
 import { theme } from '../lib/theme';
 import { useTheme } from '../lib/ThemeContext';
+import { useTransactionContext } from '../lib/TransactionContext';
 
 // 거래 항목 메모이제이션 컴포넌트
 const TransactionItem = memo(({ transaction }: { transaction: Transaction }) => (
@@ -73,6 +74,7 @@ const GroupCard = memo(({ group, onPress }: {
 export default function DashboardScreen({ navigation }: any) {
   const insets = useSafeAreaInsets();
   const { theme: currentTheme } = useTheme();
+  const { lastUpdate } = useTransactionContext();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [monthSummary, setMonthSummary] = useState({ income: 0, expense: 0 });
@@ -156,9 +158,10 @@ export default function DashboardScreen({ navigation }: any) {
     }
   }, [year, month]);
 
+  // lastUpdate가 변경되면 데이터 새로고침 (거래 추가/삭제 시 실시간 반영)
   useEffect(() => {
     loadData();
-  }, [loadData]);
+  }, [loadData, lastUpdate]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
