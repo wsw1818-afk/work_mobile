@@ -8,9 +8,11 @@ import { useFocusEffect } from '@react-navigation/native';
 import { database, BankAccount, Account } from '../lib/db/database';
 import { theme } from '../lib/theme';
 import { useTheme } from '../lib/ThemeContext';
+import { useTransactionContext } from '../lib/TransactionContext';
 
 export default function BankAccountsScreen({ navigation }: any) {
   const { theme: currentTheme } = useTheme();
+  const { refreshData } = useTransactionContext();
   const insets = useSafeAreaInsets();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);

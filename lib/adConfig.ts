@@ -52,7 +52,7 @@ export const ADMOB_PRODUCTION_IDS = {
 
 // 현재 환경에 따른 광고 ID 선택
 // ⚠️ 릴리즈 빌드 시 true로 설정!
-const IS_PRODUCTION = false; // 테스트 모드 (개발자 테스트용)
+const IS_PRODUCTION = true; // 프로덕션 모드 (플레이스토어용)
 
 export const ADMOB_IDS = IS_PRODUCTION ? ADMOB_PRODUCTION_IDS : ADMOB_TEST_IDS;
 

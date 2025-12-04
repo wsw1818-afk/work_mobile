@@ -145,6 +145,16 @@ export default function DashboardScreen({ navigation }: any) {
         database.getTransactions(startDate, endDate, false),
       ]);
 
+      console.log('=== Dashboard Data ===');
+      console.log('Summary:', dashboardData.summary);
+      console.log('Transactions count:', transactions.length);
+      console.log('First 3 transactions:', transactions.slice(0, 3).map(t => ({
+        type: t.type,
+        amount: t.amount,
+        categoryName: t.categoryName,
+        date: t.date
+      })));
+
       setMonthSummary(dashboardData.summary);
       setGroupStats(dashboardData.groupStats);
 

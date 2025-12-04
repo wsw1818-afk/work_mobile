@@ -20,6 +20,7 @@ import {
 import { database, Category, ExpenseGroup } from '../lib/db/database';
 import { theme } from '../lib/theme';
 import { useTheme } from '../lib/ThemeContext';
+import { useTransactionContext } from '../lib/TransactionContext';
 
 const GROUP_COLORS = [
   '#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#6366f1',
@@ -51,6 +52,7 @@ const PRESET_COLORS = [
 
 export default function CategoriesScreen({ navigation }: any) {
   const { theme: currentTheme } = useTheme();
+  const { notifyCategoryChanged } = useTransactionContext();
   const insets = useSafeAreaInsets();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -62,8 +64,9 @@ export default function CategoriesScreen({ navigation }: any) {
   const [selectedGroupId, setSelectedGroupId] = useState<number | null>(null);
   const [groupMenuVisible, setGroupMenuVisible] = useState(false);
 
-  // 추가 모달
+  // 추가/수정 모달
   const [addModalVisible, setAddModalVisible] = useState(false);
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [newCategoryColor, setNewCategoryColor] = useState(PRESET_COLORS[0]);
   const [excludeFromStats, setExcludeFromStats] = useState(false);
   const categoryNameRef = useRef<KoreanTextInputRef>(null);
@@ -101,34 +104,59 @@ export default function CategoriesScreen({ navigation }: any) {
     loadCategories();
   }, [loadCategories]);
 
-  const handleAddCategory = async () => {
-    const newCategoryName = categoryNameRef.current?.getValue() || '';
+  // 카테고리 수정 모달 열기
+  const openEditCategory = (category: Category) => {
+    setEditingCategory(category);
+    setNewCategoryColor(category.color);
+    setExcludeFromStats(category.excludeFromStats === true);
+    setSelectedGroupId(category.groupId || null);
+    setAddModalVisible(true);
+    setTimeout(() => {
+      categoryNameRef.current?.setValue(category.name);
+    }, 100);
+  };
 
-    if (!newCategoryName.trim()) {
+  const handleSaveCategory = async () => {
+    const categoryName = categoryNameRef.current?.getValue() || '';
+
+    if (!categoryName.trim()) {
       Alert.alert('오류', '카테고리 이름을 입력해주세요.');
       return;
     }
 
     try {
-      await database.addCategory({
-        name: newCategoryName.trim(),
-        type,
-        color: newCategoryColor,
-        excludeFromStats: excludeFromStats,
-        groupId: type === 'expense' ? selectedGroupId ?? undefined : undefined,
-      });
+      if (editingCategory) {
+        // 수정
+        await database.updateCategory(editingCategory.id, {
+          name: categoryName.trim(),
+          color: newCategoryColor,
+          excludeFromStats: excludeFromStats,
+          groupId: type === 'expense' ? selectedGroupId ?? undefined : undefined,
+        });
+        Alert.alert('성공', '카테고리가 수정되었습니다.');
+      } else {
+        // 추가
+        await database.addCategory({
+          name: categoryName.trim(),
+          type,
+          color: newCategoryColor,
+          excludeFromStats: excludeFromStats,
+          groupId: type === 'expense' ? selectedGroupId ?? undefined : undefined,
+        });
+        Alert.alert('성공', '카테고리가 추가되었습니다.');
+      }
 
       setAddModalVisible(false);
+      setEditingCategory(null);
       if (categoryNameRef.current) categoryNameRef.current.clear();
       setNewCategoryColor(PRESET_COLORS[0]);
       setSelectedGroupId(null);
       setExcludeFromStats(false);
       loadCategories();
-
-      Alert.alert('성공', '카테고리가 추가되었습니다.');
+      notifyCategoryChanged(); // 대시보드 실시간 업데이트
     } catch (error: any) {
-      console.error('Failed to add category:', error);
-      Alert.alert('오류', error.message || '카테고리 추가에 실패했습니다.');
+      console.error('Failed to save category:', error);
+      Alert.alert('오류', error.message || '카테고리 저장에 실패했습니다.');
     }
   };
 
@@ -196,6 +224,7 @@ export default function CategoriesScreen({ navigation }: any) {
         showOnDashboard: currentValue === false ? true : false
       });
       loadCategories();
+      notifyCategoryChanged(); // 대시보드 실시간 업데이트
     } catch (error) {
       console.error('Failed to update category:', error);
       Alert.alert('오류', '설정 변경에 실패했습니다.');
@@ -322,7 +351,11 @@ export default function CategoriesScreen({ navigation }: any) {
           ) : (
             categories.map((category, index) => (
               <View key={category.id}>
-                <View style={styles.categoryItem}>
+                <TouchableOpacity
+                  style={styles.categoryItem}
+                  onPress={() => openEditCategory(category)}
+                  activeOpacity={0.7}
+                >
                   <View style={styles.categoryLeft}>
                     <View
                       style={[
@@ -383,7 +416,7 @@ export default function CategoriesScreen({ navigation }: any) {
                       </Text>
                     </View>
                   </View>
-                </View>
+                </TouchableOpacity>
                 {index < categories.length - 1 && <View style={styles.divider} />}
               </View>
             ))
@@ -416,6 +449,7 @@ export default function CategoriesScreen({ navigation }: any) {
           visible={addModalVisible}
           onDismiss={() => {
             setAddModalVisible(false);
+            setEditingCategory(null);
             if (categoryNameRef.current) categoryNameRef.current.clear();
             setNewCategoryColor(PRESET_COLORS[0]);
             setSelectedGroupId(null);
@@ -424,7 +458,7 @@ export default function CategoriesScreen({ navigation }: any) {
           contentContainerStyle={styles.modalContainer}
         >
           <Text variant="titleLarge" style={styles.modalTitle}>
-            카테고리 추가
+            {editingCategory ? '카테고리 수정' : '카테고리 추가'}
           </Text>
 
           <Text variant="bodyMedium" style={styles.inputLabel}>
@@ -533,8 +567,8 @@ export default function CategoriesScreen({ navigation }: any) {
           </Text>
 
           <View style={styles.modalButtons}>
-            <Button mode="outlined" onPress={() => { setAddModalVisible(false); if (categoryNameRef.current) categoryNameRef.current.clear(); setNewCategoryColor(PRESET_COLORS[0]); setSelectedGroupId(null); setExcludeFromStats(false); }} style={styles.modalButton}>취소</Button>
-            <Button mode="contained" onPress={handleAddCategory} style={styles.modalButton}>추가</Button>
+            <Button mode="outlined" onPress={() => { setAddModalVisible(false); setEditingCategory(null); if (categoryNameRef.current) categoryNameRef.current.clear(); setNewCategoryColor(PRESET_COLORS[0]); setSelectedGroupId(null); setExcludeFromStats(false); }} style={styles.modalButton}>취소</Button>
+            <Button mode="contained" onPress={handleSaveCategory} style={styles.modalButton}>{editingCategory ? '수정' : '추가'}</Button>
           </View>
         </Modal>
 
