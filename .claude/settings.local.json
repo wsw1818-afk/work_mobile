@@ -64,7 +64,8 @@
       "Bash(cmd /c \"copy /Y \"\"H:\\Claude_work\\gagyebu-native\\android\\app\\build\\outputs\\apk\\debug\\app-debug.apk\"\" \"\"D:\\OneDrive\\코드작업\\결과물\\gagyebu-native-debug.apk\"\"\")",
       "Bash(cmd /c \"dir \"\"D:\\OneDrive\\코드작업\\결과물\\gagyebu-native-debug.apk\"\" 2>nul\")",
       "Bash(cmd /c \"if not exist \"\"D:\\OneDrive\\코드작업\\결과물\\gagyebu\"\" mkdir \"\"D:\\OneDrive\\코드작업\\결과물\\gagyebu\"\"\")",
-      "Bash(cmd /c:*)"
+      "Bash(cmd /c:*)",
+      "Bash(gh api:*)"
     ],
     "deny": [],
     "ask": [],
