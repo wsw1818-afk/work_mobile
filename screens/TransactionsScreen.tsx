@@ -83,7 +83,7 @@ export default function TransactionsScreen({ navigation }: any) {
   const [editAmount, setEditAmount] = useState('');
   const [editDescription, setEditDescription] = useState('');
   const [editDate, setEditDate] = useState('');
-  const [editType, setEditType] = useState<'income' | 'expense'>('expense');
+  const [editType, setEditType] = useState<'income' | 'expense' | 'transfer' | 'refund'>('expense');
   const [categories, setCategories] = useState<Category[]>([]);
   const [editCategory, setEditCategory] = useState<Category | null>(null);
   const [categoryMenuVisible, setCategoryMenuVisible] = useState(false);
@@ -176,8 +176,9 @@ export default function TransactionsScreen({ navigation }: any) {
     setEditDate(transaction.date);
     setEditType(transaction.type);
 
-    // 카테고리 목록 로드
-    const cats = await database.getCategories(transaction.type);
+    // 카테고리 목록 로드 (transfer/refund는 expense 카테고리 사용)
+    const categoryType = transaction.type === 'income' ? 'income' : 'expense';
+    const cats = await database.getCategories(categoryType);
     setCategories(cats);
     const selectedCat = cats.find((c) => c.id === transaction.categoryId);
     setEditCategory(selectedCat || null);

@@ -1,1 +1,1 @@
-📝 글로벌 지침 업데이트 (gagyebu v1.1.0, GitHub Pages, 개인정보처리방침)
+🔧 TypeScript 경고 수정 및 불필요 파일 정리

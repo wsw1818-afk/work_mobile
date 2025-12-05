@@ -5,6 +5,12 @@
 
 import { LogBox } from 'react-native';
 
+// React Native ErrorUtils 타입 선언
+declare const ErrorUtils: {
+  setGlobalHandler: (handler: (error: Error, isFatal: boolean) => void) => void;
+  getGlobalHandler: () => (error: Error, isFatal: boolean) => void;
+};
+
 // 에러 로그 저장소
 export const errorLogs: Array<{
   timestamp: string;
@@ -51,10 +57,10 @@ export function logError(
  */
 export function setupGlobalErrorHandler() {
   // 기존 에러 핸들러 저장
-  const originalErrorHandler = global.ErrorUtils.getGlobalHandler();
+  const originalErrorHandler = ErrorUtils.getGlobalHandler();
 
   // 새로운 에러 핸들러 설정
-  global.ErrorUtils.setGlobalHandler((error, isFatal) => {
+  ErrorUtils.setGlobalHandler((error: Error, isFatal: boolean) => {
     logError(
       'error',
       `Global Error (Fatal: ${isFatal}): ${error.message}`,

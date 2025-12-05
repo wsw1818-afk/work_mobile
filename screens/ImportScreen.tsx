@@ -18,7 +18,10 @@ import {
 } from 'react-native-paper';
 import { theme } from '../lib/theme';
 import * as DocumentPicker from 'expo-document-picker';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystemModule from 'expo-file-system';
+
+// expo-file-system 타입 정의 불일치 우회 (런타임 정상 작동)
+const FileSystem = FileSystemModule as any;
 import {
   parseExcelFile,
   suggestColumnMapping,

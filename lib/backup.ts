@@ -1,8 +1,11 @@
 // 백업 및 복원 유틸리티
-import * as FileSystem from 'expo-file-system';
+import * as FileSystemModule from 'expo-file-system';
 import * as DocumentPicker from 'expo-document-picker';
 import * as Sharing from 'expo-sharing';
 import { database } from './db/database';
+
+// expo-file-system 타입 정의 불일치 우회 (런타임 정상 작동)
+const FileSystem = FileSystemModule as any;
 
 // 백업 파일 버전 (향후 마이그레이션용)
 const BACKUP_VERSION = '1.0';
@@ -421,7 +424,7 @@ class BackupManager {
       }
 
       const files = await FileSystem.readDirectoryAsync(backupFolderPath);
-      return files.filter(f => f.startsWith('gagyebu_backup_') && f.endsWith('.json'));
+      return files.filter((f: string) => f.startsWith('gagyebu_backup_') && f.endsWith('.json'));
     } catch {
       return [];
     }

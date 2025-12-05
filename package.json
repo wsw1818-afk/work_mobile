@@ -52,6 +52,8 @@
   },
   "devDependencies": {
     "@types/react": "~18.3.12",
+    "playwright": "^1.57.0",
+    "sharp": "^0.34.5",
     "typescript": "~5.3.3"
   },
   "private": true

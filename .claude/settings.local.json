@@ -65,7 +65,14 @@
       "Bash(cmd /c \"dir \"\"D:\\OneDrive\\코드작업\\결과물\\gagyebu-native-debug.apk\"\" 2>nul\")",
       "Bash(cmd /c \"if not exist \"\"D:\\OneDrive\\코드작업\\결과물\\gagyebu\"\" mkdir \"\"D:\\OneDrive\\코드작업\\결과물\\gagyebu\"\"\")",
       "Bash(cmd /c:*)",
-      "Bash(gh api:*)"
+      "Bash(gh api:*)",
+      "Bash(claude mcp list:*)",
+      "Bash(echo:*)",
+      "Bash(node check-playstore.js:*)",
+      "Bash(timeout /t 5 /nobreak)",
+      "Bash(taskkill:*)",
+      "Bash(node create-store-images.js:*)",
+      "Bash(ls:*)"
     ],
     "deny": [],
     "ask": [],

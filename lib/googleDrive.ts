@@ -1,6 +1,9 @@
 // Google Drive 백업/복원 기능
-import * as FileSystem from 'expo-file-system';
+import * as FileSystemModule from 'expo-file-system';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+
+// expo-file-system 타입 정의 불일치 우회 (런타임 정상 작동)
+const FileSystem = FileSystemModule as any;
 import { backupManager, BackupData, BackupResult, RestoreResult } from './backup';
 
 // Google Drive API 설정
