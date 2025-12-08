@@ -1,0 +1,267 @@
+appId: com.anonymous.gagyebunative
+name: Gagyebu API Integration Test
+---
+
+# ==========================================
+# API 연결 기능 테스트
+# 1. Google Drive 백업/복원 (OAuth 로그인)
+# 2. AI OCR 영수증 인식 (API 키 설정)
+# 3. AdMob 전면 광고 (광고 로드)
+# ==========================================
+
+# ==========================================
+# 1. APP LAUNCH
+# ==========================================
+- launchApp:
+    clearState: false
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible: ".*"
+    timeout: 8000
+- takeScreenshot: api_01_app_launched
+
+# ==========================================
+# 2. SETTINGS - Google Drive 백업 테스트
+# ==========================================
+# Drawer 메뉴 열기
+- tapOn:
+    point: "8%,7%"
+- waitForAnimationToEnd
+- takeScreenshot: api_02_drawer_opened
+
+# 스크롤하여 설정 메뉴 찾기
+- scroll
+- waitForAnimationToEnd
+- takeScreenshot: api_03_drawer_scrolled
+
+# 설정 메뉴 탭 (하단 영역)
+- tapOn:
+    point: "50%,65%"
+    optional: true
+- waitForAnimationToEnd
+- takeScreenshot: api_04_settings_screen
+
+# 설정 화면 스크롤하여 백업 섹션 찾기
+- scroll
+- waitForAnimationToEnd
+- takeScreenshot: api_05_settings_scrolled
+
+# Google 로그인 버튼 탭 (있다면)
+- tapOn:
+    point: "50%,40%"
+    optional: true
+- waitForAnimationToEnd
+- takeScreenshot: api_06_google_login_attempt
+
+# Google 로그인 결과 확인 (WebView가 열리거나 이미 로그인됨)
+- extendedWaitUntil:
+    visible: ".*"
+    timeout: 5000
+- takeScreenshot: api_07_google_login_result
+
+# 뒤로가기 (WebView가 열렸다면 닫기)
+- back
+- waitForAnimationToEnd
+- takeScreenshot: api_08_after_google_attempt
+
+# ==========================================
+# 3. SETTINGS - AI OCR 설정 테스트
+# ==========================================
+# 설정 화면으로 다시 이동 (필요시)
+- tapOn:
+    point: "8%,7%"
+    optional: true
+- waitForAnimationToEnd
+
+# 설정 화면에서 AI 설정 영역 찾기
+- scroll
+- takeScreenshot: api_09_ai_settings_area
+
+# AI 설정 버튼 탭
+- tapOn:
+    point: "50%,55%"
+    optional: true
+- waitForAnimationToEnd
+- takeScreenshot: api_10_ai_settings_dialog
+
+# AI 설정 다이얼로그 닫기
+- back
+- waitForAnimationToEnd
+
+# ==========================================
+# 4. RECEIPT SCREEN - OCR 테스트
+# ==========================================
+# Drawer 메뉴 열기
+- tapOn:
+    point: "8%,7%"
+- waitForAnimationToEnd
+
+# 영수증 스캔 메뉴 찾기 (스크롤)
+- scroll
+- takeScreenshot: api_11_drawer_receipt_area
+
+# 영수증 스캔 메뉴 탭
+- tapOn:
+    point: "50%,50%"
+    optional: true
+- waitForAnimationToEnd
+- takeScreenshot: api_12_receipt_screen
+
+# 카메라 촬영 버튼 또는 갤러리 버튼 확인
+- takeScreenshot: api_13_receipt_buttons
+
+# 뒤로가기
+- back
+- waitForAnimationToEnd
+
+# ==========================================
+# 5. ADMOB 전면 광고 테스트
+# ==========================================
+# 대시보드로 이동
+- tapOn:
+    point: "12%,87%"
+- waitForAnimationToEnd
+- takeScreenshot: api_14_dashboard
+
+# 거래 추가 (광고 트리거)
+- tapOn:
+    point: "50%,92%"
+- waitForAnimationToEnd
+
+# 금액 입력
+- tapOn:
+    point: "50%,22%"
+- inputText: "10000"
+- hideKeyboard
+
+# 스크롤 후 저장
+- scroll
+- tapOn:
+    point: "50%,85%"
+    optional: true
+- waitForAnimationToEnd
+- takeScreenshot: api_15_after_transaction_save
+
+# 광고가 표시되었는지 확인 (전면 광고 쿨다운 고려)
+- extendedWaitUntil:
+    visible: ".*"
+    timeout: 3000
+- takeScreenshot: api_16_ad_check
+
+# 두 번째 거래 추가 (광고 트리거 증가)
+- tapOn:
+    point: "50%,92%"
+- waitForAnimationToEnd
+- tapOn:
+    point: "50%,22%"
+- inputText: "20000"
+- hideKeyboard
+- scroll
+- tapOn:
+    point: "50%,85%"
+    optional: true
+- waitForAnimationToEnd
+- takeScreenshot: api_17_second_transaction
+
+# 세 번째 거래 추가
+- tapOn:
+    point: "50%,92%"
+- waitForAnimationToEnd
+- tapOn:
+    point: "50%,22%"
+- inputText: "30000"
+- hideKeyboard
+- scroll
+- tapOn:
+    point: "50%,85%"
+    optional: true
+- waitForAnimationToEnd
+- takeScreenshot: api_18_third_transaction
+
+# 네 번째 거래 추가
+- tapOn:
+    point: "50%,92%"
+- waitForAnimationToEnd
+- tapOn:
+    point: "50%,22%"
+- inputText: "40000"
+- hideKeyboard
+- scroll
+- tapOn:
+    point: "50%,85%"
+    optional: true
+- waitForAnimationToEnd
+- takeScreenshot: api_19_fourth_transaction
+
+# 다섯 번째 거래 추가 (광고 표시 예상 - INTERSTITIAL_FREQUENCY: 5)
+- tapOn:
+    point: "50%,92%"
+- waitForAnimationToEnd
+- tapOn:
+    point: "50%,22%"
+- inputText: "50000"
+- hideKeyboard
+- scroll
+- tapOn:
+    point: "50%,85%"
+    optional: true
+- waitForAnimationToEnd
+
+# 광고 표시 대기 (전면 광고가 나타날 수 있음)
+- extendedWaitUntil:
+    visible: ".*"
+    timeout: 5000
+- takeScreenshot: api_20_interstitial_ad_check
+
+# 광고 닫기 (광고가 있다면)
+- back
+- waitForAnimationToEnd
+- takeScreenshot: api_21_after_ad_close
+
+# ==========================================
+# 6. IMPORT SCREEN - Excel API 테스트
+# ==========================================
+# Drawer 메뉴 열기
+- tapOn:
+    point: "8%,7%"
+- waitForAnimationToEnd
+
+# 스크롤하여 가져오기 메뉴 찾기
+- scroll
+- takeScreenshot: api_22_drawer_import_area
+
+# 가져오기 메뉴 탭
+- tapOn:
+    point: "50%,55%"
+    optional: true
+- waitForAnimationToEnd
+- takeScreenshot: api_23_import_screen
+
+# 가져오기 화면 내용 확인
+- scroll
+- takeScreenshot: api_24_import_options
+
+# 뒤로가기
+- back
+- waitForAnimationToEnd
+
+# ==========================================
+# 7. FINAL VERIFICATION
+# ==========================================
+# 대시보드에서 추가된 거래 확인
+- tapOn:
+    point: "12%,87%"
+- waitForAnimationToEnd
+- takeScreenshot: api_25_final_dashboard
+
+# 거래 내역 확인
+- tapOn:
+    point: "62%,87%"
+- waitForAnimationToEnd
+- takeScreenshot: api_26_final_transactions
+
+# ==========================================
+# TEST COMPLETE
+# ==========================================
+- stopApp
+

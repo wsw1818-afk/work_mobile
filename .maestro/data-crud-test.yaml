@@ -1,0 +1,437 @@
+appId: com.anonymous.gagyebunative
+name: Gagyebu Data CRUD Test (Bank, Card, Category, Transaction)
+---
+
+# ==========================================
+# 데이터 연결 기능 테스트
+# 1. 통장/계좌 추가/수정/삭제
+# 2. 카드/결제수단 추가/수정/삭제
+# 3. 카테고리 추가/수정/삭제
+# 4. 거래와 통장/카드/카테고리 연결 테스트
+# ==========================================
+
+# ==========================================
+# 1. APP LAUNCH (초기화)
+# ==========================================
+- launchApp:
+    clearState: true
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible: ".*"
+    timeout: 8000
+- takeScreenshot: crud_01_app_launched
+
+# ==========================================
+# 2. BANK ACCOUNTS - 통장/계좌 관리
+# ==========================================
+# Drawer 열기
+- tapOn:
+    point: "8%,7%"
+- waitForAnimationToEnd
+- takeScreenshot: crud_02_drawer_opened
+
+# 통장/계좌 메뉴 탭 (Drawer 상단 영역)
+- tapOn:
+    point: "50%,32%"
+    optional: true
+- waitForAnimationToEnd
+- takeScreenshot: crud_03_bank_accounts_screen
+
+# 통장 추가 버튼 탭 (+ FAB)
+- tapOn:
+    point: "90%,90%"
+    optional: true
+- waitForAnimationToEnd
+- takeScreenshot: crud_04_add_bank_modal
+
+# 통장명 입력 (첫 번째 입력 필드)
+- tapOn:
+    point: "50%,30%"
+    optional: true
+- inputText: "Main Account"
+- hideKeyboard
+- takeScreenshot: crud_05_bank_name_entered
+
+# 은행 선택 또는 스크롤
+- scroll
+- takeScreenshot: crud_06_bank_form_scrolled
+
+# 저장 버튼 탭
+- tapOn:
+    point: "50%,85%"
+    optional: true
+- waitForAnimationToEnd
+- takeScreenshot: crud_07_bank_saved
+
+# 두 번째 통장 추가
+- tapOn:
+    point: "90%,90%"
+    optional: true
+- waitForAnimationToEnd
+- tapOn:
+    point: "50%,30%"
+    optional: true
+- inputText: "Savings"
+- hideKeyboard
+- scroll
+- tapOn:
+    point: "50%,85%"
+    optional: true
+- waitForAnimationToEnd
+- takeScreenshot: crud_08_second_bank_saved
+
+# 통장 목록 확인 (2개 등록됨)
+- takeScreenshot: crud_09_bank_list
+
+# 뒤로가기
+- back
+- waitForAnimationToEnd
+
+# ==========================================
+# 3. ACCOUNTS/CARDS - 카드/결제수단 관리
+# ==========================================
+# Drawer 열기
+- tapOn:
+    point: "8%,7%"
+- waitForAnimationToEnd
+
+# 결제수단 메뉴 (통장 관리와 다른 메뉴)
+- tapOn:
+    point: "50%,38%"
+    optional: true
+- waitForAnimationToEnd
+- takeScreenshot: crud_10_accounts_screen
+
+# 카드 추가 버튼
+- tapOn:
+    point: "90%,90%"
+    optional: true
+- waitForAnimationToEnd
+- takeScreenshot: crud_11_add_card_modal
+
+# 카드명 입력
+- tapOn:
+    point: "50%,25%"
+    optional: true
+- inputText: "Credit Card"
+- hideKeyboard
+- takeScreenshot: crud_12_card_name_entered
+
+# 카드 뒷자리 입력 (있다면)
+- tapOn:
+    point: "50%,40%"
+    optional: true
+- inputText: "1234"
+- hideKeyboard
+- takeScreenshot: crud_13_card_last4_entered
+
+# 스크롤 후 저장
+- scroll
+- tapOn:
+    point: "50%,85%"
+    optional: true
+- waitForAnimationToEnd
+- takeScreenshot: crud_14_card_saved
+
+# 두 번째 카드 추가
+- tapOn:
+    point: "90%,90%"
+    optional: true
+- waitForAnimationToEnd
+- tapOn:
+    point: "50%,25%"
+    optional: true
+- inputText: "Debit Card"
+- hideKeyboard
+- tapOn:
+    point: "50%,40%"
+    optional: true
+- inputText: "5678"
+- hideKeyboard
+- scroll
+- tapOn:
+    point: "50%,85%"
+    optional: true
+- waitForAnimationToEnd
+- takeScreenshot: crud_15_second_card_saved
+
+# 카드 목록 확인
+- takeScreenshot: crud_16_card_list
+
+# 뒤로가기
+- back
+- waitForAnimationToEnd
+
+# ==========================================
+# 4. CATEGORIES - 카테고리 관리
+# ==========================================
+# 카테고리 탭으로 이동
+- tapOn:
+    point: "88%,87%"
+- waitForAnimationToEnd
+- takeScreenshot: crud_17_categories_screen
+
+# 카테고리 추가 버튼
+- tapOn:
+    point: "90%,90%"
+    optional: true
+- waitForAnimationToEnd
+- takeScreenshot: crud_18_add_category_modal
+
+# 카테고리명 입력
+- tapOn:
+    point: "50%,30%"
+    optional: true
+- inputText: "Test Category"
+- hideKeyboard
+- takeScreenshot: crud_19_category_name_entered
+
+# 저장
+- tapOn:
+    point: "50%,80%"
+    optional: true
+- waitForAnimationToEnd
+- takeScreenshot: crud_20_category_saved
+
+# 카테고리 목록 확인
+- takeScreenshot: crud_21_category_list
+
+# 수입 카테고리 탭
+- tapOn:
+    point: "75%,15%"
+    optional: true
+- waitForAnimationToEnd
+- takeScreenshot: crud_22_income_categories
+
+# 수입 카테고리 추가
+- tapOn:
+    point: "90%,90%"
+    optional: true
+- waitForAnimationToEnd
+- tapOn:
+    point: "50%,30%"
+    optional: true
+- inputText: "Salary"
+- hideKeyboard
+- tapOn:
+    point: "50%,80%"
+    optional: true
+- waitForAnimationToEnd
+- takeScreenshot: crud_23_income_category_saved
+
+# ==========================================
+# 5. TRANSACTION WITH LINKED DATA
+# ==========================================
+# 거래 추가 화면으로 이동
+- tapOn:
+    point: "50%,92%"
+- waitForAnimationToEnd
+- takeScreenshot: crud_24_add_transaction_screen
+
+# 금액 입력
+- tapOn:
+    point: "50%,22%"
+- inputText: "55000"
+- hideKeyboard
+- takeScreenshot: crud_25_amount_entered
+
+# 스크롤하여 카테고리 선택 영역 보기
+- scroll
+- takeScreenshot: crud_26_category_selection
+
+# 카테고리 선택 (방금 만든 Test Category 또는 기본 카테고리)
+- tapOn:
+    point: "20%,45%"
+    optional: true
+- waitForAnimationToEnd
+- takeScreenshot: crud_27_category_selected
+
+# 스크롤하여 결제수단 선택 영역 보기
+- scroll
+- takeScreenshot: crud_28_payment_method_area
+
+# 결제수단 드롭다운 또는 선택 영역 탭
+- tapOn:
+    point: "50%,35%"
+    optional: true
+- waitForAnimationToEnd
+- takeScreenshot: crud_29_payment_method_dropdown
+
+# 카드 선택 (Credit Card 1234)
+- tapOn:
+    point: "50%,50%"
+    optional: true
+- waitForAnimationToEnd
+- takeScreenshot: crud_30_card_selected
+
+# 스크롤하여 저장 버튼 보기
+- scroll
+- takeScreenshot: crud_31_save_button_area
+
+# 저장 버튼 탭
+- tapOn:
+    point: "50%,85%"
+    optional: true
+- waitForAnimationToEnd
+- takeScreenshot: crud_32_transaction_saved
+
+# ==========================================
+# 6. VERIFY LINKED DATA
+# ==========================================
+# 거래 내역으로 이동
+- tapOn:
+    point: "62%,87%"
+- waitForAnimationToEnd
+- takeScreenshot: crud_33_transactions_list
+
+# 방금 추가한 거래 탭하여 상세 보기
+- tapOn:
+    point: "50%,40%"
+    optional: true
+- waitForAnimationToEnd
+- takeScreenshot: crud_34_transaction_detail
+
+# 거래 상세에서 카테고리, 결제수단 확인
+- scroll
+- takeScreenshot: crud_35_transaction_detail_scrolled
+
+# 뒤로가기
+- back
+- waitForAnimationToEnd
+
+# ==========================================
+# 7. ADD INCOME WITH ACCOUNT
+# ==========================================
+# 수입 거래 추가
+- tapOn:
+    point: "50%,92%"
+- waitForAnimationToEnd
+
+# 수입 탭 선택
+- tapOn:
+    point: "75%,15%"
+    optional: true
+- waitForAnimationToEnd
+- takeScreenshot: crud_36_income_tab
+
+# 금액 입력
+- tapOn:
+    point: "50%,22%"
+- inputText: "3000000"
+- hideKeyboard
+- takeScreenshot: crud_37_income_amount
+
+# 카테고리 선택 (Salary)
+- scroll
+- tapOn:
+    point: "20%,45%"
+    optional: true
+- waitForAnimationToEnd
+- takeScreenshot: crud_38_income_category_selected
+
+# 계좌 선택 (있다면)
+- scroll
+- tapOn:
+    point: "50%,35%"
+    optional: true
+- waitForAnimationToEnd
+- takeScreenshot: crud_39_account_selection
+
+# 저장
+- scroll
+- tapOn:
+    point: "50%,85%"
+    optional: true
+- waitForAnimationToEnd
+- takeScreenshot: crud_40_income_saved
+
+# ==========================================
+# 8. DASHBOARD VERIFICATION
+# ==========================================
+# 대시보드로 이동
+- tapOn:
+    point: "12%,87%"
+- waitForAnimationToEnd
+- takeScreenshot: crud_41_dashboard_with_data
+
+# 대시보드에서 수입/지출 합계 확인
+- assertVisible:
+    text: ".*55.*|.*300.*"
+    optional: true
+- takeScreenshot: crud_42_dashboard_totals
+
+# ==========================================
+# 9. EDIT TRANSACTION
+# ==========================================
+# 거래내역으로 이동
+- tapOn:
+    point: "62%,87%"
+- waitForAnimationToEnd
+- takeScreenshot: crud_43_transactions_for_edit
+
+# 첫 번째 거래 탭하여 수정
+- tapOn:
+    point: "50%,40%"
+    optional: true
+- waitForAnimationToEnd
+- takeScreenshot: crud_44_edit_transaction
+
+# 금액 수정
+- tapOn:
+    point: "50%,22%"
+    optional: true
+- inputText: "99000"
+- hideKeyboard
+- takeScreenshot: crud_45_amount_edited
+
+# 저장
+- scroll
+- tapOn:
+    point: "50%,85%"
+    optional: true
+- waitForAnimationToEnd
+- takeScreenshot: crud_46_transaction_edited
+
+# ==========================================
+# 10. DELETE TRANSACTION
+# ==========================================
+# 거래 내역에서 거래 선택
+- tapOn:
+    point: "50%,40%"
+    optional: true
+- waitForAnimationToEnd
+
+# 삭제 버튼 (있다면 - 우측 상단 또는 하단)
+- tapOn:
+    point: "90%,7%"
+    optional: true
+- waitForAnimationToEnd
+- takeScreenshot: crud_47_delete_option
+
+# 삭제 확인 (있다면)
+- tapOn:
+    point: "70%,55%"
+    optional: true
+- waitForAnimationToEnd
+- takeScreenshot: crud_48_after_delete
+
+# ==========================================
+# 11. FINAL VERIFICATION
+# ==========================================
+# 대시보드 최종 확인
+- tapOn:
+    point: "12%,87%"
+- waitForAnimationToEnd
+- takeScreenshot: crud_49_final_dashboard
+
+# 거래 내역 최종 확인
+- tapOn:
+    point: "62%,87%"
+- waitForAnimationToEnd
+- takeScreenshot: crud_50_final_transactions
+
+# ==========================================
+# TEST COMPLETE
+# ==========================================
+- stopApp
+

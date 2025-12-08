@@ -41,3 +41,7 @@ android/
 ios/
 nul
 .claude/mcp.json
+
+# Maestro test screenshots
+*.png
+!assets/*.png

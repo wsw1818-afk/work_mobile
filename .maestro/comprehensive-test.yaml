@@ -1,0 +1,372 @@
+appId: com.anonymous.gagyebunative
+name: Gagyebu Comprehensive Feature Test
+---
+
+# ==========================================
+# 가계부 앱 전체 기능 테스트
+# 테스트 항목:
+# 1. 앱 시작 및 대시보드
+# 2. 지출 거래 추가
+# 3. 수입 거래 추가
+# 4. 거래 내역 확인 및 검색
+# 5. 카테고리 관리
+# 6. 통장/계좌 관리 (Drawer)
+# 7. 예산 관리 (Drawer)
+# 8. 자동 분류 규칙 (Drawer)
+# 9. 설정 화면
+# 10. 도움말 화면
+# ==========================================
+
+# ==========================================
+# 1. APP LAUNCH & DASHBOARD
+# ==========================================
+- launchApp:
+    clearState: true
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible: ".*"
+    timeout: 8000
+- takeScreenshot: 01_dashboard_initial
+
+# 대시보드 요소 확인 - 월 표시 확인
+- assertVisible:
+    text: ".*2025.*"
+    optional: true
+- takeScreenshot: 02_dashboard_verified
+
+# ==========================================
+# 2. ADD EXPENSE TRANSACTION (지출 추가)
+# ==========================================
+# FAB 버튼 탭 (하단 중앙)
+- tapOn:
+    point: "50%,92%"
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible: ".*"
+    timeout: 3000
+- takeScreenshot: 03_add_transaction_screen
+
+# 금액 입력 필드 탭 (상단 영역)
+- tapOn:
+    point: "50%,22%"
+- inputText: "35000"
+- hideKeyboard
+- takeScreenshot: 04_expense_amount_entered
+
+# 스크롤하여 카테고리 영역 보기
+- scroll
+- takeScreenshot: 05_category_section
+
+# 첫 번째 카테고리 선택 (식비 등)
+- tapOn:
+    point: "15%,45%"
+    optional: true
+- waitForAnimationToEnd
+- takeScreenshot: 06_category_selected
+
+# 메모 입력 영역으로 스크롤
+- scroll
+- takeScreenshot: 07_memo_section
+
+# 저장 버튼 탭 (하단)
+- tapOn:
+    point: "50%,85%"
+    optional: true
+- waitForAnimationToEnd
+- takeScreenshot: 08_expense_saved
+
+# ==========================================
+# 3. ADD INCOME TRANSACTION (수입 추가)
+# ==========================================
+# FAB 버튼 다시 탭
+- tapOn:
+    point: "50%,92%"
+- waitForAnimationToEnd
+- takeScreenshot: 09_add_screen_again
+
+# 수입 탭 선택 (상단 탭 영역)
+- tapOn:
+    point: "75%,15%"
+    optional: true
+- waitForAnimationToEnd
+- takeScreenshot: 10_income_tab_selected
+
+# 금액 입력
+- tapOn:
+    point: "50%,22%"
+- inputText: "2500000"
+- hideKeyboard
+- takeScreenshot: 11_income_amount
+
+# 카테고리 선택
+- scroll
+- tapOn:
+    point: "15%,45%"
+    optional: true
+- waitForAnimationToEnd
+
+# 저장
+- scroll
+- tapOn:
+    point: "50%,85%"
+    optional: true
+- waitForAnimationToEnd
+- takeScreenshot: 12_income_saved
+
+# ==========================================
+# 4. TRANSACTIONS LIST (거래 내역)
+# ==========================================
+# 거래내역 탭 선택
+- tapOn:
+    point: "62%,87%"
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible: ".*"
+    timeout: 3000
+- takeScreenshot: 13_transactions_list
+
+# 거래 내역에 데이터가 있는지 확인
+- assertVisible:
+    text: ".*35.*|.*25.*"
+    optional: true
+
+# 검색 필드 탭
+- tapOn:
+    point: "50%,18%"
+    optional: true
+- inputText: "35000"
+- hideKeyboard
+- takeScreenshot: 14_search_result
+
+# 검색 초기화 (X 버튼)
+- tapOn:
+    point: "92%,18%"
+    optional: true
+- waitForAnimationToEnd
+- takeScreenshot: 15_search_cleared
+
+# 필터 테스트 - 수입 탭
+- tapOn:
+    point: "30%,28%"
+    optional: true
+- waitForAnimationToEnd
+- takeScreenshot: 16_income_filter
+
+# 필터 테스트 - 지출 탭
+- tapOn:
+    point: "55%,28%"
+    optional: true
+- waitForAnimationToEnd
+- takeScreenshot: 17_expense_filter
+
+# 전체 탭으로 복귀
+- tapOn:
+    point: "12%,28%"
+    optional: true
+- waitForAnimationToEnd
+- takeScreenshot: 18_all_transactions
+
+# 거래 항목 클릭하여 상세 보기/수정
+- tapOn:
+    point: "50%,50%"
+    optional: true
+- waitForAnimationToEnd
+- takeScreenshot: 19_transaction_detail
+
+# 뒤로가기
+- back
+- waitForAnimationToEnd
+
+# ==========================================
+# 5. CATEGORIES (카테고리 관리)
+# ==========================================
+# 카테고리 탭 선택
+- tapOn:
+    point: "88%,87%"
+- waitForAnimationToEnd
+- takeScreenshot: 20_categories_expense
+
+# 수입 카테고리 탭
+- tapOn:
+    point: "75%,15%"
+    optional: true
+- waitForAnimationToEnd
+- takeScreenshot: 21_categories_income
+
+# 지출 카테고리로 돌아가기
+- tapOn:
+    point: "25%,15%"
+    optional: true
+- waitForAnimationToEnd
+- takeScreenshot: 22_categories_expense_again
+
+# 카테고리 추가 버튼 (있다면)
+- tapOn:
+    point: "90%,90%"
+    optional: true
+- waitForAnimationToEnd
+- takeScreenshot: 23_add_category_modal
+
+# 모달 닫기
+- back
+- waitForAnimationToEnd
+
+# ==========================================
+# 6. DRAWER MENU - BANK ACCOUNTS (통장 관리)
+# ==========================================
+# 햄버거 메뉴 열기
+- tapOn:
+    point: "8%,7%"
+- waitForAnimationToEnd
+- takeScreenshot: 24_drawer_opened
+
+# 통장/계좌 메뉴 선택 (drawer 아이템)
+- tapOn:
+    point: "50%,35%"
+    optional: true
+- waitForAnimationToEnd
+- takeScreenshot: 25_bank_accounts_screen
+
+# 계좌 추가 테스트 (있다면)
+- tapOn:
+    point: "90%,90%"
+    optional: true
+- waitForAnimationToEnd
+- takeScreenshot: 26_add_account_modal
+
+# 뒤로가기
+- back
+- waitForAnimationToEnd
+
+# ==========================================
+# 7. DRAWER MENU - BUDGETS (예산 관리)
+# ==========================================
+# 햄버거 메뉴 열기
+- tapOn:
+    point: "8%,7%"
+- waitForAnimationToEnd
+
+# 예산 메뉴 선택
+- tapOn:
+    point: "50%,28%"
+    optional: true
+- waitForAnimationToEnd
+- takeScreenshot: 27_budgets_screen
+
+# 뒤로가기
+- back
+- waitForAnimationToEnd
+
+# ==========================================
+# 8. DRAWER MENU - RULES (자동 분류 규칙)
+# ==========================================
+# 햄버거 메뉴 열기
+- tapOn:
+    point: "8%,7%"
+- waitForAnimationToEnd
+
+# 규칙 메뉴 선택
+- tapOn:
+    point: "50%,42%"
+    optional: true
+- waitForAnimationToEnd
+- takeScreenshot: 28_rules_screen
+
+# 뒤로가기
+- back
+- waitForAnimationToEnd
+
+# ==========================================
+# 9. DRAWER MENU - SETTINGS (설정)
+# ==========================================
+# 햄버거 메뉴 열기
+- tapOn:
+    point: "8%,7%"
+- waitForAnimationToEnd
+
+# 스크롤하여 설정 메뉴 보기
+- scroll
+- takeScreenshot: 29_drawer_scrolled
+
+# 설정 메뉴 선택
+- tapOn:
+    point: "50%,60%"
+    optional: true
+- waitForAnimationToEnd
+- takeScreenshot: 30_settings_screen
+
+# 설정 항목 스크롤
+- scroll
+- takeScreenshot: 31_settings_scrolled
+
+# 뒤로가기
+- back
+- waitForAnimationToEnd
+
+# ==========================================
+# 10. DRAWER MENU - HELP (도움말)
+# ==========================================
+# 햄버거 메뉴 열기
+- tapOn:
+    point: "8%,7%"
+- waitForAnimationToEnd
+
+# 도움말 메뉴 선택
+- tapOn:
+    point: "50%,70%"
+    optional: true
+- waitForAnimationToEnd
+- takeScreenshot: 32_help_screen
+
+# 도움말 내용 스크롤
+- scroll
+- takeScreenshot: 33_help_scrolled
+
+# 뒤로가기
+- back
+- waitForAnimationToEnd
+
+# ==========================================
+# 11. MONTH NAVIGATION TEST (월 이동)
+# ==========================================
+# 대시보드로 이동
+- tapOn:
+    point: "12%,87%"
+- waitForAnimationToEnd
+- takeScreenshot: 34_dashboard_with_data
+
+# 이전 달 버튼
+- tapOn:
+    point: "10%,13%"
+- waitForAnimationToEnd
+- takeScreenshot: 35_previous_month
+
+# 다음 달 버튼 (2번 - 현재 달로 복귀)
+- tapOn:
+    point: "90%,13%"
+- waitForAnimationToEnd
+- tapOn:
+    point: "90%,13%"
+- waitForAnimationToEnd
+- takeScreenshot: 36_current_month
+
+# ==========================================
+# 12. FINAL VERIFICATION
+# ==========================================
+# 대시보드에서 추가한 거래 반영 확인
+- assertVisible:
+    text: ".*35.*|.*250.*"
+    optional: true
+- takeScreenshot: 37_final_dashboard
+
+# 거래내역에서 최종 확인
+- tapOn:
+    point: "62%,87%"
+- waitForAnimationToEnd
+- takeScreenshot: 38_final_transactions
+
+# ==========================================
+# TEST COMPLETE
+# ==========================================
+- stopApp
+

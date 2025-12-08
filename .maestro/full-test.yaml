@@ -1,0 +1,107 @@
+appId: com.anonymous.gagyebunative
+name: Gagyebu Full Feature Test
+---
+
+# ==========================================
+# 1. APP LAUNCH & DASHBOARD TEST
+# ==========================================
+- launchApp:
+    clearState: true
+- waitForAnimationToEnd
+- takeScreenshot: 01_dashboard_initial
+
+# ==========================================
+# 2. ADD TRANSACTION TEST (거래 추가)
+# ==========================================
+# Tap center bottom FAB button (+ button)
+- tapOn:
+    point: "50%,92%"
+- waitForAnimationToEnd
+- takeScreenshot: 02_add_transaction_screen
+
+# Enter amount
+- tapOn:
+    text: ".*금액.*"
+    optional: true
+- inputText: "15000"
+- takeScreenshot: 03_amount_entered
+
+# Scroll down to see more options
+- scroll
+
+# Tap save/confirm button
+- tapOn:
+    text: ".*저장.*|.*추가.*|.*확인.*"
+    optional: true
+- waitForAnimationToEnd
+- takeScreenshot: 04_after_save
+
+# ==========================================
+# 3. TRANSACTIONS LIST TEST (거래내역)
+# ==========================================
+# Tap transactions tab
+- tapOn:
+    text: ".*거래.*"
+    optional: true
+- waitForAnimationToEnd
+- takeScreenshot: 05_transactions_list
+
+# Scroll transaction list
+- scroll
+- takeScreenshot: 06_transactions_scrolled
+
+# ==========================================
+# 4. CATEGORIES TEST (카테고리)
+# ==========================================
+# Tap categories tab
+- tapOn:
+    text: ".*카테고리.*"
+    optional: true
+- waitForAnimationToEnd
+- takeScreenshot: 07_categories_screen
+
+# Switch between income/expense categories
+- tapOn:
+    text: ".*지출.*"
+    optional: true
+- takeScreenshot: 08_expense_categories
+
+- tapOn:
+    text: ".*수입.*"
+    optional: true
+- takeScreenshot: 09_income_categories
+
+# ==========================================
+# 5. SETTINGS/MENU TEST (설정)
+# ==========================================
+# Open drawer menu (hamburger icon)
+- tapOn:
+    point: "8%,7%"
+- waitForAnimationToEnd
+- takeScreenshot: 10_drawer_menu
+
+# Tap settings if visible
+- tapOn:
+    text: ".*설정.*"
+    optional: true
+- waitForAnimationToEnd
+- takeScreenshot: 11_settings_screen
+
+# Go back
+- back
+- waitForAnimationToEnd
+
+# ==========================================
+# 6. DASHBOARD VERIFICATION (대시보드 확인)
+# ==========================================
+# Return to dashboard
+- tapOn:
+    text: ".*대시보드.*"
+    optional: true
+- waitForAnimationToEnd
+- takeScreenshot: 12_final_dashboard
+
+# ==========================================
+# 7. TEST COMPLETE
+# ==========================================
+- stopApp
