@@ -14,10 +14,7 @@
       "backgroundColor": "#E8F5F3"
     },
     "ios": {
-      "supportsTablet": true,
-      "config": {
-        "googleMobileAdsAppId": "ca-app-pub-8246259258904809~1663711660"
-      }
+      "supportsTablet": true
     },
     "android": {
       "adaptiveIcon": {
@@ -27,12 +24,8 @@
       "package": "com.anonymous.gagyebunative",
       "permissions": [
         "CAMERA",
-        "RECORD_AUDIO",
-        "com.google.android.gms.permission.AD_ID"
-      ],
-      "config": {
-        "googleMobileAdsAppId": "ca-app-pub-8246259258904809~1663711660"
-      }
+        "RECORD_AUDIO"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"

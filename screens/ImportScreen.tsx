@@ -51,7 +51,7 @@ export default function ImportScreen({ navigation }: any) {
   const [excludedIncomeTransactions, setExcludedIncomeTransactions] = useState<NormalizedTransaction[]>([]); // 제외된 입금 내역
   const [showExcludedIncome, setShowExcludedIncome] = useState(false); // 제외 내역 표시 토글
   const [duplicateInfo, setDuplicateInfo] = useState({ removed: 0, dbSkipped: 0, incomeExcluded: 0, patternExcluded: 0 });
-  const [excludeIncome, setExcludeIncome] = useState(true); // 은행 입금 내역 제외 옵션 (기본: ON)
+  const [excludeIncome, setExcludeIncome] = useState(false); // 은행 입금 내역 제외 옵션 (기본: OFF - 입금도 포함)
   const [strictDuplicateCheck, setStrictDuplicateCheck] = useState(true); // 엄격한 중복 체크 (날짜+금액만) - 기본: ON
   const [exclusionPatterns, setExclusionPatterns] = useState<ExclusionPattern[]>([]);
 
@@ -176,8 +176,8 @@ export default function ImportScreen({ navigation }: any) {
             const parsed = parseExcelFile(arrayBuffer);
             allResults.push(parsed);
 
-            // 자동 컬럼 매핑 추천
-            const mapping = suggestColumnMapping(parsed.headers);
+            // 자동 컬럼 매핑 추천 (헤더 기반 + 데이터 기반 자동 감지)
+            const mapping = suggestColumnMapping(parsed.headers, parsed.rows);
 
             // 매핑 적용하여 거래 데이터 생성
             const transactions = applyMapping(parsed.rows, mapping);
@@ -235,8 +235,19 @@ export default function ImportScreen({ navigation }: any) {
         setPreviewData(allPreviewData);
         setLoading(false);
 
+        // 입금/지출 통계 (중복 제거 전)
+        const rawIncomeCount = unique.filter(tx => tx.type === 'income').length;
+        const rawExpenseCount = unique.filter(tx => tx.type === 'expense').length;
+        console.log(`[파싱 완료] 원본 거래: 수입 ${rawIncomeCount}개, 지출 ${rawExpenseCount}개`);
+
+        // 최종 거래 통계
+        const finalIncomeCount = filteredTransactions.filter(tx => tx.type === 'income').length;
+        const finalExpenseCount = filteredTransactions.filter(tx => tx.type === 'expense').length;
+        console.log(`[파싱 완료] 최종 거래: 수입 ${finalIncomeCount}개, 지출 ${finalExpenseCount}개`);
+
         const totalRows = allResults.reduce((sum, r) => sum + r.rows.length, 0);
         let message = `${result.assets.length}개 파일에서 총 ${totalRows}개의 거래를 찾았습니다.`;
+        message += `\n수입 ${finalIncomeCount}개 / 지출 ${finalExpenseCount}개`;
         if (duplicateCount > 0) {
           message += `\n(중복 ${duplicateCount}개 자동 제거)`;
         }
@@ -304,6 +315,12 @@ export default function ImportScreen({ navigation }: any) {
               // 자동 분류 적용
               const categoryIds = await applyCategoryRulesBulk(allTransactions);
 
+              // 기본 카테고리 미리 조회 (루프 밖에서 1회만)
+              const incomeCategories = await database.getCategories('income');
+              const expenseCategories = await database.getCategories('expense');
+              const defaultIncomeId = incomeCategories[0]?.id || 1;
+              const defaultExpenseId = expenseCategories[0]?.id || 4; // 식비가 보통 4번
+
               // 각 거래 추가
               for (let i = 0; i < allTransactions.length; i++) {
                 const tx = allTransactions[i];
@@ -320,11 +337,11 @@ export default function ImportScreen({ navigation }: any) {
 
                 const categoryId = categoryIds[i];
 
-                // 카테고리가 없으면 기본 카테고리 사용
+                // 카테고리가 없으면 기본 카테고리 사용 (타입별로 다른 기본값)
                 let finalCategoryId = categoryId;
                 if (!finalCategoryId) {
-                  const categories = await database.getCategories(tx.type as 'income' | 'expense');
-                  finalCategoryId = categories[0]?.id || 1;
+                  finalCategoryId = tx.type === 'income' ? defaultIncomeId : defaultExpenseId;
+                  console.log(`[기본 카테고리] ${tx.merchant || tx.memo}: ${tx.type} → categoryId ${finalCategoryId}`);
                 }
 
                 try {
@@ -350,6 +367,12 @@ export default function ImportScreen({ navigation }: any) {
                     cardName: classifiedSource, // 카드/은행 분류 표시
                     cardNumber: '',
                   });
+
+                  // 입금 거래 DB 저장 로그
+                  if (tx.type === 'income') {
+                    console.log(`[DB 저장] ✅ 입금 추가: ${tx.date} / ${tx.merchant || tx.memo} / ${tx.amount}원`);
+                  }
+
                   successCount++;
                   // 추가된 거래를 Set에 추가하여 같은 세션 내 중복 방지
                   existingKeys.add(txKey);
@@ -379,26 +402,96 @@ export default function ImportScreen({ navigation }: any) {
               // 전면 광고 표시 (대량 작업 완료 - 자연스러운 타이밍)
               forceShowInterstitial();
 
-              Alert.alert(
-                '가져오기 완료',
-                resultMessage,
-                [
-                  {
-                    text: '확인',
-                    onPress: () => {
-                      // 초기화
-                      setParseResults([]);
-                      setPreviewData([]);
-                      setCardNames([]);
-                      setAllTransactions([]);
-                      setExcludedIncomeTransactions([]);
-                      setShowExcludedIncome(false);
-                      setDuplicateInfo({ removed: 0, dbSkipped: 0, incomeExcluded: 0, patternExcluded: 0 });
-                      navigation.navigate('Main');
+              // 가져온 거래의 가장 많은 월 분석
+              const monthCounts: Record<string, number> = {};
+              for (const tx of allTransactions) {
+                const match = tx.date.match(/^(\d{4})-(\d{2})/);
+                if (match) {
+                  const key = `${match[1]}-${match[2]}`;
+                  monthCounts[key] = (monthCounts[key] || 0) + 1;
+                }
+              }
+
+              // 가장 많은 월 찾기
+              let maxMonth = '';
+              let maxCount = 0;
+              for (const [month, count] of Object.entries(monthCounts)) {
+                if (count > maxCount) {
+                  maxCount = count;
+                  maxMonth = month;
+                }
+              }
+
+              const currentYear = new Date().getFullYear();
+              const currentMonth = new Date().getMonth() + 1;
+              const currentKey = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
+
+              // 가져온 거래의 월이 현재 월과 다르면 이동 옵션 제공
+              if (successCount > 0 && maxMonth && maxMonth !== currentKey) {
+                const [targetYear, targetMonth] = maxMonth.split('-').map(Number);
+                resultMessage += `\n\n💡 가져온 거래의 대부분(${maxCount}건)이 ${targetYear}년 ${targetMonth}월 데이터입니다.`;
+
+                Alert.alert(
+                  '가져오기 완료',
+                  resultMessage,
+                  [
+                    {
+                      text: '현재 월 보기',
+                      style: 'cancel',
+                      onPress: () => {
+                        // 초기화
+                        setParseResults([]);
+                        setPreviewData([]);
+                        setCardNames([]);
+                        setAllTransactions([]);
+                        setExcludedIncomeTransactions([]);
+                        setShowExcludedIncome(false);
+                        setDuplicateInfo({ removed: 0, dbSkipped: 0, incomeExcluded: 0, patternExcluded: 0 });
+                        navigation.navigate('Main');
+                      },
                     },
-                  },
-                ]
-              );
+                    {
+                      text: `${targetMonth}월로 이동`,
+                      onPress: () => {
+                        // 초기화
+                        setParseResults([]);
+                        setPreviewData([]);
+                        setCardNames([]);
+                        setAllTransactions([]);
+                        setExcludedIncomeTransactions([]);
+                        setShowExcludedIncome(false);
+                        setDuplicateInfo({ removed: 0, dbSkipped: 0, incomeExcluded: 0, patternExcluded: 0 });
+                        // 해당 월로 이동
+                        navigation.navigate('Main', {
+                          screen: 'Dashboard',
+                          params: { targetYear, targetMonth },
+                        });
+                      },
+                    },
+                  ]
+                );
+              } else {
+                Alert.alert(
+                  '가져오기 완료',
+                  resultMessage,
+                  [
+                    {
+                      text: '확인',
+                      onPress: () => {
+                        // 초기화
+                        setParseResults([]);
+                        setPreviewData([]);
+                        setCardNames([]);
+                        setAllTransactions([]);
+                        setExcludedIncomeTransactions([]);
+                        setShowExcludedIncome(false);
+                        setDuplicateInfo({ removed: 0, dbSkipped: 0, incomeExcluded: 0, patternExcluded: 0 });
+                        navigation.navigate('Main');
+                      },
+                    },
+                  ]
+                );
+              }
             } catch (error: any) {
               console.error('가져오기 오류:', error);
               setImporting(false);

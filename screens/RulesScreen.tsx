@@ -28,6 +28,10 @@ export default function RulesScreen({ navigation }: any) {
   const [checkMemo, setCheckMemo] = useState(false);
   const [exclusionType, setExclusionType] = useState<'merchant' | 'memo' | 'both' | 'account'>('merchant');
 
+  // 수정 모드
+  const [editingRule, setEditingRule] = useState<Rule | null>(null);
+  const [editingExclusion, setEditingExclusion] = useState<ExclusionPattern | null>(null);
+
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
@@ -73,38 +77,56 @@ export default function RulesScreen({ navigation }: any) {
       }
 
       try {
-        await database.addRule({
+        const ruleData = {
           pattern,
           checkMerchant,
           checkMemo,
           assignCategoryId,
           priority: 0,
-          isActive: true,
-        });
+          isActive: editingRule ? editingRule.isActive : true,
+        };
+
+        if (editingRule) {
+          // 수정 모드
+          await database.updateRule(editingRule.id, ruleData);
+          Alert.alert('성공', '카테고리 규칙이 수정되었습니다.');
+        } else {
+          // 추가 모드
+          await database.addRule(ruleData);
+          Alert.alert('성공', '카테고리 규칙이 추가되었습니다.');
+        }
 
         setAddDialogVisible(false);
         resetForm();
         loadData();
-        Alert.alert('성공', '카테고리 규칙이 추가되었습니다.');
       } catch (error) {
-        console.error('Failed to add rule:', error);
-        Alert.alert('오류', '규칙 추가에 실패했습니다.');
+        console.error('Failed to save rule:', error);
+        Alert.alert('오류', editingRule ? '규칙 수정에 실패했습니다.' : '규칙 추가에 실패했습니다.');
       }
     } else {
       try {
-        await database.addExclusionPattern({
+        const exclusionData = {
           pattern,
           type: exclusionType,
-          isActive: true,
-        });
+          isActive: editingExclusion ? editingExclusion.isActive : true,
+        };
+
+        if (editingExclusion) {
+          // 수정 모드
+          await database.updateExclusionPattern(editingExclusion.id, exclusionData);
+          Alert.alert('성공', '거래 제외 규칙이 수정되었습니다.');
+        } else {
+          // 추가 모드
+          await database.addExclusionPattern(exclusionData);
+          Alert.alert('성공', '거래 제외 규칙이 추가되었습니다.');
+        }
 
         setAddDialogVisible(false);
         resetForm();
         loadData();
-        Alert.alert('성공', '거래 제외 규칙이 추가되었습니다.');
       } catch (error) {
-        console.error('Failed to add exclusion:', error);
-        Alert.alert('오류', '제외 규칙 추가에 실패했습니다.');
+        console.error('Failed to save exclusion:', error);
+        Alert.alert('오류', editingExclusion ? '제외 규칙 수정에 실패했습니다.' : '제외 규칙 추가에 실패했습니다.');
       }
     }
   };
@@ -116,6 +138,28 @@ export default function RulesScreen({ navigation }: any) {
     setCheckMemo(false);
     setExclusionType('merchant');
     setRuleType('category');
+    setEditingRule(null);
+    setEditingExclusion(null);
+  };
+
+  // 카테고리 규칙 수정 시작
+  const handleEditRule = (rule: Rule) => {
+    setEditingRule(rule);
+    setRuleType('category');
+    setPattern(rule.pattern);
+    setAssignCategoryId(rule.assignCategoryId);
+    setCheckMerchant(rule.checkMerchant);
+    setCheckMemo(rule.checkMemo);
+    setAddDialogVisible(true);
+  };
+
+  // 제외 규칙 수정 시작
+  const handleEditExclusion = (exclusion: ExclusionPattern) => {
+    setEditingExclusion(exclusion);
+    setRuleType('exclusion');
+    setPattern(exclusion.pattern);
+    setExclusionType(exclusion.type as 'merchant' | 'memo' | 'both' | 'account');
+    setAddDialogVisible(true);
   };
 
   const handleToggleActive = async (rule: Rule) => {
@@ -394,6 +438,10 @@ export default function RulesScreen({ navigation }: any) {
                     </View>
                   </View>
                   <View style={styles.cardActions}>
+                    <TouchableOpacity style={styles.actionButton} onPress={() => handleEditRule(rule)}>
+                      <Ionicons name="pencil-outline" size={18} color={theme.colors.primary} />
+                      <Text style={[styles.actionButtonText, { color: theme.colors.primary }]}>수정</Text>
+                    </TouchableOpacity>
                     <TouchableOpacity style={styles.actionButton} onPress={() => handleToggleActive(rule)}>
                       <Ionicons
                         name={rule.isActive ? 'eye-off-outline' : 'eye-outline'}
@@ -452,6 +500,10 @@ export default function RulesScreen({ navigation }: any) {
                     </View>
                   </View>
                   <View style={styles.cardActions}>
+                    <TouchableOpacity style={styles.actionButton} onPress={() => handleEditExclusion(exclusion)}>
+                      <Ionicons name="pencil-outline" size={18} color={theme.colors.primary} />
+                      <Text style={[styles.actionButtonText, { color: theme.colors.primary }]}>수정</Text>
+                    </TouchableOpacity>
                     <TouchableOpacity style={styles.actionButton} onPress={() => handleToggleExclusionActive(exclusion)}>
                       <Ionicons
                         name={exclusion.isActive ? 'eye-off-outline' : 'eye-outline'}
@@ -494,7 +546,9 @@ export default function RulesScreen({ navigation }: any) {
               <TouchableWithoutFeedback onPress={(e) => e.stopPropagation()}>
                 <View style={styles.modalContent}>
                   <Text style={styles.modalTitle}>
-                    {ruleType === 'category' ? '카테고리 규칙 추가' : '거래 제외 규칙 추가'}
+                    {ruleType === 'category'
+                      ? (editingRule ? '카테고리 규칙 수정' : '카테고리 규칙 추가')
+                      : (editingExclusion ? '거래 제외 규칙 수정' : '거래 제외 규칙 추가')}
                   </Text>
 
                   <ScrollView style={styles.modalScrollView} keyboardShouldPersistTaps="handled">
@@ -579,7 +633,7 @@ export default function RulesScreen({ navigation }: any) {
                       onPress={handleAddRule}
                       style={styles.modalButton}
                     >
-                      추가
+                      {(ruleType === 'category' ? editingRule : editingExclusion) ? '수정' : '추가'}
                     </Button>
                   </View>
                 </View>

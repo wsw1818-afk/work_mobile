@@ -23,10 +23,13 @@ export default function BudgetsScreen({ navigation }: any) {
   const [categories, setCategories] = useState<Category[]>([]);
   const [currentMonth, setCurrentMonth] = useState(format(new Date(), 'yyyy-MM'));
 
-  // 예산 추가 다이얼로그
+  // 예산 추가/수정 다이얼로그
   const [addDialogVisible, setAddDialogVisible] = useState(false);
   const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
   const [limitAmount, setLimitAmount] = useState('');
+
+  // 수정 모드
+  const [editingBudget, setEditingBudget] = useState<BudgetWithSpent | null>(null);
 
   const loadData = useCallback(async () => {
     try {
@@ -84,31 +87,55 @@ export default function BudgetsScreen({ navigation }: any) {
   }, [loadData]);
 
   const handleAddBudget = async () => {
-    if (!selectedCategoryId || !limitAmount || parseFloat(limitAmount) <= 0) {
-      Alert.alert('입력 오류', '카테고리와 예산 금액을 올바르게 입력해주세요.');
+    if (!editingBudget && !selectedCategoryId) {
+      Alert.alert('입력 오류', '카테고리를 선택해주세요.');
+      return;
+    }
+    if (!limitAmount || parseFloat(limitAmount) <= 0) {
+      Alert.alert('입력 오류', '예산 금액을 올바르게 입력해주세요.');
       return;
     }
 
     try {
-      await database.addBudget({
-        month: currentMonth,
-        categoryId: selectedCategoryId,
-        limitAmount: parseFloat(limitAmount),
-      });
+      if (editingBudget) {
+        // 수정 모드
+        await database.updateBudget(editingBudget.id, parseFloat(limitAmount));
+        Alert.alert('성공', '예산이 수정되었습니다.');
+      } else {
+        // 추가 모드
+        await database.addBudget({
+          month: currentMonth,
+          categoryId: selectedCategoryId!,
+          limitAmount: parseFloat(limitAmount),
+        });
+        Alert.alert('성공', '예산이 추가되었습니다.');
+      }
 
       setAddDialogVisible(false);
-      setSelectedCategoryId(null);
-      setLimitAmount('');
+      resetForm();
       loadData();
-      Alert.alert('성공', '예산이 추가되었습니다.');
     } catch (error: any) {
-      console.error('Failed to add budget:', error);
+      console.error('Failed to save budget:', error);
       if (error.message?.includes('UNIQUE')) {
         Alert.alert('오류', '해당 카테고리의 예산이 이미 존재합니다.');
       } else {
-        Alert.alert('오류', '예산 추가에 실패했습니다.');
+        Alert.alert('오류', editingBudget ? '예산 수정에 실패했습니다.' : '예산 추가에 실패했습니다.');
       }
     }
+  };
+
+  const resetForm = () => {
+    setSelectedCategoryId(null);
+    setLimitAmount('');
+    setEditingBudget(null);
+  };
+
+  // 예산 수정 시작
+  const handleEditBudget = (budget: BudgetWithSpent) => {
+    setEditingBudget(budget);
+    setSelectedCategoryId(budget.categoryId);
+    setLimitAmount(String(budget.limitAmount));
+    setAddDialogVisible(true);
   };
 
   const handleDeleteBudget = (budget: BudgetWithSpent) => {
@@ -305,13 +332,22 @@ export default function BudgetsScreen({ navigation }: any) {
                 </View>
               )}
 
-              <TouchableOpacity
-                style={styles.deleteButton}
-                onPress={() => handleDeleteBudget(budget)}
-              >
-                <Ionicons name="trash-outline" size={18} color={theme.colors.expense} />
-                <Text style={styles.deleteButtonText}>삭제</Text>
-              </TouchableOpacity>
+              <View style={styles.cardActions}>
+                <TouchableOpacity
+                  style={styles.editButton}
+                  onPress={() => handleEditBudget(budget)}
+                >
+                  <Ionicons name="pencil-outline" size={18} color={theme.colors.primary} />
+                  <Text style={styles.editButtonText}>수정</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.deleteButton}
+                  onPress={() => handleDeleteBudget(budget)}
+                >
+                  <Ionicons name="trash-outline" size={18} color={theme.colors.expense} />
+                  <Text style={styles.deleteButtonText}>삭제</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           ))
         )}
@@ -331,27 +367,38 @@ export default function BudgetsScreen({ navigation }: any) {
         }}
       />
 
-      {/* 예산 추가 모달 */}
-      <Modal visible={addDialogVisible} onRequestClose={() => setAddDialogVisible(false)} transparent animationType="fade">
+      {/* 예산 추가/수정 모달 */}
+      <Modal visible={addDialogVisible} onRequestClose={() => { setAddDialogVisible(false); resetForm(); }} transparent animationType="fade">
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalContainer}>
           <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
             <View style={styles.modalOverlay}>
               <TouchableWithoutFeedback>
                 <View style={styles.modalContent}>
-                  <Text style={styles.modalTitle}>예산 추가</Text>
+                  <Text style={styles.modalTitle}>{editingBudget ? '예산 수정' : '예산 추가'}</Text>
                   <ScrollView style={styles.modalScrollView} keyboardShouldPersistTaps="handled">
-                    <Text style={styles.label}>카테고리</Text>
-                    <View style={styles.pickerContainer}>
-                      <Picker
-                        selectedValue={selectedCategoryId}
-                        onValueChange={(value) => setSelectedCategoryId(value)}
-                      >
-                        <Picker.Item label="카테고리 선택" value={null} />
-                        {availableCategories.map((cat) => (
-                          <Picker.Item key={cat.id} label={cat.name} value={cat.id} />
-                        ))}
-                      </Picker>
-                    </View>
+                    {editingBudget ? (
+                      // 수정 모드: 카테고리 표시 (변경 불가)
+                      <View style={styles.categoryDisplay}>
+                        <Text style={styles.label}>카테고리</Text>
+                        <Text style={styles.categoryDisplayText}>{editingBudget.categoryName}</Text>
+                      </View>
+                    ) : (
+                      // 추가 모드: 카테고리 선택
+                      <>
+                        <Text style={styles.label}>카테고리</Text>
+                        <View style={styles.pickerContainer}>
+                          <Picker
+                            selectedValue={selectedCategoryId}
+                            onValueChange={(value) => setSelectedCategoryId(value)}
+                          >
+                            <Picker.Item label="카테고리 선택" value={null} />
+                            {availableCategories.map((cat) => (
+                              <Picker.Item key={cat.id} label={cat.name} value={cat.id} />
+                            ))}
+                          </Picker>
+                        </View>
+                      </>
+                    )}
 
                     <TextInput
                       label="예산 금액"
@@ -369,8 +416,8 @@ export default function BudgetsScreen({ navigation }: any) {
                     />
                   </ScrollView>
                   <View style={styles.modalActions}>
-                    <Button mode="outlined" onPress={() => setAddDialogVisible(false)} style={styles.modalButton}>취소</Button>
-                    <Button mode="contained" onPress={handleAddBudget} style={styles.modalButton}>추가</Button>
+                    <Button mode="outlined" onPress={() => { setAddDialogVisible(false); resetForm(); }} style={styles.modalButton}>취소</Button>
+                    <Button mode="contained" onPress={handleAddBudget} style={styles.modalButton}>{editingBudget ? '수정' : '추가'}</Button>
                   </View>
                 </View>
               </TouchableWithoutFeedback>
@@ -616,20 +663,50 @@ const styles = StyleSheet.create({
     color: theme.colors.warning,
     fontWeight: theme.fontWeight.medium,
   },
+  cardActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: theme.spacing.md,
+    marginTop: theme.spacing.md,
+    paddingTop: theme.spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.divider,
+  },
+  editButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.xs,
+    paddingVertical: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.sm,
+  },
+  editButtonText: {
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.primary,
+    fontWeight: theme.fontWeight.medium,
+  },
   deleteButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
     gap: theme.spacing.xs,
-    marginTop: theme.spacing.md,
     paddingVertical: theme.spacing.sm,
-    borderTopWidth: 1,
-    borderTopColor: theme.colors.divider,
+    paddingHorizontal: theme.spacing.sm,
   },
   deleteButtonText: {
     fontSize: theme.fontSize.sm,
     color: theme.colors.expense,
     fontWeight: theme.fontWeight.medium,
+  },
+  categoryDisplay: {
+    marginBottom: theme.spacing.md,
+  },
+  categoryDisplayText: {
+    fontSize: theme.fontSize.lg,
+    fontWeight: theme.fontWeight.semibold,
+    color: theme.colors.text,
+    paddingVertical: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.md,
+    backgroundColor: theme.colors.surfaceVariant,
+    borderRadius: theme.borderRadius.sm,
   },
   fab: {
     position: 'absolute',

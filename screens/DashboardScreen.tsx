@@ -71,7 +71,7 @@ const GroupCard = memo(({ group, onPress }: {
   </Pressable>
 ));
 
-export default function DashboardScreen({ navigation }: any) {
+export default function DashboardScreen({ navigation, route }: any) {
   const insets = useSafeAreaInsets();
   const { theme: currentTheme } = useTheme();
   const { lastUpdate } = useTransactionContext();
@@ -112,8 +112,21 @@ export default function DashboardScreen({ navigation }: any) {
   } | null>(null);
 
 
-  // 월별 선택 기능
-  const [selectedDate, setSelectedDate] = useState(new Date());
+  // 월별 선택 기능 (네비게이션 파라미터로 특정 월 지정 가능)
+  const initialDate = useMemo(() => {
+    if (route?.params?.targetYear && route?.params?.targetMonth) {
+      return new Date(route.params.targetYear, route.params.targetMonth - 1, 1);
+    }
+    return new Date();
+  }, [route?.params?.targetYear, route?.params?.targetMonth]);
+  const [selectedDate, setSelectedDate] = useState(initialDate);
+
+  // 네비게이션 파라미터 변경 시 날짜 업데이트
+  useEffect(() => {
+    if (route?.params?.targetYear && route?.params?.targetMonth) {
+      setSelectedDate(new Date(route.params.targetYear, route.params.targetMonth - 1, 1));
+    }
+  }, [route?.params?.targetYear, route?.params?.targetMonth]);
 
   // useMemo로 year, month 계산 최적화
   const { year, month } = useMemo(() => ({

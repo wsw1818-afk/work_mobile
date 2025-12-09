@@ -27,6 +27,9 @@ export default function RecurringScreen() {
   const [frequency, setFrequency] = useState<'monthly' | 'weekly' | 'yearly'>('monthly');
   const [dayOfMonth, setDayOfMonth] = useState('1');
 
+  // 수정 모드
+  const [editingItem, setEditingItem] = useState<RecurringTransaction | null>(null);
+
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
@@ -67,7 +70,7 @@ export default function RecurringScreen() {
 
     try {
       const today = format(new Date(), 'yyyy-MM-dd');
-      await database.addRecurringTransaction({
+      const recurringData = {
         name,
         amount: parseFloat(amount),
         type,
@@ -76,17 +79,26 @@ export default function RecurringScreen() {
         frequency,
         dayOfMonth: frequency === 'monthly' ? parseInt(dayOfMonth) : undefined,
         dayOfWeek: frequency === 'weekly' ? 0 : undefined,
-        startDate: today,
-        isActive: true,
-      });
+        startDate: editingItem ? editingItem.startDate : today,
+        isActive: editingItem ? editingItem.isActive : true,
+      };
+
+      if (editingItem) {
+        // 수정 모드
+        await database.updateRecurringTransaction(editingItem.id, recurringData);
+        Alert.alert('성공', '반복 거래가 수정되었습니다.');
+      } else {
+        // 추가 모드
+        await database.addRecurringTransaction(recurringData);
+        Alert.alert('성공', '반복 거래가 추가되었습니다.');
+      }
 
       setAddDialogVisible(false);
       resetForm();
       loadData();
-      Alert.alert('성공', '반복 거래가 추가되었습니다.');
     } catch (error) {
-      console.error('Failed to add recurring transaction:', error);
-      Alert.alert('오류', '반복 거래 추가에 실패했습니다.');
+      console.error('Failed to save recurring transaction:', error);
+      Alert.alert('오류', editingItem ? '반복 거래 수정에 실패했습니다.' : '반복 거래 추가에 실패했습니다.');
     }
   };
 
@@ -98,6 +110,20 @@ export default function RecurringScreen() {
     setAccountId(null);
     setFrequency('monthly');
     setDayOfMonth('1');
+    setEditingItem(null);
+  };
+
+  // 수정 시작
+  const handleEditItem = (item: RecurringTransaction) => {
+    setEditingItem(item);
+    setName(item.name);
+    setAmount(String(item.amount));
+    setType(item.type as 'income' | 'expense');
+    setCategoryId(item.categoryId);
+    setAccountId(item.accountId);
+    setFrequency(item.frequency as 'monthly' | 'weekly' | 'yearly');
+    setDayOfMonth(item.dayOfMonth ? String(item.dayOfMonth) : '1');
+    setAddDialogVisible(true);
   };
 
   const handleToggleActive = async (item: RecurringTransaction) => {
@@ -180,6 +206,7 @@ export default function RecurringScreen() {
                 </Text>
               </Card.Content>
               <Card.Actions>
+                <Button onPress={() => handleEditItem(item)}>수정</Button>
                 <Button onPress={() => handleToggleActive(item)}>{item.isActive ? '비활성화' : '활성화'}</Button>
                 <Button onPress={() => handleDelete(item)}>삭제</Button>
               </Card.Actions>
@@ -195,13 +222,13 @@ export default function RecurringScreen() {
         onPress={() => setAddDialogVisible(true)}
       />
 
-      <Modal visible={addDialogVisible} onRequestClose={() => setAddDialogVisible(false)} transparent animationType="fade">
+      <Modal visible={addDialogVisible} onRequestClose={() => { setAddDialogVisible(false); resetForm(); }} transparent animationType="fade">
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalContainer}>
           <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
             <View style={styles.modalOverlay}>
               <TouchableWithoutFeedback>
                 <View style={styles.modalContent}>
-                  <Text style={styles.modalTitle}>반복 거래 추가</Text>
+                  <Text style={styles.modalTitle}>{editingItem ? '반복 거래 수정' : '반복 거래 추가'}</Text>
                   <ScrollView style={styles.modalScrollView} keyboardShouldPersistTaps="handled">
                     <TextInput
                       label="거래 이름"
@@ -342,8 +369,8 @@ export default function RecurringScreen() {
                     )}
                   </ScrollView>
                   <View style={styles.modalActions}>
-                    <Button mode="outlined" onPress={() => setAddDialogVisible(false)} style={styles.modalButton}>취소</Button>
-                    <Button mode="contained" onPress={handleAddRecurring} style={styles.modalButton}>추가</Button>
+                    <Button mode="outlined" onPress={() => { setAddDialogVisible(false); resetForm(); }} style={styles.modalButton}>취소</Button>
+                    <Button mode="contained" onPress={handleAddRecurring} style={styles.modalButton}>{editingItem ? '수정' : '추가'}</Button>
                   </View>
                 </View>
               </TouchableWithoutFeedback>

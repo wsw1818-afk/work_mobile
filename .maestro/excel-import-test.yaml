@@ -1,0 +1,68 @@
+appId: com.anonymous.gagyebunative
+---
+# Excel 가져오기 테스트 - 입금 내역 반영 확인
+
+- launchApp
+
+# 앱 시작 대기
+- waitForAnimationToEnd
+
+# 1. 초기 대시보드 확인
+- tapOn: "대시보드"
+- waitForAnimationToEnd
+- assertVisible: "이번 달 수입"
+- assertVisible: "이번 달 지출"
+
+# 2. 거래 가져오기 화면으로 이동
+- swipe:
+    start: "0%,50%"
+    end: "70%,50%"
+- waitForAnimationToEnd
+- tapOn: "거래 가져오기"
+- waitForAnimationToEnd
+
+# 3. Excel 파일 선택
+- tapOn: "Excel 파일 선택"
+- waitForAnimationToEnd:
+    timeout: 3000
+
+# 4. 파일 선택 (Downloads 폴더)
+- tapOn: "test.xls"
+- waitForAnimationToEnd:
+    timeout: 5000
+
+# 5. 파싱 완료 확인
+- assertVisible: "미리보기"
+
+# 6. 가져오기 실행
+- scrollUntilVisible:
+    element: "거래 가져오기"
+    direction: DOWN
+- tapOn: "거래 가져오기"
+- waitForAnimationToEnd
+
+# 7. 확인 Alert 승인
+- tapOn: "가져오기"
+- waitForAnimationToEnd:
+    timeout: 10000
+
+# 8. 완료 Alert 확인
+- tapOn: "확인"
+- waitForAnimationToEnd
+
+# 9. 대시보드로 이동하여 결과 확인
+- assertVisible: "대시보드"
+
+# 10. 거래내역 확인
+- swipe:
+    start: "0%,50%"
+    end: "70%,50%"
+- waitForAnimationToEnd
+- tapOn: "홈"
+- waitForAnimationToEnd
+
+# 11. 입금 거래 검색
+- assertVisible: "거래내역"
+
+# 스크린샷 저장
+- takeScreenshot: excel-import-result

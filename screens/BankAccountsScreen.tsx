@@ -26,13 +26,17 @@ export default function BankAccountsScreen({ navigation }: any) {
   const [bankInstitution, setBankInstitution] = useState('');
   const [bankBalance, setBankBalance] = useState('');
 
-  // 결제수단 추가 다이얼로그
+  // 결제수단 추가/수정 다이얼로그
   const [addAccountDialogVisible, setAddAccountDialogVisible] = useState(false);
   const [accountName, setAccountName] = useState('');
   const [accountType, setAccountType] = useState<'card' | 'cash'>('card');
   const [cardType, setCardType] = useState<'credit' | 'debit'>('credit');
   const [cardLast4, setCardLast4] = useState('');
   const [selectedBankAccountId, setSelectedBankAccountId] = useState<number | null>(null);
+
+  // 수정 모드
+  const [editingAccount, setEditingAccount] = useState<Account | null>(null);
+  const [editingBank, setEditingBank] = useState<BankAccount | null>(null);
 
   // 확장된 통장 ID
   const [expandedBankId, setExpandedBankId] = useState<number | null>(null);
@@ -69,7 +73,7 @@ export default function BankAccountsScreen({ navigation }: any) {
     loadData();
   }, [loadData]);
 
-  // 통장 추가
+  // 통장 추가/수정
   const handleAddBankAccount = async () => {
     if (!bankName || !bankBalance) {
       Alert.alert('입력 오류', '통장 이름과 잔액을 입력해주세요.');
@@ -77,7 +81,7 @@ export default function BankAccountsScreen({ navigation }: any) {
     }
 
     try {
-      await database.addBankAccount({
+      const bankData = {
         name: bankName,
         accountType: bankAccountType,
         bankName: bankInstitution || undefined,
@@ -85,22 +89,27 @@ export default function BankAccountsScreen({ navigation }: any) {
         balance: parseFloat(bankBalance),
         color: '#3b82f6',
         isActive: true,
-      });
+      };
+
+      if (editingBank) {
+        // 수정 모드
+        await database.updateBankAccount(editingBank.id, bankData);
+      } else {
+        // 추가 모드
+        await database.addBankAccount(bankData);
+      }
 
       setAddBankDialogVisible(false);
-      setBankName('');
-      setBankAccountType('생활비');
-      setBankInstitution('');
-      setBankBalance('');
+      resetBankForm();
       loadData();
-      Alert.alert('성공', '통장이 추가되었습니다.');
+      Alert.alert('성공', editingBank ? '통장이 수정되었습니다.' : '통장이 추가되었습니다.');
     } catch (error) {
-      console.error('Failed to add bank account:', error);
-      Alert.alert('오류', '통장 추가에 실패했습니다.');
+      console.error('Failed to save bank account:', error);
+      Alert.alert('오류', editingBank ? '통장 수정에 실패했습니다.' : '통장 추가에 실패했습니다.');
     }
   };
 
-  // 결제수단 추가
+  // 결제수단 추가/수정
   const handleAddAccount = async () => {
     if (!accountName) {
       Alert.alert('입력 오류', '결제수단 이름을 입력해주세요.');
@@ -108,27 +117,71 @@ export default function BankAccountsScreen({ navigation }: any) {
     }
 
     try {
-      await database.addAccount({
+      const accountData = {
         name: accountName,
         type: accountType,
         cardType: accountType === 'card' ? cardType : undefined,
         last4: accountType === 'card' && cardLast4 ? cardLast4 : undefined,
         color: accountType === 'card' ? '#3b82f6' : '#10b981',
         bankAccountId: selectedBankAccountId || undefined,
-      });
+      };
+
+      if (editingAccount) {
+        // 수정 모드
+        await database.updateAccount(editingAccount.id, accountData);
+      } else {
+        // 추가 모드
+        await database.addAccount(accountData);
+      }
 
       setAddAccountDialogVisible(false);
-      setAccountName('');
-      setAccountType('card');
-      setCardType('credit');
-      setCardLast4('');
-      setSelectedBankAccountId(null);
+      resetAccountForm();
       loadData();
-      Alert.alert('성공', '결제수단이 추가되었습니다.');
+      Alert.alert('성공', editingAccount ? '결제수단이 수정되었습니다.' : '결제수단이 추가되었습니다.');
     } catch (error) {
-      console.error('Failed to add account:', error);
-      Alert.alert('오류', '결제수단 추가에 실패했습니다.');
+      console.error('Failed to save account:', error);
+      Alert.alert('오류', editingAccount ? '결제수단 수정에 실패했습니다.' : '결제수단 추가에 실패했습니다.');
     }
+  };
+
+  // 결제수단 폼 초기화
+  const resetAccountForm = () => {
+    setAccountName('');
+    setAccountType('card');
+    setCardType('credit');
+    setCardLast4('');
+    setSelectedBankAccountId(null);
+    setEditingAccount(null);
+  };
+
+  // 결제수단 수정 시작
+  const handleEditAccount = (account: Account) => {
+    setEditingAccount(account);
+    setAccountName(account.name);
+    setAccountType(account.type as 'card' | 'cash');
+    setCardType(account.cardType as 'credit' | 'debit' || 'credit');
+    setCardLast4(account.last4 || '');
+    setSelectedBankAccountId(account.bankAccountId || null);
+    setAddAccountDialogVisible(true);
+  };
+
+  // 통장 폼 초기화
+  const resetBankForm = () => {
+    setBankName('');
+    setBankAccountType('생활비');
+    setBankInstitution('');
+    setBankBalance('');
+    setEditingBank(null);
+  };
+
+  // 통장 수정 시작
+  const handleEditBank = (bank: BankAccount) => {
+    setEditingBank(bank);
+    setBankName(bank.name);
+    setBankAccountType(bank.accountType || '생활비');
+    setBankInstitution(bank.bankName || '');
+    setBankBalance(String(bank.balance));
+    setAddBankDialogVisible(true);
   };
 
   const handleToggleBankActive = async (bank: BankAccount) => {
@@ -386,12 +439,20 @@ export default function BankAccountsScreen({ navigation }: any) {
                                 )}
                               </View>
                             </View>
-                            <TouchableOpacity
-                              style={styles.deleteIconButton}
-                              onPress={() => handleDeleteAccount(account)}
-                            >
-                              <Ionicons name="trash-outline" size={18} color={theme.colors.expense} />
-                            </TouchableOpacity>
+                            <View style={styles.linkedAccountActions}>
+                              <TouchableOpacity
+                                style={styles.editIconButton}
+                                onPress={() => handleEditAccount(account)}
+                              >
+                                <Ionicons name="pencil-outline" size={18} color={theme.colors.primary} />
+                              </TouchableOpacity>
+                              <TouchableOpacity
+                                style={styles.deleteIconButton}
+                                onPress={() => handleDeleteAccount(account)}
+                              >
+                                <Ionicons name="trash-outline" size={18} color={theme.colors.expense} />
+                              </TouchableOpacity>
+                            </View>
                           </View>
                         ))
                       )}
@@ -410,6 +471,13 @@ export default function BankAccountsScreen({ navigation }: any) {
                 )}
 
                 <View style={styles.cardActions}>
+                  <TouchableOpacity
+                    style={styles.actionButton}
+                    onPress={() => handleEditBank(bank)}
+                  >
+                    <Ionicons name="pencil-outline" size={18} color={theme.colors.primary} />
+                    <Text style={[styles.actionButtonText, { color: theme.colors.primary }]}>수정</Text>
+                  </TouchableOpacity>
                   <TouchableOpacity
                     style={styles.actionButton}
                     onPress={() => handleToggleBankActive(bank)}
@@ -464,12 +532,20 @@ export default function BankAccountsScreen({ navigation }: any) {
                       )}
                     </View>
                   </View>
-                  <TouchableOpacity
-                    style={styles.deleteIconButton}
-                    onPress={() => handleDeleteAccount(account)}
-                  >
-                    <Ionicons name="trash-outline" size={20} color={theme.colors.expense} />
-                  </TouchableOpacity>
+                  <View style={styles.linkedAccountActions}>
+                    <TouchableOpacity
+                      style={styles.editIconButton}
+                      onPress={() => handleEditAccount(account)}
+                    >
+                      <Ionicons name="pencil-outline" size={20} color={theme.colors.primary} />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.deleteIconButton}
+                      onPress={() => handleDeleteAccount(account)}
+                    >
+                      <Ionicons name="trash-outline" size={20} color={theme.colors.expense} />
+                    </TouchableOpacity>
+                  </View>
                 </View>
               </View>
             ))}
@@ -511,10 +587,13 @@ export default function BankAccountsScreen({ navigation }: any) {
         fabStyle={styles.fabButton}
       />
 
-      {/* 통장 추가 모달 */}
+      {/* 통장 추가/수정 모달 */}
       <Modal
         visible={addBankDialogVisible}
-        onRequestClose={() => setAddBankDialogVisible(false)}
+        onRequestClose={() => {
+          setAddBankDialogVisible(false);
+          resetBankForm();
+        }}
         transparent
         animationType="fade"
       >
@@ -526,7 +605,7 @@ export default function BankAccountsScreen({ navigation }: any) {
             <View style={styles.modalOverlay}>
               <TouchableWithoutFeedback>
                 <View style={styles.modalContent}>
-                  <Text style={styles.modalTitle}>통장 추가</Text>
+                  <Text style={styles.modalTitle}>{editingBank ? '통장 수정' : '통장 추가'}</Text>
 
                   <ScrollView style={styles.modalScrollView} keyboardShouldPersistTaps="handled">
                     <TextInput
@@ -588,11 +667,14 @@ export default function BankAccountsScreen({ navigation }: any) {
                   </ScrollView>
 
                   <View style={styles.modalActions}>
-                    <Button onPress={() => setAddBankDialogVisible(false)} mode="outlined" style={styles.modalButton}>
+                    <Button onPress={() => {
+                      setAddBankDialogVisible(false);
+                      resetBankForm();
+                    }} mode="outlined" style={styles.modalButton}>
                       취소
                     </Button>
                     <Button onPress={handleAddBankAccount} mode="contained" style={styles.modalButton}>
-                      추가
+                      {editingBank ? '수정' : '추가'}
                     </Button>
                   </View>
                 </View>
@@ -602,10 +684,13 @@ export default function BankAccountsScreen({ navigation }: any) {
         </KeyboardAvoidingView>
       </Modal>
 
-      {/* 결제수단 추가 모달 */}
+      {/* 결제수단 추가/수정 모달 */}
       <Modal
         visible={addAccountDialogVisible}
-        onRequestClose={() => setAddAccountDialogVisible(false)}
+        onRequestClose={() => {
+          setAddAccountDialogVisible(false);
+          resetAccountForm();
+        }}
         transparent
         animationType="fade"
       >
@@ -617,7 +702,7 @@ export default function BankAccountsScreen({ navigation }: any) {
             <View style={styles.modalOverlay}>
               <TouchableWithoutFeedback>
                 <View style={styles.modalContent}>
-                  <Text style={styles.modalTitle}>결제수단 추가</Text>
+                  <Text style={styles.modalTitle}>{editingAccount ? '결제수단 수정' : '결제수단 추가'}</Text>
 
                   <ScrollView style={styles.modalScrollView} keyboardShouldPersistTaps="handled">
                     <TextInput
@@ -735,11 +820,14 @@ export default function BankAccountsScreen({ navigation }: any) {
                   </ScrollView>
 
                   <View style={styles.modalActions}>
-                    <Button onPress={() => setAddAccountDialogVisible(false)} mode="outlined" style={styles.modalButton}>
+                    <Button onPress={() => {
+                      setAddAccountDialogVisible(false);
+                      resetAccountForm();
+                    }} mode="outlined" style={styles.modalButton}>
                       취소
                     </Button>
                     <Button onPress={handleAddAccount} mode="contained" style={styles.modalButton}>
-                      추가
+                      {editingAccount ? '수정' : '추가'}
                     </Button>
                   </View>
                 </View>
@@ -979,6 +1067,13 @@ const styles = StyleSheet.create({
   },
   deleteIconButton: {
     padding: theme.spacing.sm,
+  },
+  editIconButton: {
+    padding: theme.spacing.sm,
+  },
+  linkedAccountActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   addLinkedButton: {
     flexDirection: 'row',

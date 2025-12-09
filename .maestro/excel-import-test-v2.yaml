@@ -1,0 +1,44 @@
+appId: com.anonymous.gagyebunative
+---
+# Excel 가져오기 테스트 - 간소화 버전
+
+- launchApp:
+    clearState: true
+
+# 앱 시작 대기
+- waitForAnimationToEnd:
+    timeout: 5000
+
+# 스크린샷 (초기 화면)
+- takeScreenshot: 01-initial-screen
+
+# 1. 메뉴 열기 (왼쪽에서 오른쪽 스와이프)
+- swipe:
+    start: "0%,50%"
+    end: "70%,50%"
+- waitForAnimationToEnd:
+    timeout: 2000
+
+# 스크린샷 (메뉴 열림)
+- takeScreenshot: 02-menu-opened
+
+# 2. 거래 가져오기 메뉴 탭 (좌표 기반)
+- tapOn:
+    point: "50%,60%"
+- waitForAnimationToEnd:
+    timeout: 2000
+
+# 스크린샷 (거래 가져오기 화면)
+- takeScreenshot: 03-import-screen
+
+# 3. Excel 파일 선택 버튼 탭
+- tapOn:
+    point: "50%,30%"
+- waitForAnimationToEnd:
+    timeout: 3000
+
+# 스크린샷 (파일 선택기)
+- takeScreenshot: 04-file-picker
+
+# 4. 테스트 완료
+- takeScreenshot: 05-final

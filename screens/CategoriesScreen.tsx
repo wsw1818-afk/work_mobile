@@ -116,6 +116,32 @@ export default function CategoriesScreen({ navigation }: any) {
     }, 100);
   };
 
+  // 카테고리 삭제
+  const handleDeleteCategory = (category: Category) => {
+    Alert.alert(
+      '카테고리 삭제',
+      `"${category.name}" 카테고리를 삭제하시겠습니까?\n\n⚠️ 이 카테고리를 사용하는 거래의 카테고리가 미분류로 변경됩니다.`,
+      [
+        { text: '취소', style: 'cancel' },
+        {
+          text: '삭제',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await database.deleteCategory(category.id);
+              Alert.alert('성공', '카테고리가 삭제되었습니다.');
+              loadCategories();
+              notifyCategoryChanged();
+            } catch (error: any) {
+              console.error('Failed to delete category:', error);
+              Alert.alert('오류', error.message || '카테고리 삭제에 실패했습니다.');
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const handleSaveCategory = async () => {
     const categoryName = categoryNameRef.current?.getValue() || '';
 
@@ -394,6 +420,16 @@ export default function CategoriesScreen({ navigation }: any) {
                         />
                       </TouchableOpacity>
                     )}
+                    <TouchableOpacity
+                      style={styles.deleteButton}
+                      onPress={() => handleDeleteCategory(category)}
+                    >
+                      <Ionicons
+                        name="trash-outline"
+                        size={18}
+                        color={currentTheme.colors.expense}
+                      />
+                    </TouchableOpacity>
                     <View
                       style={[
                         styles.typeBadge,
@@ -836,6 +872,9 @@ const styles = StyleSheet.create({
     gap: theme.spacing.sm,
   },
   dashboardToggle: {
+    padding: theme.spacing.xs,
+  },
+  deleteButton: {
     padding: theme.spacing.xs,
   },
   typeBadge: {

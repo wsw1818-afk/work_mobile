@@ -13,6 +13,8 @@ export interface ColumnMapping {
     | 'date'
     | 'time'
     | 'amount'
+    | 'withdrawal' // 출금 컬럼 (은행 통장)
+    | 'deposit'    // 입금 컬럼 (은행 통장)
     | 'merchant'
     | 'memo'
     | 'account'
@@ -306,8 +308,45 @@ export function parseExcelFile(buffer: ArrayBuffer): ParseResult {
       if (String(markerText || '').includes('이용상세내역')) {
         headerRowIndex = i + 3; // 하나카드: 마커 + 3행
         console.log(`[엑셀 파서] 하나카드 형식 감지, 헤더 행 설정 (행 ${headerRowIndex + 1})`);
+      } else if (String(markerText || '').includes('거래내역')) {
+        // 신한은행: 다음 행에 계좌번호/조회기간/총건수가 하나의 셀에 모두 포함된 경우
+        const nextRow = allRows[i + 1];
+
+        // 디버깅: 다음 행 내용 출력
+        console.log(`[엑셀 파서] 거래내역 마커 다음 행 체크 (행 ${i + 2}):`, nextRow?.map((c: any) => String(c || '').slice(0, 30)));
+
+        let foundAccountInfo = false;
+        const isAccountInfo = nextRow && nextRow.some((cell: any, cellIndex: number) => {
+          const original = String(cell || '');
+          const str = original.replace(/\s/g, '');
+
+          console.log(`  - 셀 ${cellIndex}: "${original.slice(0, 50)}" → 공백제거: "${str.slice(0, 50)}"`);
+
+          // 케이스 무시하지 않고 직접 매칭
+          const hasAll = (str.includes('계좌번호') && str.includes('조회기간') && str.includes('총건수')) ||
+                         str.includes('계좌번호조회기간총건수');
+
+          console.log(`    → 계좌번호: ${str.includes('계좌번호')}, 조회기간: ${str.includes('조회기간')}, 총건수: ${str.includes('총건수')}`);
+          console.log(`    → hasAll: ${hasAll}`);
+
+          if (hasAll) {
+            console.log(`[엑셀 파서] ✓ 계좌정보 행 감지 (셀 ${cellIndex}): "${original.slice(0, 50)}"`);
+            foundAccountInfo = true;
+          }
+          return hasAll;
+        });
+
+        console.log(`[엑셀 파서] isAccountInfo 최종 결과: ${isAccountInfo}, foundAccountInfo: ${foundAccountInfo}`);
+
+        if (isAccountInfo) {
+          headerRowIndex = i + 2; // 신한은행: 마커 + 2행
+          console.log(`[엑셀 파서] 신한은행 형식 감지, 헤더 행 설정 (행 ${headerRowIndex + 1})`);
+        } else {
+          headerRowIndex = i + 1; // 신한카드: 마커 + 1행
+          console.log(`[엑셀 파서] 신한카드 형식 감지, 헤더 행 설정 (행 ${headerRowIndex + 1})`);
+        }
       } else {
-        headerRowIndex = i + 1; // 신한카드: 마커 + 1행
+        headerRowIndex = i + 1; // 기타: 마커 + 1행
         console.log(`[엑셀 파서] 헤더 행 설정 (행 ${headerRowIndex + 1})`);
       }
       break;
@@ -316,85 +355,192 @@ export function parseExcelFile(buffer: ArrayBuffer): ParseResult {
 
   // 섹션 마커가 없으면 키워드 기반으로 헤더 찾기
   if (sectionStartIndex < 0) {
-    console.log(`[엑셀 파서] 섹션 마커 없음, 키워드 기반 헤더 검색`);
+    console.log(`[엑셀 파서] 섹션 마커 없음, 범용 헤더 검색 (한국/일본/미국/중국)`);
+
+    // 날짜 관련 키워드 (필수) - 한국어, 일본어, 영어, 중국어
+    const dateKeywords = [
+      // 한국어
+      '일자', '일시', '날짜', '이용일', '거래일',
+      // 일본어
+      '日付', '利用日', '取引日', '年月日',
+      // 영어
+      'date', 'transaction date', 'posting date', 'trans date',
+      // 중국어 간체
+      '日期', '交易日期', '消费日期',
+      // 중국어 번체
+      '日期', '交易日期', '消費日期'
+    ];
+
+    // 금액 관련 키워드 (필수 또는 선택) - 한국어, 일본어, 영어, 중국어
+    const amountKeywords = [
+      // 한국어
+      '금액', '출금', '입금', '이용금액', '지출', '수입',
+      // 일본어
+      '金額', '利用金額', '出金', '入金', '支出', '収入',
+      // 영어
+      'amount', 'debit', 'credit', 'withdrawal', 'deposit', 'payment', 'charge',
+      // 중국어 간체
+      '金额', '支出', '收入', '消费金额', '取款', '存款',
+      // 중국어 번체
+      '金額', '支出', '收入', '消費金額', '取款', '存款'
+    ];
+
+    // 가맹점/내역 관련 키워드 (선택) - 한국어, 일본어, 영어, 중국어
+    const merchantKeywords = [
+      // 한국어
+      '가맹점', '상호', '적요', '내역', '사용처', '거래처',
+      // 일본어
+      '加盟店', '店舗', '摘要', '利用先', '取引先', '商号',
+      // 영어
+      'merchant', 'description', 'vendor', 'payee', 'store', 'details',
+      // 중국어 간체
+      '商户', '商家', '描述', '交易详情', '商店',
+      // 중국어 번체
+      '商戶', '商家', '描述', '交易詳情', '商店'
+    ];
 
     for (let i = 0; i < Math.min(allRows.length, 50); i++) {
       const row = allRows[i];
       if (!row) continue;
 
-      // 헤더 키워드가 2개 이상 있는 행을 찾기
-      const keywordCount = headerKeywords.filter(keyword =>
-        row.some((cell: any) => String(cell || '').includes(keyword))
-      ).length;
+      // 줄바꿈 제거한 셀 값들
+      const cleanedCells = row.map((cell: any) => String(cell || '').replace(/[\n\r]/g, '').trim().toLowerCase());
 
-      if (keywordCount >= 2) {
-        console.log(`[엑셀 파서] 헤더 발견 (행 ${i + 1}, 키워드 ${keywordCount}개)`);
+      // 날짜 키워드 체크
+      const hasDate = dateKeywords.some(keyword =>
+        cleanedCells.some(cell => cell.includes(keyword.toLowerCase()))
+      );
+
+      // 금액 키워드 체크
+      const hasAmount = amountKeywords.some(keyword =>
+        cleanedCells.some(cell => cell.includes(keyword.toLowerCase()))
+      );
+
+      // 가맹점/내역 키워드 체크
+      const hasMerchant = merchantKeywords.some(keyword =>
+        cleanedCells.some(cell => cell.includes(keyword.toLowerCase()))
+      );
+
+      // 날짜 + 금액이 있으면 헤더로 인식
+      if (hasDate && hasAmount) {
+        console.log(`[엑셀 파서] 범용 헤더 발견 (행 ${i + 1}): 날짜=${hasDate}, 금액=${hasAmount}, 가맹점=${hasMerchant}`);
+        headerRowIndex = i;
+        break;
+      }
+
+      // 날짜 + 가맹점이 있어도 헤더로 인식 (금액은 나중에 나올 수 있음)
+      if (hasDate && hasMerchant) {
+        console.log(`[엑셀 파서] 범용 헤더 발견 (행 ${i + 1}): 날짜=${hasDate}, 가맹점=${hasMerchant}`);
         headerRowIndex = i;
         break;
       }
     }
 
-    // 헤더를 찾지 못한 경우 첫 번째 행을 헤더로 사용
+    // 헤더를 찾지 못한 경우
     if (headerRowIndex === -1) {
-      headerRowIndex = 0;
-    }
-  }
+      console.log('[엑셀 파서] 헤더를 찾지 못함, 첫 번째 행 분석');
 
-  // 헤더 병합 (개행 문자 제거)
-  let headers = allRows[headerRowIndex].map((h: any) => String(h || '').replace(/[\n\r]/g, '').trim());
+      // 첫 번째 행이 데이터인지 확인 (날짜 또는 금액 패턴이 있는지)
+      const firstRow = allRows[0];
+      let hasDataPattern = false;
 
-  // 다음 행들도 헤더의 일부인지 확인하여 병합
-  const maxHeaderRows = 5;
-  for (let j = 1; j <= maxHeaderRows && headerRowIndex + j < allRows.length; j++) {
-    const nextRow = allRows[headerRowIndex + j];
-    if (!nextRow) break;
-
-    // 날짜 패턴 감지 (데이터 행 발견 시 중단)
-    const hasShortDate = nextRow.some((cell: any) => {
-      const str = String(cell || '').trim();
-      return /^\d{1,2}\/\d{1,2}\/\d{2}$/.test(str);
-    });
-
-    const hasStandardDate = nextRow.some((cell: any) => {
-      const str = String(cell || '').trim();
-      return /^\d{4}[./-]\d{2}[./-]\d{2}$/.test(str) || /^\d{2}[./-]\d{2}[./-]\d{2}$/.test(str);
-    });
-
-    if (hasShortDate || hasStandardDate) {
-      console.log(`[엑셀 파서] 데이터 행 감지, 헤더 병합 중단 (행 ${headerRowIndex + j + 1})`);
-      break;
-    }
-
-    // 숫자 셀 많은 행은 데이터로 간주
-    const cellValues = nextRow.map((cell: any) => String(cell || '').trim()).filter((v: string) => v.length > 0);
-    const numericCells = cellValues.filter((str: string) => /^\d{5,}$/.test(str));
-
-    if (cellValues.length >= 3 && numericCells.length / cellValues.length >= 0.3) {
-      console.log(`[엑셀 파서] 데이터 행 감지 (숫자 셀 ${numericCells.length}/${cellValues.length}), 헤더 병합 중단`);
-      break;
-    }
-
-    // 헤더 행이면 병합
-    const isHeaderRow = nextRow.some((cell: any) => {
-      const str = String(cell || '').trim();
-      return str.length > 0 && str.length <= 20;
-    });
-
-    if (isHeaderRow) {
-      headers = headers.map((h: string, idx: number) => {
-        const nextCell = String(nextRow[idx] || '').replace(/[\n\r]/g, '').trim();
-        if (nextCell && nextCell !== h && !h.includes(nextCell)) {
-          return h ? `${h}${nextCell}` : nextCell;
+      if (firstRow) {
+        for (const cell of firstRow) {
+          const str = String(cell || '').trim();
+          // 날짜 패턴 체크
+          if (/^\d{4}[-./]\d{1,2}[-./]\d{1,2}/.test(str) ||
+              /^\d{1,2}\/\d{1,2}\/\d{2,4}$/.test(str) ||
+              /^\d{8}$/.test(str)) {
+            hasDataPattern = true;
+            break;
+          }
+          // 금액 패턴 체크 (콤마 포함 숫자)
+          const cleaned = str.replace(/[,원\s₩$]/g, '');
+          if (/^\d{3,}$/.test(cleaned)) {
+            hasDataPattern = true;
+            break;
+          }
         }
-        return h;
-      });
-      headerRowIndex++;
-    } else {
-      break;
+      }
+
+      if (hasDataPattern) {
+        // 첫 번째 행이 데이터면 가상 헤더 생성
+        console.log('[엑셀 파서] 첫 번째 행이 데이터로 감지됨, 가상 헤더 생성');
+        headerRowIndex = -1; // 특수 플래그: 가상 헤더 사용
+      } else {
+        headerRowIndex = 0;
+      }
     }
   }
 
-  const dataRows = allRows.slice(headerRowIndex + 1);
+  // 헤더 처리
+  let headers: string[];
+  let dataStartIndex: number;
+
+  if (headerRowIndex === -1) {
+    // 가상 헤더 생성 (Column1, Column2, ...)
+    const firstRow = allRows[0];
+    headers = firstRow.map((_: any, idx: number) => `Column${idx + 1}`);
+    dataStartIndex = 0;
+    console.log(`[엑셀 파서] 가상 헤더 생성: ${headers.length}개 컬럼`);
+  } else {
+    // 헤더 병합 (개행 문자 제거)
+    headers = allRows[headerRowIndex].map((h: any) => String(h || '').replace(/[\n\r]/g, '').trim());
+    dataStartIndex = headerRowIndex + 1;
+
+    // 다음 행들도 헤더의 일부인지 확인하여 병합
+    const maxHeaderRows = 5;
+    for (let j = 1; j <= maxHeaderRows && headerRowIndex + j < allRows.length; j++) {
+      const nextRow = allRows[headerRowIndex + j];
+      if (!nextRow) break;
+
+      // 날짜 패턴 감지 (데이터 행 발견 시 중단)
+      const hasShortDate = nextRow.some((cell: any) => {
+        const str = String(cell || '').trim();
+        return /^\d{1,2}\/\d{1,2}\/\d{2}$/.test(str);
+      });
+
+      const hasStandardDate = nextRow.some((cell: any) => {
+        const str = String(cell || '').trim();
+        return /^\d{4}[./-]\d{2}[./-]\d{2}$/.test(str) || /^\d{2}[./-]\d{2}[./-]\d{2}$/.test(str);
+      });
+
+      if (hasShortDate || hasStandardDate) {
+        console.log(`[엑셀 파서] 데이터 행 감지, 헤더 병합 중단 (행 ${headerRowIndex + j + 1})`);
+        break;
+      }
+
+      // 숫자 셀 많은 행은 데이터로 간주
+      const cellValues = nextRow.map((cell: any) => String(cell || '').trim()).filter((v: string) => v.length > 0);
+      const numericCells = cellValues.filter((str: string) => /^\d{5,}$/.test(str));
+
+      if (cellValues.length >= 3 && numericCells.length / cellValues.length >= 0.3) {
+        console.log(`[엑셀 파서] 데이터 행 감지 (숫자 셀 ${numericCells.length}/${cellValues.length}), 헤더 병합 중단`);
+        break;
+      }
+
+      // 헤더 행이면 병합
+      const isHeaderRow = nextRow.some((cell: any) => {
+        const str = String(cell || '').trim();
+        return str.length > 0 && str.length <= 20;
+      });
+
+      if (isHeaderRow) {
+        headers = headers.map((h: string, idx: number) => {
+          const nextCell = String(nextRow[idx] || '').replace(/[\n\r]/g, '').trim();
+          if (nextCell && nextCell !== h && !h.includes(nextCell)) {
+            return h ? `${h}${nextCell}` : nextCell;
+          }
+          return h;
+        });
+        dataStartIndex++;
+      } else {
+        break;
+      }
+    }
+  }
+
+  const dataRows = allRows.slice(dataStartIndex);
 
   // 합계/소계 행 처리
   let grandTotalIndex = -1;
@@ -445,7 +591,9 @@ export function parseExcelFile(buffer: ArrayBuffer): ParseResult {
       const obj: ParsedRow = {};
       headers.forEach((header: string, idx: number) => {
         if (header) {
-          obj[header] = row[idx] || null;
+          // 헤더 줄바꿈 제거 (예: '이용\n일자' -> '이용일자')
+          const cleanedHeader = header.replace(/[\n\r]/g, '');
+          obj[cleanedHeader] = row[idx] || null;
         }
       });
       return obj;
@@ -499,10 +647,262 @@ export function parseExcelFile(buffer: ArrayBuffer): ParseResult {
 }
 
 /**
+ * 데이터 내용 기반으로 컬럼 타입 감지 (강화된 버전)
+ * 헤더 이름이 깨지거나 알 수 없는 형식이어도 데이터 패턴만으로 컬럼을 찾음
+ */
+export function detectColumnTypeFromData(
+  headers: string[],
+  rows: ParsedRow[]
+): ColumnMapping[] {
+  const mapping: ColumnMapping[] = [];
+  const sampleSize = Math.min(rows.length, 30); // 처음 30행 샘플링
+
+  console.log(`[데이터 감지] 시작: ${headers.length}개 컬럼, ${rows.length}개 행`);
+
+  // 각 컬럼별 상세 분석 정보
+  interface ColumnStats {
+    dates: number;        // 날짜로 인식된 횟수
+    amounts: number;      // 금액으로 인식된 횟수
+    texts: number;        // 텍스트로 인식된 횟수
+    empty: number;        // 빈 값 횟수
+    avgTextLen: number;   // 평균 텍스트 길이
+    hasKorean: boolean;   // 한글 포함 여부
+    sampleValues: string[]; // 샘플 값들 (디버깅용)
+  }
+
+  const columnStats: Record<string, ColumnStats> = {};
+
+  for (const header of headers) {
+    if (!header) continue;
+    columnStats[header] = {
+      dates: 0, amounts: 0, texts: 0, empty: 0,
+      avgTextLen: 0, hasKorean: false, sampleValues: []
+    };
+  }
+
+  // 확장된 날짜 패턴
+  const datePatterns = [
+    /^\d{4}[-./]\d{1,2}[-./]\d{1,2}$/,           // YYYY-MM-DD, YYYY.MM.DD, YYYY/MM/DD
+    /^\d{4}[-./]\d{1,2}[-./]\d{1,2}\s+\d{1,2}:\d{2}/, // YYYY-MM-DD HH:mm
+    /^\d{2}[-./]\d{1,2}[-./]\d{1,2}$/,           // YY-MM-DD, YY.MM.DD
+    /^\d{1,2}\/\d{1,2}\/\d{2,4}$/,               // M/D/YY, MM/DD/YYYY
+    /^\d{1,2}[-./]\d{1,2}[-./]\d{2}$/,           // M-D-YY, M.D.YY
+    /^\d{8}$/,                                    // YYYYMMDD
+    /^\d{6}$/,                                    // YYMMDD
+    /^\d{4}년\s*\d{1,2}월\s*\d{1,2}일/,          // YYYY년 MM월 DD일
+    /^\d{1,2}월\s*\d{1,2}일/,                    // MM월 DD일
+    /^\d{1,2}-[A-Za-z]{3}-\d{2,4}$/,             // DD-Mon-YY, DD-Mon-YYYY
+    /^[A-Za-z]{3}\s+\d{1,2},?\s+\d{4}$/,         // Mon DD, YYYY
+  ];
+
+  // 샘플 데이터 분석
+  for (let i = 0; i < sampleSize && i < rows.length; i++) {
+    const row = rows[i];
+    for (const header of headers) {
+      if (!header) continue;
+      const value = row[header];
+      const stats = columnStats[header];
+
+      if (value === null || value === undefined || String(value).trim() === '') {
+        stats.empty++;
+        continue;
+      }
+
+      const str = String(value).trim();
+      stats.sampleValues.push(str.slice(0, 30)); // 디버깅용 샘플 저장
+
+      // 1. 날짜 패턴 감지 (확장)
+      let isDate = false;
+      for (const pattern of datePatterns) {
+        if (pattern.test(str)) {
+          isDate = true;
+          break;
+        }
+      }
+      // Excel 시리얼 날짜 (30000-70000 범위의 숫자)
+      const numVal = parseFloat(str);
+      if (!isDate && !isNaN(numVal) && numVal >= 30000 && numVal <= 70000 && /^\d+$/.test(str)) {
+        isDate = true;
+      }
+
+      // 2. 금액 패턴 감지 (강화)
+      // 통화 기호, 콤마, 괄호 음수 등 제거 후 숫자인지 확인
+      const cleanedForAmount = str
+        .replace(/[,\s]/g, '')
+        .replace(/^[₩$€¥£]/, '')
+        .replace(/원$/, '')
+        .replace(/^\((.+)\)$/, '-$1')  // 괄호 음수 처리
+        .replace(/^"/, '').replace(/"$/, ''); // 따옴표 제거
+
+      const isAmount = !isDate &&
+        /^-?\d+(\.\d+)?$/.test(cleanedForAmount) &&
+        cleanedForAmount.length >= 2 &&  // 최소 2자리 (더 관대하게)
+        parseFloat(cleanedForAmount) !== 0;
+
+      // 3. 텍스트 패턴 (한글 또는 영문 + 일정 길이)
+      const hasKorean = /[가-힣]/.test(str);
+      const hasEnglish = /[a-zA-Z]/.test(str);
+      const isText = !isDate && !isAmount && (hasKorean || hasEnglish) && str.length >= 2;
+
+      if (isDate) {
+        stats.dates++;
+      } else if (isAmount) {
+        stats.amounts++;
+      } else if (isText) {
+        stats.texts++;
+        stats.avgTextLen += str.length;
+        if (hasKorean) stats.hasKorean = true;
+      }
+    }
+  }
+
+  // 분석 결과 로그
+  console.log('[데이터 감지] 컬럼별 분석 결과:');
+  for (const header of headers) {
+    if (!header) continue;
+    const stats = columnStats[header];
+    const total = stats.dates + stats.amounts + stats.texts;
+    if (total === 0) {
+      console.log(`  - "${header}": 인식된 패턴 없음 (샘플: ${stats.sampleValues.slice(0, 3).join(', ')})`);
+      continue;
+    }
+    console.log(`  - "${header}": 날짜=${stats.dates}, 금액=${stats.amounts}, 텍스트=${stats.texts} (샘플: ${stats.sampleValues.slice(0, 2).join(', ')})`);
+  }
+
+  // 컬럼 선정 (더 관대한 기준)
+  const validRows = sampleSize;
+  const minRatio = 0.3; // 30% 이상이면 해당 타입으로 간주
+
+  // 날짜 컬럼 찾기 (가장 높은 날짜 비율)
+  let bestDateCol: string | null = null;
+  let bestDateRatio = 0;
+
+  for (const header of headers) {
+    if (!header) continue;
+    const stats = columnStats[header];
+    const dateRatio = stats.dates / validRows;
+    if (dateRatio > bestDateRatio && dateRatio >= minRatio) {
+      bestDateRatio = dateRatio;
+      bestDateCol = header;
+    }
+  }
+
+  if (bestDateCol) {
+    mapping.push({ source: bestDateCol, target: 'date' });
+    console.log(`[데이터 감지] ✓ 날짜 컬럼: "${bestDateCol}" (${Math.round(bestDateRatio * 100)}%)`);
+  }
+
+  // 금액 컬럼 찾기 (모든 금액 컬럼 수집)
+  const amountColumns: Array<{ col: string; ratio: number; avg: number }> = [];
+
+  for (const header of headers) {
+    if (!header || header === bestDateCol) continue;
+    const stats = columnStats[header];
+    const amountRatio = stats.amounts / validRows;
+
+    if (amountRatio >= minRatio) {
+      // 금액 평균 계산 (대략적)
+      let avgAmount = 0;
+      let count = 0;
+      for (let i = 0; i < Math.min(rows.length, 20); i++) {
+        const val = rows[i][header];
+        if (val) {
+          const num = normalizeAmount(val);
+          if (num !== 0) {
+            avgAmount += Math.abs(num);
+            count++;
+          }
+        }
+      }
+      avgAmount = count > 0 ? avgAmount / count : 0;
+
+      amountColumns.push({ col: header, ratio: amountRatio, avg: avgAmount });
+    }
+  }
+
+  // 금액 컬럼 정렬 (비율 높은 순)
+  amountColumns.sort((a, b) => b.ratio - a.ratio);
+
+  // 금액 컬럼 매핑
+  if (amountColumns.length >= 2) {
+    // 여러 금액 컬럼이 있으면 출금/입금 분리 시도
+    let foundWithdrawal = false;
+    let foundDeposit = false;
+
+    for (const { col, ratio } of amountColumns) {
+      const lowerCol = col.toLowerCase();
+
+      if (!foundWithdrawal && (lowerCol.includes('출금') || lowerCol.includes('지출') || lowerCol.includes('debit') || lowerCol.includes('withdraw'))) {
+        mapping.push({ source: col, target: 'withdrawal' });
+        console.log(`[데이터 감지] ✓ 출금 컬럼: "${col}" (${Math.round(ratio * 100)}%)`);
+        foundWithdrawal = true;
+      } else if (!foundDeposit && (lowerCol.includes('입금') || lowerCol.includes('수입') || lowerCol.includes('credit') || lowerCol.includes('deposit'))) {
+        mapping.push({ source: col, target: 'deposit' });
+        console.log(`[데이터 감지] ✓ 입금 컬럼: "${col}" (${Math.round(ratio * 100)}%)`);
+        foundDeposit = true;
+      }
+    }
+
+    // 출금/입금 키워드가 없으면 첫 두 개를 출금/입금으로
+    if (!foundWithdrawal && !foundDeposit && amountColumns.length >= 2) {
+      mapping.push({ source: amountColumns[0].col, target: 'withdrawal' });
+      mapping.push({ source: amountColumns[1].col, target: 'deposit' });
+      console.log(`[데이터 감지] ✓ 금액 컬럼 (추정 출금/입금): "${amountColumns[0].col}", "${amountColumns[1].col}"`);
+    } else if (!foundWithdrawal && !foundDeposit) {
+      // 단일 금액 컬럼
+      mapping.push({ source: amountColumns[0].col, target: 'amount' });
+      console.log(`[데이터 감지] ✓ 금액 컬럼: "${amountColumns[0].col}" (${Math.round(amountColumns[0].ratio * 100)}%)`);
+    }
+  } else if (amountColumns.length === 1) {
+    mapping.push({ source: amountColumns[0].col, target: 'amount' });
+    console.log(`[데이터 감지] ✓ 금액 컬럼: "${amountColumns[0].col}" (${Math.round(amountColumns[0].ratio * 100)}%)`);
+  }
+
+  // 텍스트 컬럼 찾기 (가맹점/메모)
+  const textColumns: Array<{ col: string; ratio: number; avgLen: number; hasKorean: boolean }> = [];
+
+  for (const header of headers) {
+    if (!header || header === bestDateCol) continue;
+    // 이미 금액으로 매핑된 컬럼 제외
+    if (amountColumns.some(a => a.col === header)) continue;
+
+    const stats = columnStats[header];
+    const textRatio = stats.texts / validRows;
+
+    if (textRatio >= minRatio) {
+      const avgLen = stats.texts > 0 ? stats.avgTextLen / stats.texts : 0;
+      textColumns.push({ col: header, ratio: textRatio, avgLen, hasKorean: stats.hasKorean });
+    }
+  }
+
+  // 텍스트 컬럼 정렬: 한글 포함 > 평균 길이 > 비율
+  textColumns.sort((a, b) => {
+    if (a.hasKorean !== b.hasKorean) return b.hasKorean ? 1 : -1;
+    if (Math.abs(a.avgLen - b.avgLen) > 5) return b.avgLen - a.avgLen;
+    return b.ratio - a.ratio;
+  });
+
+  // 가맹점 컬럼 (첫 번째 텍스트)
+  if (textColumns.length >= 1) {
+    mapping.push({ source: textColumns[0].col, target: 'merchant' });
+    console.log(`[데이터 감지] ✓ 가맹점 컬럼: "${textColumns[0].col}" (${Math.round(textColumns[0].ratio * 100)}%, 평균길이=${Math.round(textColumns[0].avgLen)})`);
+  }
+
+  // 메모 컬럼 (두 번째 텍스트)
+  if (textColumns.length >= 2) {
+    mapping.push({ source: textColumns[1].col, target: 'memo' });
+    console.log(`[데이터 감지] ✓ 메모 컬럼: "${textColumns[1].col}" (${Math.round(textColumns[1].ratio * 100)}%)`);
+  }
+
+  console.log(`[데이터 감지] 완료: ${mapping.length}개 매핑 생성`);
+  return mapping;
+}
+
+/**
  * 컬럼명 기반 자동 매핑 추천
  * 다양한 은행/카드사 형식 지원
  */
-export function suggestColumnMapping(headers: string[]): ColumnMapping[] {
+export function suggestColumnMapping(headers: string[], rows?: ParsedRow[]): ColumnMapping[] {
   const mapping: ColumnMapping[] = [];
 
   // 날짜 관련 패턴 (다양한 은행/카드사 지원)
@@ -563,7 +963,19 @@ export function suggestColumnMapping(headers: string[]): ColumnMapping[] {
   ];
 
   for (const header of headers) {
-    const lowerHeader = header.toLowerCase();
+    // 줄바꿈 제거 (예: '이용\n일자' -> '이용일자')
+    const cleanedHeader = header.replace(/[\n\r]/g, '');
+    const lowerHeader = cleanedHeader.toLowerCase();
+
+    // 신한은행 전용: 출금/입금 컬럼을 별도로 처리
+    if (cleanedHeader === '출금(원)' || cleanedHeader === '출금') {
+      mapping.push({ source: cleanedHeader, target: 'withdrawal' });
+      continue;
+    }
+    if (cleanedHeader === '입금(원)' || cleanedHeader === '입금') {
+      mapping.push({ source: cleanedHeader, target: 'deposit' });
+      continue;
+    }
 
     // 제외할 금액 패턴 체크
     const isExcludedAmount = excludeAmountPatterns.some((p) =>
@@ -571,35 +983,63 @@ export function suggestColumnMapping(headers: string[]): ColumnMapping[] {
     );
 
     if (datePatterns.some((p) => lowerHeader.includes(p.toLowerCase()))) {
-      mapping.push({ source: header, target: 'date' });
+      mapping.push({ source: cleanedHeader, target: 'date' });
     } else if (
       timePatterns.some((p) => lowerHeader.includes(p.toLowerCase()))
     ) {
-      mapping.push({ source: header, target: 'time' });
+      mapping.push({ source: cleanedHeader, target: 'time' });
     } else if (
       !isExcludedAmount &&
       amountPatterns.some((p) => lowerHeader.includes(p.toLowerCase()))
     ) {
-      mapping.push({ source: header, target: 'amount' });
+      mapping.push({ source: cleanedHeader, target: 'amount' });
     } else if (
       merchantPatterns.some((p) => lowerHeader.includes(p.toLowerCase()))
     ) {
-      mapping.push({ source: header, target: 'merchant' });
+      mapping.push({ source: cleanedHeader, target: 'merchant' });
     } else if (
       memoPatterns.some((p) => lowerHeader.includes(p.toLowerCase()))
     ) {
-      mapping.push({ source: header, target: 'memo' });
+      mapping.push({ source: cleanedHeader, target: 'memo' });
     } else if (
       accountPatterns.some((p) => lowerHeader.includes(p.toLowerCase()))
     ) {
-      mapping.push({ source: header, target: 'account' });
+      mapping.push({ source: cleanedHeader, target: 'account' });
     } else if (
       typePatterns.some((p) => lowerHeader.includes(p.toLowerCase()))
     ) {
-      mapping.push({ source: header, target: 'type' });
+      mapping.push({ source: cleanedHeader, target: 'type' });
     }
   }
 
+  // 가상 헤더인지 확인 (Column1, Column2, ... 형태)
+  const isVirtualHeaders = headers.every(h => /^Column\d+$/.test(h));
+
+  // 가상 헤더이거나 헤더 기반 매핑이 부족하면 데이터 기반 자동 감지 시도
+  const hasDate = mapping.some(m => m.target === 'date');
+  const hasAmount = mapping.some(m => m.target === 'amount' || m.target === 'withdrawal' || m.target === 'deposit');
+
+  if ((isVirtualHeaders || !hasDate || !hasAmount) && rows && rows.length > 0) {
+    console.log(`[suggestColumnMapping] 데이터 기반 자동 감지 시도 (가상헤더=${isVirtualHeaders}, 날짜=${hasDate}, 금액=${hasAmount})`);
+    const dataBasedMapping = detectColumnTypeFromData(headers, rows);
+
+    if (isVirtualHeaders) {
+      // 가상 헤더면 데이터 기반 매핑으로 완전 대체
+      console.log('[suggestColumnMapping] 가상 헤더 - 데이터 기반 매핑으로 대체');
+      return dataBasedMapping;
+    }
+
+    // 부족한 매핑만 추가
+    for (const dm of dataBasedMapping) {
+      const alreadyMapped = mapping.some(m => m.source === dm.source || m.target === dm.target);
+      if (!alreadyMapped) {
+        mapping.push(dm);
+        console.log(`[suggestColumnMapping] 데이터 기반 매핑 추가: ${dm.source} -> ${dm.target}`);
+      }
+    }
+  }
+
+  console.log(`[suggestColumnMapping] 최종 매핑: ${mapping.length}개`);
   return mapping;
 }
 
@@ -705,7 +1145,24 @@ export function normalizeDate(value: any): string | null {
     return `${koreanMatch[1]}-${koreanMatch[2].padStart(2, '0')}-${koreanMatch[3].padStart(2, '0')}`;
   }
 
-  // 9. MM월 DD일 형식 (연도 없음 - 현재 연도 사용)
+  // 9. M/D/YY 또는 MM/DD/YY 형식 (2자리 연도)
+  // 예: 4/23/23 -> 2023-04-23, 12/8/24 -> 2024-12-08
+  if (/^\d{1,2}\/\d{1,2}\/\d{2}$/.test(str)) {
+    const [mm, dd, yy] = str.split('/');
+    // 2자리 연도를 4자리로 변환 (00~49 = 2000~2049, 50~99 = 1950~1999)
+    const yearNum = parseInt(yy);
+    const fullYear = yearNum >= 50 ? 1900 + yearNum : 2000 + yearNum;
+    return `${fullYear}-${mm.padStart(2, '0')}-${dd.padStart(2, '0')}`;
+  }
+
+  // 10. M/D 또는 MM/DD 형식 (연도 없음 - 현재 연도 사용)
+  if (/^\d{1,2}\/\d{1,2}$/.test(str)) {
+    const [mm, dd] = str.split('/');
+    const currentYear = new Date().getFullYear();
+    return `${currentYear}-${mm.padStart(2, '0')}-${dd.padStart(2, '0')}`;
+  }
+
+  // 10. MM월 DD일 형식 (연도 없음 - 현재 연도 사용)
   const koreanNoYearMatch = str.match(/(\d{1,2})월\s*(\d{1,2})일/);
   if (koreanNoYearMatch) {
     const currentYear = new Date().getFullYear();
@@ -725,9 +1182,10 @@ export function normalizeDate(value: any): string | null {
     }
   }
 
-  // 11. Excel 시리얼 날짜 (숫자만 있고 30000-50000 범위)
+  // 11. Excel 시리얼 날짜 (숫자만 있고 30000-70000 범위)
+  // 30000 ≈ 1982년, 70000 ≈ 2091년
   const numValue = parseFloat(str);
-  if (!isNaN(numValue) && numValue >= 30000 && numValue <= 60000) {
+  if (!isNaN(numValue) && numValue >= 30000 && numValue <= 70000) {
     // Excel 시리얼 날짜를 JavaScript 날짜로 변환
     const excelEpoch = new Date(1899, 11, 30); // Excel 기준일
     const jsDate = new Date(excelEpoch.getTime() + numValue * 24 * 60 * 60 * 1000);
@@ -778,6 +1236,7 @@ export function normalizeAmount(value: any): number {
   // 통화 기호 및 단위 제거
   str = str
     .replace(/[,\s]/g, '') // 쉼표와 공백 제거
+    .replace(/^\+/, '') // + 기호 제거 (예: +1000 -> 1000)
     .replace(/원$/, '') // "원" 제거
     .replace(/^₩/, '') // 원화 기호 제거
     .replace(/^\$/, '') // 달러 기호 제거
@@ -806,18 +1265,33 @@ export function inferTransactionType(
   typeHint?: string,
   columnName?: string
 ): 'expense' | 'income' {
-  // 1. typeHint가 있으면 우선 사용
+  // 1. typeHint가 있으면 우선 사용 (가장 높은 우선순위)
   if (typeHint) {
     const lower = typeHint.toLowerCase();
-    if (lower.includes('출금') || lower.includes('지출')) return 'expense';
-    if (lower.includes('입금') || lower.includes('수입')) return 'income';
+    // 입금/수입 패턴 먼저 체크 (은행 통장내역의 "입금" 컬럼)
+    if (lower.includes('입금') || lower.includes('수입') || lower.includes('income')) {
+      console.log(`[inferTransactionType] typeHint=${typeHint} -> income`);
+      return 'income';
+    }
+    if (lower.includes('출금') || lower.includes('지출') || lower.includes('expense')) {
+      console.log(`[inferTransactionType] typeHint=${typeHint} -> expense`);
+      return 'expense';
+    }
   }
 
-  // 2. columnName 힌트
+  // 2. columnName 힌트 (컬럼명으로 판단)
   if (columnName) {
     const lower = columnName.toLowerCase();
-    if (lower.includes('출금')) return 'expense';
-    if (lower.includes('입금')) return 'income';
+    // 입금 컬럼이면 수입
+    if (lower.includes('입금') || lower.includes('수입')) {
+      console.log(`[inferTransactionType] columnName=${columnName} -> income`);
+      return 'income';
+    }
+    // 출금 컬럼이면 지출
+    if (lower.includes('출금') || lower.includes('지출')) {
+      console.log(`[inferTransactionType] columnName=${columnName} -> expense`);
+      return 'expense';
+    }
 
     // 신용카드 컬럼: 양수=지출, 음수=수입(환불)
     if (lower.includes('이용금액') || lower.includes('내실금액') || lower.includes('청구금액')) {
@@ -825,11 +1299,11 @@ export function inferTransactionType(
     }
   }
 
-  // 3. 금액 부호
+  // 3. 금액 부호로 판단 (은행 통장: 양수=입금/수입, 음수=출금/지출)
+  // 주의: 카드 명세서는 보통 양수가 지출이므로 columnName이 없으면 기본=지출
   if (amount < 0) return 'expense';
-  if (amount > 0) return 'income';
 
-  // 4. 기본값 = 지출
+  // 4. 기본값 = 지출 (카드 명세서 기준)
   return 'expense';
 }
 
@@ -883,6 +1357,24 @@ export function applyMapping(
           const timeValue = extractTime(value);
           if (timeValue) {
             normalized.time = timeValue;
+          }
+          break;
+        case 'withdrawal':
+          // 신한은행 "출금(원)" 전용 처리
+          const withdrawalAmount = normalizeAmount(value);
+          if (withdrawalAmount !== 0) {
+            출금금액 = withdrawalAmount;
+            typeHint = '출금';
+            amountColumnName = map.source;
+          }
+          break;
+        case 'deposit':
+          // 신한은행 "입금(원)" 전용 처리
+          const depositAmount = normalizeAmount(value);
+          if (depositAmount !== 0) {
+            입금금액 = depositAmount;
+            typeHint = '입금';
+            amountColumnName = map.source;
           }
           break;
         case 'amount':
@@ -943,6 +1435,11 @@ export function applyMapping(
 
     // 타입 결정 후 금액을 절대값으로 변환
     normalized.amount = Math.abs(normalized.amount);
+
+    // 디버깅 로그 (입금 거래만)
+    if (normalized.type === 'income') {
+      console.log(`[applyMapping] ✅ 입금 거래 생성: ${normalized.date} / ${normalized.merchant || normalized.memo} / ${normalized.amount}원`);
+    }
 
     result.push(normalized as NormalizedTransaction);
   }

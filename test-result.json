@@ -1,0 +1,67 @@
+{
+  "total": 420,
+  "income": 74,
+  "expense": 346,
+  "incomeSamples": [
+    {
+      "date": "2025-09-24",
+      "amount": 300,
+      "type": "income",
+      "memo": "주택금융공사"
+    },
+    {
+      "date": "2025-09-20",
+      "amount": 3793,
+      "type": "income",
+      "memo": "06.21~09.19"
+    },
+    {
+      "date": "2025-09-19",
+      "amount": 5298157,
+      "type": "income",
+      "memo": "9월 급여"
+    },
+    {
+      "date": "2025-09-11",
+      "amount": 9880,
+      "type": "income",
+      "memo": "K-패스환급금"
+    },
+    {
+      "date": "2025-09-05",
+      "amount": 150000,
+      "type": "income",
+      "memo": "SKNS노동조합"
+    },
+    {
+      "date": "2025-08-25",
+      "amount": 340,
+      "type": "income",
+      "memo": "주택금융공사"
+    },
+    {
+      "date": "2025-08-20",
+      "amount": 3531407,
+      "type": "income",
+      "memo": "8월 급여"
+    },
+    {
+      "date": "2025-08-18",
+      "amount": 1,
+      "type": "income",
+      "memo": "4351 신한카드"
+    },
+    {
+      "date": "2025-08-13",
+      "amount": 14050,
+      "type": "income",
+      "memo": "K패스환급금"
+    },
+    {
+      "date": "2025-07-31",
+      "amount": 1,
+      "type": "income",
+      "memo": "카카오370"
+    }
+  ]
+}
