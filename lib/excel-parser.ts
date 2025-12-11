@@ -220,6 +220,28 @@ export function extractCardName(buffer: ArrayBuffer): string | null {
  * 엑셀/CSV 파일을 파싱하여 JSON 배열로 반환
  */
 export function parseExcelFile(buffer: ArrayBuffer): ParseResult {
+  // 디버깅: 파일 시작 바이트 확인 (파일 형식 감지)
+  const bytes = new Uint8Array(buffer.slice(0, 16));
+  const hexHeader = Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join(' ');
+  console.log(`[엑셀 파서] 파일 헤더 (hex): ${hexHeader}`);
+
+  // 파일 형식 감지
+  // XLS (BIFF8): D0 CF 11 E0 A1 B1 1A E1 (OLE2 Compound Document)
+  // XLSX: 50 4B 03 04 (PK.. ZIP 형식)
+  // HTML: 3C 68 74 6D 6C (<html) 또는 3C 21 44 4F (<!DO)
+  const isOLE2 = bytes[0] === 0xD0 && bytes[1] === 0xCF && bytes[2] === 0x11 && bytes[3] === 0xE0;
+  const isZIP = bytes[0] === 0x50 && bytes[1] === 0x4B && bytes[2] === 0x03 && bytes[3] === 0x04;
+  const isHTML = (bytes[0] === 0x3C && bytes[1] === 0x68) || (bytes[0] === 0x3C && bytes[1] === 0x21);
+  const isUTF8BOM = bytes[0] === 0xEF && bytes[1] === 0xBB && bytes[2] === 0xBF;
+
+  console.log(`[엑셀 파서] 파일 형식: OLE2(xls)=${isOLE2}, ZIP(xlsx)=${isZIP}, HTML=${isHTML}, UTF8BOM=${isUTF8BOM}`);
+
+  // HTML 형식인 경우 경고 (일부 은행에서 .xls로 저장하지만 실제로는 HTML)
+  if (isHTML) {
+    console.warn('[엑셀 파서] ⚠️ HTML 형식 감지! 이 파일은 .xls 확장자이지만 실제로는 HTML입니다.');
+    // HTML 형식은 xlsx 라이브러리가 파싱할 수 있음
+  }
+
   const workbook = XLSX.read(buffer, { type: 'array' });
 
   const sectionMarkers = ['이용일자별', '거래내역', '카드사용내역', '이용상세내역'];
@@ -309,37 +331,41 @@ export function parseExcelFile(buffer: ArrayBuffer): ParseResult {
         headerRowIndex = i + 3; // 하나카드: 마커 + 3행
         console.log(`[엑셀 파서] 하나카드 형식 감지, 헤더 행 설정 (행 ${headerRowIndex + 1})`);
       } else if (String(markerText || '').includes('거래내역')) {
-        // 신한은행: 다음 행에 계좌번호/조회기간/총건수가 하나의 셀에 모두 포함된 경우
-        const nextRow = allRows[i + 1];
+        // 신한은행: 마커 이후 행에서 계좌번호가 있는지 확인 (최대 10행 검색)
+        // 신한은행 형식: 마커 → 빈행 → 계좌번호 → 조회기간 → 총건수 → 빈행 → 헤더
+        let foundShinhanBank = false;
+        let shinhanHeaderRow = -1;
 
-        // 디버깅: 다음 행 내용 출력
-        console.log(`[엑셀 파서] 거래내역 마커 다음 행 체크 (행 ${i + 2}):`, nextRow?.map((c: any) => String(c || '').slice(0, 30)));
+        // 마커 이후 10행 내에서 '계좌번호'와 '거래일자' 헤더 찾기
+        for (let j = i + 1; j < Math.min(i + 15, allRows.length); j++) {
+          const checkRow = allRows[j];
+          if (!checkRow) continue;
 
-        let foundAccountInfo = false;
-        const isAccountInfo = nextRow && nextRow.some((cell: any, cellIndex: number) => {
-          const original = String(cell || '');
-          const str = original.replace(/\s/g, '');
+          // 계좌번호 행 확인
+          const hasAccountNumber = checkRow.some((cell: any) => {
+            const str = String(cell || '');
+            return str === '계좌번호';
+          });
 
-          console.log(`  - 셀 ${cellIndex}: "${original.slice(0, 50)}" → 공백제거: "${str.slice(0, 50)}"`);
+          // 헤더 행 확인 (거래일자 + 출금/입금)
+          const hasDateHeader = checkRow.some((cell: any) => String(cell || '') === '거래일자');
+          const hasWithdrawal = checkRow.some((cell: any) => String(cell || '').includes('출금'));
+          const hasDeposit = checkRow.some((cell: any) => String(cell || '').includes('입금'));
 
-          // 케이스 무시하지 않고 직접 매칭
-          const hasAll = (str.includes('계좌번호') && str.includes('조회기간') && str.includes('총건수')) ||
-                         str.includes('계좌번호조회기간총건수');
-
-          console.log(`    → 계좌번호: ${str.includes('계좌번호')}, 조회기간: ${str.includes('조회기간')}, 총건수: ${str.includes('총건수')}`);
-          console.log(`    → hasAll: ${hasAll}`);
-
-          if (hasAll) {
-            console.log(`[엑셀 파서] ✓ 계좌정보 행 감지 (셀 ${cellIndex}): "${original.slice(0, 50)}"`);
-            foundAccountInfo = true;
+          if (hasAccountNumber) {
+            console.log(`[엑셀 파서] 신한은행 계좌번호 발견 (행 ${j + 1})`);
+            foundShinhanBank = true;
           }
-          return hasAll;
-        });
 
-        console.log(`[엑셀 파서] isAccountInfo 최종 결과: ${isAccountInfo}, foundAccountInfo: ${foundAccountInfo}`);
+          if (hasDateHeader && hasWithdrawal && hasDeposit) {
+            shinhanHeaderRow = j;
+            console.log(`[엑셀 파서] 신한은행 헤더 발견 (행 ${j + 1}): 거래일자, 출금, 입금`);
+            break;
+          }
+        }
 
-        if (isAccountInfo) {
-          headerRowIndex = i + 2; // 신한은행: 마커 + 2행
+        if (foundShinhanBank && shinhanHeaderRow >= 0) {
+          headerRowIndex = shinhanHeaderRow;
           console.log(`[엑셀 파서] 신한은행 형식 감지, 헤더 행 설정 (행 ${headerRowIndex + 1})`);
         } else {
           headerRowIndex = i + 1; // 신한카드: 마커 + 1행
@@ -968,11 +994,20 @@ export function suggestColumnMapping(headers: string[], rows?: ParsedRow[]): Col
     const lowerHeader = cleanedHeader.toLowerCase();
 
     // 신한은행 전용: 출금/입금 컬럼을 별도로 처리
+    // 디버깅: 입금/출금 헤더 매칭 상세 로그
+    if (cleanedHeader.includes('출금') || cleanedHeader.includes('입금')) {
+      console.log(`[컬럼 매핑] 출금/입금 헤더 감지: "${cleanedHeader}" (원본: "${header}")`);
+      console.log(`  → 출금(원) 일치: ${cleanedHeader === '출금(원)'}, 출금 일치: ${cleanedHeader === '출금'}`);
+      console.log(`  → 입금(원) 일치: ${cleanedHeader === '입금(원)'}, 입금 일치: ${cleanedHeader === '입금'}`);
+    }
+
     if (cleanedHeader === '출금(원)' || cleanedHeader === '출금') {
+      console.log(`[컬럼 매핑] ✅ 출금 컬럼 매핑: "${cleanedHeader}" → withdrawal`);
       mapping.push({ source: cleanedHeader, target: 'withdrawal' });
       continue;
     }
     if (cleanedHeader === '입금(원)' || cleanedHeader === '입금') {
+      console.log(`[컬럼 매핑] ✅ 입금 컬럼 매핑: "${cleanedHeader}" → deposit`);
       mapping.push({ source: cleanedHeader, target: 'deposit' });
       continue;
     }
@@ -1329,7 +1364,8 @@ export function applyMapping(
 
   console.log(`[applyMapping] 시작: ${rows.length}개 행, ${mapping.length}개 매핑`);
 
-  for (const row of rows) {
+  for (let rowIndex = 0; rowIndex < rows.length; rowIndex++) {
+    const row = rows[rowIndex];
     const normalized: Partial<NormalizedTransaction> = {
       original: row,
     };
@@ -1361,20 +1397,26 @@ export function applyMapping(
           break;
         case 'withdrawal':
           // 신한은행 "출금(원)" 전용 처리
+          console.log(`[applyMapping] withdrawal 처리: value="${value}"`);
           const withdrawalAmount = normalizeAmount(value);
+          console.log(`[applyMapping] → 정규화된 출금금액: ${withdrawalAmount}`);
           if (withdrawalAmount !== 0) {
             출금금액 = withdrawalAmount;
             typeHint = '출금';
             amountColumnName = map.source;
+            console.log(`[applyMapping] ✅ 출금 설정: ${출금금액}원`);
           }
           break;
         case 'deposit':
           // 신한은행 "입금(원)" 전용 처리
+          console.log(`[applyMapping] deposit 처리: value="${value}"`);
           const depositAmount = normalizeAmount(value);
+          console.log(`[applyMapping] → 정규화된 입금금액: ${depositAmount}`);
           if (depositAmount !== 0) {
             입금금액 = depositAmount;
             typeHint = '입금';
             amountColumnName = map.source;
+            console.log(`[applyMapping] ✅ 입금 설정: ${입금금액}원`);
           }
           break;
         case 'amount':
@@ -1418,27 +1460,32 @@ export function applyMapping(
     }
 
     // 출금/입금 중 하나만 값이 있는 경우 처리
+    console.log(`[applyMapping] 행 ${rowIndex} - 출금: ${출금금액}, 입금: ${입금금액}`);
     if (출금금액 !== 0 || 입금금액 !== 0) {
       normalized.amount = 출금금액 !== 0 ? 출금금액 : 입금금액;
       if (!typeHint) {
         typeHint = 출금금액 !== 0 ? '출금' : '입금';
       }
+      console.log(`[applyMapping] → 최종 금액: ${normalized.amount}, typeHint: ${typeHint}`);
     }
 
     // 필수 필드 검증
     if (!normalized.date || normalized.amount === undefined || normalized.amount === 0) {
-      console.log(`[applyMapping] 스킵:`, { date: normalized.date, amount: normalized.amount });
+      console.log(`[applyMapping] 스킵 (필수필드 누락):`, { date: normalized.date, amount: normalized.amount, 출금금액, 입금금액 });
       continue;
     }
 
     normalized.type = inferTransactionType(normalized.amount, typeHint, amountColumnName);
+    console.log(`[applyMapping] 행 ${rowIndex} - 타입 결정: ${normalized.type} (typeHint: ${typeHint})`);
 
     // 타입 결정 후 금액을 절대값으로 변환
     normalized.amount = Math.abs(normalized.amount);
 
-    // 디버깅 로그 (입금 거래만)
+    // 디버깅 로그 (입금 거래)
     if (normalized.type === 'income') {
       console.log(`[applyMapping] ✅ 입금 거래 생성: ${normalized.date} / ${normalized.merchant || normalized.memo} / ${normalized.amount}원`);
+    } else {
+      console.log(`[applyMapping] 💰 출금 거래 생성: ${normalized.date} / ${normalized.merchant || normalized.memo} / ${normalized.amount}원`);
     }
 
     result.push(normalized as NormalizedTransaction);
