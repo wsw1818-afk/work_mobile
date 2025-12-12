@@ -381,48 +381,58 @@ export function parseExcelFile(buffer: ArrayBuffer): ParseResult {
 
   // 섹션 마커가 없으면 키워드 기반으로 헤더 찾기
   if (sectionStartIndex < 0) {
-    console.log(`[엑셀 파서] 섹션 마커 없음, 범용 헤더 검색 (한국/일본/미국/중국)`);
+    console.log(`[엑셀 파서] 섹션 마커 없음, 범용 헤더 검색 (한국/일본/미국/중국/유럽)`);
 
-    // 날짜 관련 키워드 (필수) - 한국어, 일본어, 영어, 중국어
+    // 날짜 관련 키워드 (필수) - 한국어, 일본어, 영어, 중국어, 유럽어
     const dateKeywords = [
       // 한국어
-      '일자', '일시', '날짜', '이용일', '거래일',
+      '일자', '일시', '날짜', '이용일', '거래일', '사용일', '승인일', '결제일', '매출일',
       // 일본어
-      '日付', '利用日', '取引日', '年月日',
+      '日付', '利用日', '取引日', '年月日', '決済日', '使用日', '承認日',
       // 영어
-      'date', 'transaction date', 'posting date', 'trans date',
+      'date', 'transaction date', 'posting date', 'trans date', 'txn date', 'value date',
+      'payment date', 'purchase date', 'settlement date',
       // 중국어 간체
-      '日期', '交易日期', '消费日期',
+      '日期', '交易日期', '消费日期', '结算日期', '支付日期',
       // 중국어 번체
-      '日期', '交易日期', '消費日期'
+      '日期', '交易日期', '消費日期', '結算日期', '支付日期',
+      // 독일어/프랑스어/스페인어
+      'datum', 'fecha', 'data', 'дата'
     ];
 
-    // 금액 관련 키워드 (필수 또는 선택) - 한국어, 일본어, 영어, 중국어
+    // 금액 관련 키워드 (필수 또는 선택) - 한국어, 일본어, 영어, 중국어, 유럽어
     const amountKeywords = [
       // 한국어
-      '금액', '출금', '입금', '이용금액', '지출', '수입',
+      '금액', '출금', '입금', '이용금액', '지출', '수입', '결제금액', '청구금액', '거래금액',
+      '출금액', '입금액', '지출금액', '수입금액',
       // 일본어
-      '金額', '利用金額', '出金', '入金', '支出', '収入',
+      '金額', '利用金額', '出金', '入金', '支出', '収入', '決済金額', '請求金額', '取引金額',
       // 영어
       'amount', 'debit', 'credit', 'withdrawal', 'deposit', 'payment', 'charge',
+      'money out', 'money in', 'spent', 'received', 'balance change',
       // 중국어 간체
-      '金额', '支出', '收入', '消费金额', '取款', '存款',
+      '金额', '支出', '收入', '消费金额', '取款', '存款', '交易金额', '付款金额',
       // 중국어 번체
-      '金額', '支出', '收入', '消費金額', '取款', '存款'
+      '金額', '支出', '收入', '消費金額', '取款', '存款', '交易金額', '付款金額',
+      // 독일어/프랑스어/스페인어
+      'betrag', 'montant', 'importe', 'сумма'
     ];
 
-    // 가맹점/내역 관련 키워드 (선택) - 한국어, 일본어, 영어, 중국어
+    // 가맹점/내역 관련 키워드 (선택) - 한국어, 일본어, 영어, 중국어, 유럽어
     const merchantKeywords = [
       // 한국어
-      '가맹점', '상호', '적요', '내역', '사용처', '거래처',
+      '가맹점', '상호', '적요', '내역', '사용처', '거래처', '결제처', '상호명', '거래내역',
       // 일본어
-      '加盟店', '店舗', '摘要', '利用先', '取引先', '商号',
+      '加盟店', '店舗', '摘要', '利用先', '取引先', '商号', '店名', '取引内容',
       // 영어
-      'merchant', 'description', 'vendor', 'payee', 'store', 'details',
+      'merchant', 'description', 'vendor', 'payee', 'store', 'details', 'narrative',
+      'transaction description', 'particulars', 'reference', 'memo',
       // 중국어 간체
-      '商户', '商家', '描述', '交易详情', '商店',
+      '商户', '商家', '描述', '交易详情', '商店', '备注', '交易说明',
       // 중국어 번체
-      '商戶', '商家', '描述', '交易詳情', '商店'
+      '商戶', '商家', '描述', '交易詳情', '商店', '備註', '交易說明',
+      // 독일어/프랑스어/스페인어
+      'beschreibung', 'libellé', 'descripción', 'описание'
     ];
 
     for (let i = 0; i < Math.min(allRows.length, 50); i++) {
@@ -869,11 +879,35 @@ export function detectColumnTypeFromData(
       }
     }
 
-    // 출금/입금 키워드가 없으면 첫 두 개를 출금/입금으로
+    // 출금/입금 키워드가 없으면 데이터 패턴으로 분석
     if (!foundWithdrawal && !foundDeposit && amountColumns.length >= 2) {
-      mapping.push({ source: amountColumns[0].col, target: 'withdrawal' });
-      mapping.push({ source: amountColumns[1].col, target: 'deposit' });
-      console.log(`[데이터 감지] ✓ 금액 컬럼 (추정 출금/입금): "${amountColumns[0].col}", "${amountColumns[1].col}"`);
+      // 두 금액 컬럼의 데이터 패턴 분석: 한 행에 하나만 값이 있는지 확인
+      let exclusivePattern = 0; // 두 컬럼이 상호 배타적인 패턴 횟수
+      let bothHaveValue = 0;    // 두 컬럼 모두 값이 있는 패턴 횟수
+
+      for (let i = 0; i < Math.min(rows.length, 30); i++) {
+        const val1 = normalizeAmount(rows[i][amountColumns[0].col]);
+        const val2 = normalizeAmount(rows[i][amountColumns[1].col]);
+
+        if ((val1 !== 0 && val2 === 0) || (val1 === 0 && val2 !== 0)) {
+          exclusivePattern++;
+        } else if (val1 !== 0 && val2 !== 0) {
+          bothHaveValue++;
+        }
+      }
+
+      console.log(`[데이터 감지] 금액 컬럼 패턴: 상호배타=${exclusivePattern}, 동시값=${bothHaveValue}`);
+
+      // 상호 배타적 패턴이 많으면 출금/입금 분리로 판단
+      if (exclusivePattern > bothHaveValue * 2 && exclusivePattern >= 5) {
+        mapping.push({ source: amountColumns[0].col, target: 'withdrawal' });
+        mapping.push({ source: amountColumns[1].col, target: 'deposit' });
+        console.log(`[데이터 감지] ✓ 금액 컬럼 (상호배타 패턴 → 출금/입금): "${amountColumns[0].col}", "${amountColumns[1].col}"`);
+      } else {
+        // 첫 번째 컬럼만 사용
+        mapping.push({ source: amountColumns[0].col, target: 'amount' });
+        console.log(`[데이터 감지] ✓ 금액 컬럼: "${amountColumns[0].col}" (${Math.round(amountColumns[0].ratio * 100)}%)`);
+      }
     } else if (!foundWithdrawal && !foundDeposit) {
       // 단일 금액 컬럼
       mapping.push({ source: amountColumns[0].col, target: 'amount' });
@@ -993,20 +1027,35 @@ export function suggestColumnMapping(headers: string[], rows?: ParsedRow[]): Col
     const cleanedHeader = header.replace(/[\n\r]/g, '');
     const lowerHeader = cleanedHeader.toLowerCase();
 
-    // 신한은행 전용: 출금/입금 컬럼을 별도로 처리
-    // 디버깅: 입금/출금 헤더 매칭 상세 로그
-    if (cleanedHeader.includes('출금') || cleanedHeader.includes('입금')) {
-      console.log(`[컬럼 매핑] 출금/입금 헤더 감지: "${cleanedHeader}" (원본: "${header}")`);
-      console.log(`  → 출금(원) 일치: ${cleanedHeader === '출금(원)'}, 출금 일치: ${cleanedHeader === '출금'}`);
-      console.log(`  → 입금(원) 일치: ${cleanedHeader === '입금(원)'}, 입금 일치: ${cleanedHeader === '입금'}`);
-    }
+    // 범용 출금/입금 컬럼 감지 (모든 은행/카드사 지원)
+    // 출금 키워드: 출금, 지출, 인출, 차변, debit, withdrawal, 支出, 出金
+    // 입금 키워드: 입금, 수입, 예금, 대변, credit, deposit, 收入, 入金
+    const withdrawalKeywords = [
+      '출금', '지출', '인출', '차변', '출금액', '지출액', '출금(원)', '지출금액',
+      'debit', 'withdrawal', 'withdraw', 'payment', 'expense',
+      '支出', '出金', '取款', '支払', '引出'
+    ];
+    const depositKeywords = [
+      '입금', '수입', '예금', '대변', '입금액', '수입액', '입금(원)', '수입금액',
+      'credit', 'deposit', 'income', 'receipt',
+      '收入', '入金', '存款', '入金', '預入'
+    ];
 
-    if (cleanedHeader === '출금(원)' || cleanedHeader === '출금') {
+    // 출금 컬럼 체크
+    const isWithdrawal = withdrawalKeywords.some(kw =>
+      lowerHeader.includes(kw.toLowerCase()) || cleanedHeader.includes(kw)
+    );
+    // 입금 컬럼 체크
+    const isDeposit = depositKeywords.some(kw =>
+      lowerHeader.includes(kw.toLowerCase()) || cleanedHeader.includes(kw)
+    );
+
+    if (isWithdrawal && !isDeposit) {
       console.log(`[컬럼 매핑] ✅ 출금 컬럼 매핑: "${cleanedHeader}" → withdrawal`);
       mapping.push({ source: cleanedHeader, target: 'withdrawal' });
       continue;
     }
-    if (cleanedHeader === '입금(원)' || cleanedHeader === '입금') {
+    if (isDeposit && !isWithdrawal) {
       console.log(`[컬럼 매핑] ✅ 입금 컬럼 매핑: "${cleanedHeader}" → deposit`);
       mapping.push({ source: cleanedHeader, target: 'deposit' });
       continue;
@@ -1204,17 +1253,66 @@ export function normalizeDate(value: any): string | null {
     return `${currentYear}-${koreanNoYearMatch[1].padStart(2, '0')}-${koreanNoYearMatch[2].padStart(2, '0')}`;
   }
 
-  // 10. DD-MMM-YYYY 형식 (예: 15-Jan-2024)
+  // 10. DD-MMM-YYYY 또는 DD-MMM-YY 형식 (예: 15-Jan-2024, 15-Jan-24)
   const monthNames: { [key: string]: string } = {
     'jan': '01', 'feb': '02', 'mar': '03', 'apr': '04', 'may': '05', 'jun': '06',
-    'jul': '07', 'aug': '08', 'sep': '09', 'oct': '10', 'nov': '11', 'dec': '12'
+    'jul': '07', 'aug': '08', 'sep': '09', 'oct': '10', 'nov': '11', 'dec': '12',
+    // 일본어 월 (1月, 2月, ...)은 별도 처리
   };
-  const engMatch = str.match(/(\d{1,2})-([a-zA-Z]{3})-(\d{4})/i);
+  const engMatch = str.match(/(\d{1,2})-([a-zA-Z]{3})-(\d{2,4})/i);
   if (engMatch) {
     const month = monthNames[engMatch[2].toLowerCase()];
     if (month) {
-      return `${engMatch[3]}-${month}-${engMatch[1].padStart(2, '0')}`;
+      let year = engMatch[3];
+      if (year.length === 2) {
+        year = parseInt(year) >= 50 ? `19${year}` : `20${year}`;
+      }
+      return `${year}-${month}-${engMatch[1].padStart(2, '0')}`;
     }
+  }
+
+  // 10-1. MMM DD, YYYY 형식 (예: Jan 15, 2024)
+  const engMatch2 = str.match(/([a-zA-Z]{3})\s+(\d{1,2}),?\s+(\d{4})/i);
+  if (engMatch2) {
+    const month = monthNames[engMatch2[1].toLowerCase()];
+    if (month) {
+      return `${engMatch2[3]}-${month}-${engMatch2[2].padStart(2, '0')}`;
+    }
+  }
+
+  // 10-2. 일본어 날짜 형식 (令和5年12月15日, 2024年12月15日)
+  const jpMatch = str.match(/(\d{4})年\s*(\d{1,2})月\s*(\d{1,2})日/);
+  if (jpMatch) {
+    return `${jpMatch[1]}-${jpMatch[2].padStart(2, '0')}-${jpMatch[3].padStart(2, '0')}`;
+  }
+
+  // 10-3. 중국어 날짜 형식 (2024年12月15日)
+  const cnMatch = str.match(/(\d{4})年(\d{1,2})月(\d{1,2})日/);
+  if (cnMatch) {
+    return `${cnMatch[1]}-${cnMatch[2].padStart(2, '0')}-${cnMatch[3].padStart(2, '0')}`;
+  }
+
+  // 10-4. YYYY/M/D 또는 YYYY-M-D 형식 (패딩 없는 날짜)
+  if (/^\d{4}[./-]\d{1,2}[./-]\d{1,2}$/.test(str)) {
+    const parts = str.split(/[./-]/);
+    return `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
+  }
+
+  // 10-5. D/M/YYYY 또는 D-M-YYYY 형식 (유럽식, 일이 12 초과시)
+  if (/^\d{1,2}[./-]\d{1,2}[./-]\d{4}$/.test(str)) {
+    const parts = str.split(/[./-]/);
+    const first = parseInt(parts[0]);
+    const second = parseInt(parts[1]);
+    // 첫 번째 숫자가 12 초과면 일로 간주 (유럽식)
+    if (first > 12) {
+      return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+    }
+    // 두 번째 숫자가 12 초과면 일로 간주 (미국식)
+    if (second > 12) {
+      return `${parts[2]}-${parts[0].padStart(2, '0')}-${parts[1].padStart(2, '0')}`;
+    }
+    // 모호한 경우 미국식(MM/DD/YYYY)으로 간주
+    return `${parts[2]}-${parts[0].padStart(2, '0')}-${parts[1].padStart(2, '0')}`;
   }
 
   // 11. Excel 시리얼 날짜 (숫자만 있고 30000-70000 범위)
