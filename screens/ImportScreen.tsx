@@ -18,10 +18,7 @@ import {
 } from 'react-native-paper';
 import { theme } from '../lib/theme';
 import * as DocumentPicker from 'expo-document-picker';
-import * as FileSystemModule from 'expo-file-system';
-
-// expo-file-system 타입 정의 불일치 우회 (런타임 정상 작동)
-const FileSystem = FileSystemModule as any;
+import * as FileSystem from 'expo-file-system/legacy';
 import {
   parseExcelFile,
   suggestColumnMapping,
@@ -131,42 +128,66 @@ export default function ImportScreen({ navigation }: any) {
         for (const file of result.assets) {
           try {
             // 파일을 ArrayBuffer로 읽기
-            let base64: string;
+            let arrayBuffer: ArrayBuffer;
+
+            // 방법 1: FileSystem.readAsStringAsync (Base64)
+            const encodingBase64 = FileSystem.EncodingType?.Base64 || 'base64';
+            console.log(`[파일 읽기] ${file.name} - EncodingType.Base64: ${encodingBase64}`);
+
             try {
-              // content:// URI를 지원하는 방식으로 파일 읽기
-              base64 = await FileSystem.readAsStringAsync(file.uri, {
-                encoding: FileSystem.EncodingType.Base64,
+              const base64 = await FileSystem.readAsStringAsync(file.uri, {
+                encoding: encodingBase64,
               });
+              console.log(`[파일 읽기] FileSystem 성공, base64 길이: ${base64.length}`);
+
+              // Base64를 ArrayBuffer로 변환
+              const binaryString = atob(base64);
+              const bytes = new Uint8Array(binaryString.length);
+              for (let i = 0; i < binaryString.length; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
+              }
+              arrayBuffer = bytes.buffer;
             } catch (readError: any) {
-              console.error('FileSystem 읽기 실패, 대체 방법 시도:', readError);
-              // 대체 방법: fetch를 사용하여 읽기 (OneDrive 등 클라우드 파일)
-              const response = await fetch(file.uri);
-              const blob = await response.blob();
-              const reader = new FileReader();
-              base64 = await new Promise<string>((resolve, reject) => {
-                reader.onloadend = () => {
-                  const result = reader.result as string;
-                  // data:application/...;base64,... 형식에서 base64 부분만 추출
-                  const base64Data = result.split(',')[1];
-                  resolve(base64Data);
-                };
-                reader.onerror = reject;
-                reader.readAsDataURL(blob);
-              });
+              console.error('FileSystem 읽기 실패, fetch 방법 시도:', readError.message);
+
+              // 방법 2: fetch + arrayBuffer() 직접 사용 (가장 안정적)
+              try {
+                const response = await fetch(file.uri);
+                arrayBuffer = await response.arrayBuffer();
+                console.log(`[파일 읽기] fetch.arrayBuffer() 성공, 크기: ${arrayBuffer.byteLength}`);
+              } catch (fetchError: any) {
+                console.error('fetch.arrayBuffer() 실패, FileReader 시도:', fetchError.message);
+
+                // 방법 3: fetch + FileReader (마지막 수단)
+                const response = await fetch(file.uri);
+                const blob = await response.blob();
+                arrayBuffer = await new Promise<ArrayBuffer>((resolve, reject) => {
+                  const reader = new FileReader();
+                  reader.onloadend = () => {
+                    resolve(reader.result as ArrayBuffer);
+                  };
+                  reader.onerror = reject;
+                  reader.readAsArrayBuffer(blob);
+                });
+                console.log(`[파일 읽기] FileReader 성공, 크기: ${arrayBuffer.byteLength}`);
+              }
             }
 
-            if (!base64) {
+            if (!arrayBuffer || arrayBuffer.byteLength === 0) {
               console.error(`파일 ${file.name}을 읽을 수 없습니다.`);
               continue;
             }
 
-            // Base64를 ArrayBuffer로 변환
-            const binaryString = atob(base64);
-            const bytes = new Uint8Array(binaryString.length);
-            for (let i = 0; i < binaryString.length; i++) {
-              bytes[i] = binaryString.charCodeAt(i);
-            }
-            const arrayBuffer = bytes.buffer;
+            // 디버깅: ArrayBuffer 내용 확인
+            const fileBytes = new Uint8Array(arrayBuffer.slice(0, 32));
+            const hexHeader = Array.from(fileBytes).map(b => b.toString(16).padStart(2, '0')).join(' ');
+            console.log(`[파일 읽기] ${file.name} - 크기: ${arrayBuffer.byteLength}바이트`);
+            console.log(`[파일 읽기] 파일 헤더 (hex): ${hexHeader}`);
+
+            // 파일 형식 확인 (OLE2 = D0 CF 11 E0)
+            const isOLE2 = fileBytes[0] === 0xD0 && fileBytes[1] === 0xCF && fileBytes[2] === 0x11 && fileBytes[3] === 0xE0;
+            const isZIP = fileBytes[0] === 0x50 && fileBytes[1] === 0x4B && fileBytes[2] === 0x03 && fileBytes[3] === 0x04;
+            console.log(`[파일 읽기] 파일 형식: OLE2(xls)=${isOLE2}, ZIP(xlsx)=${isZIP}`);
 
             // 파일명에서 카드명 추출
             const detectedCard = extractCardNameFromFilename(file.name);
@@ -174,13 +195,28 @@ export default function ImportScreen({ navigation }: any) {
 
             // Excel 파일 파싱
             const parsed = parseExcelFile(arrayBuffer);
+            console.log(`[파싱 결과] 헤더: ${parsed.headers.join(', ')}`);
+            console.log(`[파싱 결과] 총 ${parsed.rowCount}개 행`);
             allResults.push(parsed);
 
             // 자동 컬럼 매핑 추천 (헤더 기반 + 데이터 기반 자동 감지)
             const mapping = suggestColumnMapping(parsed.headers, parsed.rows);
+            console.log(`[컬럼 매핑] ${mapping.length}개 매핑:`, mapping.map(m => `${m.source}->${m.target}`).join(', '));
 
             // 매핑 적용하여 거래 데이터 생성
             const transactions = applyMapping(parsed.rows, mapping);
+
+            // 디버깅: 수입/지출 통계
+            const incomeCount = transactions.filter(tx => tx.type === 'income').length;
+            const expenseCount = transactions.filter(tx => tx.type === 'expense').length;
+            console.log(`[매핑 결과] 총 ${transactions.length}건 (수입: ${incomeCount}건, 지출: ${expenseCount}건)`);
+
+            // 수입 거래 샘플 (최대 3건)
+            const incomeSamples = transactions.filter(tx => tx.type === 'income').slice(0, 3);
+            if (incomeSamples.length > 0) {
+              console.log(`[수입 샘플] ${incomeSamples.map(tx => `${tx.date}/${tx.amount}원/${tx.merchant || tx.memo}`).join(' | ')}`);
+            }
+
             rawTransactions.push(...transactions.map(tx => ({
               ...tx,
               account: detectedCard || tx.account,
@@ -318,8 +354,27 @@ export default function ImportScreen({ navigation }: any) {
               // 기본 카테고리 미리 조회 (루프 밖에서 1회만)
               const incomeCategories = await database.getCategories('income');
               const expenseCategories = await database.getCategories('expense');
-              const defaultIncomeId = incomeCategories[0]?.id || 1;
-              const defaultExpenseId = expenseCategories[0]?.id || 4; // 식비가 보통 4번
+
+              // 카테고리가 없으면 생성 (첫 실행 시 또는 DB 초기화 후)
+              let defaultIncomeId = incomeCategories[0]?.id;
+              let defaultExpenseId = expenseCategories[0]?.id;
+
+              if (!defaultIncomeId) {
+                console.log('[ImportScreen] 수입 카테고리 없음, 기본 카테고리 생성');
+                defaultIncomeId = await database.addCategory({
+                  name: '급여',
+                  type: 'income',
+                  color: '#4CAF50',
+                });
+              }
+              if (!defaultExpenseId) {
+                console.log('[ImportScreen] 지출 카테고리 없음, 기본 카테고리 생성');
+                defaultExpenseId = await database.addCategory({
+                  name: '기타',
+                  type: 'expense',
+                  color: '#9E9E9E',
+                });
+              }
 
               // 각 거래 추가
               for (let i = 0; i < allTransactions.length; i++) {
