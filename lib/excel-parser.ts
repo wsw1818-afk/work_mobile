@@ -1596,8 +1596,12 @@ export function applyMapping(
 /**
  * 중복 거래 제거
  * @param transactions 정규화된 거래 목록
- * @param strictMode 엄격 모드 (true: 날짜+금액만, false: 날짜+가맹점+금액)
+ * @param strictMode 엄격 모드 (true: 날짜+시간+금액만, false: 날짜+시간+가맹점+금액)
  * @returns 중복 제거된 거래 목록
+ *
+ * 🔧 v1.2 개선: 시간(time)을 중복 체크 키에 포함
+ * - 같은 날, 같은 가맹점, 같은 금액이어도 시간이 다르면 별개 거래로 처리
+ * - 예: 스타벅스 아침 5,500원 + 스타벅스 저녁 5,500원 = 2건 (중복 아님)
  */
 export function removeDuplicateTransactions(
   transactions: NormalizedTransaction[],
@@ -1610,18 +1614,21 @@ export function removeDuplicateTransactions(
   for (const tx of transactions) {
     let key: string;
 
+    // 시간 정보 (없으면 빈 문자열 - 시간 없는 거래끼리는 기존 로직대로 비교)
+    const timeKey = tx.time || '';
+
     if (strictMode) {
-      // 엄격 모드: 날짜 + 금액만으로 중복 체크 (같은 날 같은 금액이면 중복)
-      key = `${tx.date}|${tx.amount}`;
+      // 엄격 모드: 날짜 + 시간 + 금액만으로 중복 체크
+      key = `${tx.date}|${timeKey}|${tx.amount}`;
     } else {
-      // 기본 모드: 날짜 + 가맹점명(소문자, 공백제거) + 금액
+      // 기본 모드: 날짜 + 시간 + 가맹점명(소문자, 공백제거) + 금액
       const merchantKey = (tx.merchant || tx.memo || '').toLowerCase().replace(/\s+/g, '');
-      key = `${tx.date}|${merchantKey}|${tx.amount}`;
+      key = `${tx.date}|${timeKey}|${merchantKey}|${tx.amount}`;
     }
 
     if (seen.has(key)) {
       duplicateCount++;
-      console.log(`[중복 제거] 스킵: ${tx.date} / ${tx.merchant || tx.memo} / ${tx.amount}`);
+      console.log(`[중복 제거] 스킵: ${tx.date} ${tx.time || ''} / ${tx.merchant || tx.memo} / ${tx.amount}`);
     } else {
       seen.add(key);
       unique.push(tx);

@@ -137,6 +137,65 @@ export interface ExpenseGroup {
   createdAt: string;
 }
 
+/**
+ * 스마트 패턴 매칭 함수
+ * - 공백 무시: "스타벅스" = "스타 벅스" = " 스타벅스 "
+ * - 대소문자 무시
+ *
+ * @returns 매칭되면 true, 아니면 false
+ */
+function smartPatternMatch(text: string, pattern: string): boolean {
+  if (!text || !pattern) return false;
+
+  // 공백 제거 후 소문자로 변환
+  const normalizedText = text.replace(/\s+/g, '').toLowerCase();
+  const normalizedPattern = pattern.replace(/\s+/g, '').toLowerCase();
+
+  if (normalizedPattern.length === 0) return false;
+
+  // 단순 부분 문자열 검색 (공백 무시)
+  return normalizedText.includes(normalizedPattern);
+}
+
+/**
+ * 텍스트에서 가장 구체적으로 매칭되는 규칙을 찾음
+ * - 여러 규칙이 매칭될 때, 가장 긴(구체적인) 패턴을 가진 규칙만 선택
+ * - 예: "스타벅스", "스타벅스2" 규칙이 모두 있을 때
+ *   - "스타벅스2호점" → "스타벅스2" 규칙만 매칭 (더 구체적)
+ *   - "스타벅스강남" → "스타벅스" 규칙만 매칭
+ *
+ * @param text 검색 대상 텍스트
+ * @param rules 규칙 배열 (pattern과 다른 정보 포함)
+ * @returns 가장 구체적으로 매칭되는 규칙, 없으면 null
+ */
+function findBestMatchingRule<T extends { pattern: string }>(
+  text: string,
+  rules: T[]
+): T | null {
+  if (!text || rules.length === 0) return null;
+
+  const normalizedText = text.replace(/\s+/g, '').toLowerCase();
+
+  // 매칭되는 모든 규칙 찾기
+  const matchingRules: Array<{ rule: T; normalizedPattern: string }> = [];
+
+  for (const rule of rules) {
+    const normalizedPattern = rule.pattern.replace(/\s+/g, '').toLowerCase();
+    if (normalizedPattern.length === 0) continue;
+
+    if (normalizedText.includes(normalizedPattern)) {
+      matchingRules.push({ rule, normalizedPattern });
+    }
+  }
+
+  if (matchingRules.length === 0) return null;
+
+  // 가장 긴 패턴을 가진 규칙 선택 (가장 구체적인 매칭)
+  matchingRules.sort((a, b) => b.normalizedPattern.length - a.normalizedPattern.length);
+
+  return matchingRules[0].rule;
+}
+
 class Database {
   private db: SQLite.SQLiteDatabase | null = null;
 
@@ -882,26 +941,25 @@ class Database {
   }
 
   // 제외 패턴 매칭 헬퍼 함수 (메모리에서 처리)
+  // 스마트 매칭: 공백 무시
   private matchesExclusionPattern(tx: Transaction, patterns: ExclusionPattern[]): boolean {
-    const merchantLower = (tx.merchant || '').toLowerCase();
-    const memoLower = (tx.memo || '').toLowerCase();
-    const accountLower = (tx.accountName || '').toLowerCase();
+    const merchant = tx.merchant || '';
+    const memo = tx.memo || '';
+    const account = tx.accountName || '';
 
     for (const pattern of patterns) {
-      const patternLower = pattern.pattern.toLowerCase();
-
       switch (pattern.type) {
         case 'merchant':
-          if (merchantLower.includes(patternLower)) return true;
+          if (smartPatternMatch(merchant, pattern.pattern)) return true;
           break;
         case 'memo':
-          if (memoLower.includes(patternLower)) return true;
+          if (smartPatternMatch(memo, pattern.pattern)) return true;
           break;
         case 'account':
-          if (accountLower.includes(patternLower)) return true;
+          if (smartPatternMatch(account, pattern.pattern)) return true;
           break;
         case 'both':
-          if (merchantLower.includes(patternLower) || memoLower.includes(patternLower)) return true;
+          if (smartPatternMatch(merchant, pattern.pattern) || smartPatternMatch(memo, pattern.pattern)) return true;
           break;
       }
     }
@@ -1062,29 +1120,28 @@ class Database {
   }
 
   // 간단한 제외 패턴 매칭 (부분 데이터용)
+  // 스마트 매칭: 공백 무시
   private matchesExclusionPatternSimple(
     tx: { merchant: string | null; memo: string | null; accountName: string | null },
     patterns: ExclusionPattern[]
   ): boolean {
-    const merchantLower = (tx.merchant || '').toLowerCase();
-    const memoLower = (tx.memo || '').toLowerCase();
-    const accountLower = (tx.accountName || '').toLowerCase();
+    const merchant = tx.merchant || '';
+    const memo = tx.memo || '';
+    const account = tx.accountName || '';
 
     for (const pattern of patterns) {
-      const patternLower = pattern.pattern.toLowerCase();
-
       switch (pattern.type) {
         case 'merchant':
-          if (merchantLower.includes(patternLower)) return true;
+          if (smartPatternMatch(merchant, pattern.pattern)) return true;
           break;
         case 'memo':
-          if (memoLower.includes(patternLower)) return true;
+          if (smartPatternMatch(memo, pattern.pattern)) return true;
           break;
         case 'account':
-          if (accountLower.includes(patternLower)) return true;
+          if (smartPatternMatch(account, pattern.pattern)) return true;
           break;
         case 'both':
-          if (merchantLower.includes(patternLower) || memoLower.includes(patternLower)) return true;
+          if (smartPatternMatch(merchant, pattern.pattern) || smartPatternMatch(memo, pattern.pattern)) return true;
           break;
       }
     }
@@ -1340,90 +1397,123 @@ class Database {
   }
 
   // 기존 거래에 카테고리 규칙 적용
+  // 스마트 매칭: 공백 무시 + 가장 구체적인 규칙 우선
   async applyCategoryRulesToExistingTransactions(): Promise<{ updated: number; details: Array<{ rulePattern: string; count: number }> }> {
     const db = await this.init();
     const rules = await this.getRules(true); // 활성화된 규칙만
 
+    if (rules.length === 0) {
+      return { updated: 0, details: [] };
+    }
+
+    // 모든 거래 로드
+    const transactions = await db.getAllAsync<{
+      id: number;
+      merchant: string | null;
+      memo: string | null;
+    }>('SELECT id, merchant, memo FROM transactions');
+
     let totalUpdated = 0;
-    const details: Array<{ rulePattern: string; count: number }> = [];
+    const detailsMap = new Map<string, number>();
 
-    for (const rule of rules) {
-      let query = 'UPDATE transactions SET categoryId = ?, updatedAt = datetime(\'now\') WHERE ';
-      const conditions: string[] = [];
+    for (const tx of transactions) {
+      // 가맹점 또는 메모에서 매칭되는 규칙 찾기
+      const searchText = [tx.merchant || '', tx.memo || ''].join(' ');
 
-      if (rule.checkMerchant) {
-        conditions.push('merchant LIKE ?');
-      }
-      if (rule.checkMemo) {
-        conditions.push('memo LIKE ?');
-      }
+      // 가장 구체적인 매칭 규칙 찾기
+      const bestRule = findBestMatchingRule(searchText, rules);
 
-      if (conditions.length === 0) continue;
+      if (bestRule) {
+        // 카테고리 업데이트
+        await db.runAsync(
+          'UPDATE transactions SET categoryId = ?, updatedAt = datetime(\'now\') WHERE id = ?',
+          [bestRule.assignCategoryId, tx.id]
+        );
+        totalUpdated++;
 
-      query += `(${conditions.join(' OR ')})`;
-
-      const params: any[] = [rule.assignCategoryId];
-      if (rule.checkMerchant) {
-        params.push(`%${rule.pattern}%`);
-      }
-      if (rule.checkMemo) {
-        params.push(`%${rule.pattern}%`);
-      }
-
-      const result = await db.runAsync(query, params);
-      const count = result.changes;
-      totalUpdated += count;
-
-      if (count > 0) {
-        details.push({
-          rulePattern: rule.pattern,
-          count: count,
-        });
+        // 통계 업데이트
+        const currentCount = detailsMap.get(bestRule.pattern) || 0;
+        detailsMap.set(bestRule.pattern, currentCount + 1);
       }
     }
+
+    // 결과 정리
+    const details = Array.from(detailsMap.entries()).map(([pattern, count]) => ({
+      rulePattern: pattern,
+      count,
+    }));
 
     return { updated: totalUpdated, details };
   }
 
   // 기존 거래에 제외 규칙 적용
+  // 스마트 매칭: 공백 무시
   async applyExclusionPatternsToExistingTransactions(): Promise<{ updated: number; details: Array<{ pattern: string; count: number }> }> {
     const db = await this.init();
     const patterns = await this.getExclusionPatterns(true); // 활성화된 패턴만
 
+    if (patterns.length === 0) {
+      return { updated: 0, details: [] };
+    }
+
+    // 모든 거래 로드 (제외되지 않은 것만)
+    const transactions = await db.getAllAsync<{
+      id: number;
+      merchant: string | null;
+      memo: string | null;
+      accountName: string | null;
+    }>(
+      `SELECT t.id, t.merchant, t.memo, a.name as accountName
+       FROM transactions t
+       LEFT JOIN accounts a ON t.accountId = a.id
+       WHERE t.status IS NULL OR t.status != 'excluded'`
+    );
+
     let totalUpdated = 0;
-    const details: Array<{ pattern: string; count: number }> = [];
+    const detailsMap = new Map<string, number>();
 
-    for (const exclusion of patterns) {
-      let query = '';
-      const params: any[] = [];
+    for (const tx of transactions) {
+      // 제외 패턴 매칭 확인
+      for (const exclusion of patterns) {
+        let matched = false;
 
-      if (exclusion.type === 'merchant') {
-        query = 'UPDATE transactions SET status = \'excluded\', updatedAt = datetime(\'now\') WHERE (status IS NULL OR status != \'excluded\') AND merchant LIKE ?';
-        params.push(`%${exclusion.pattern}%`);
-      } else if (exclusion.type === 'memo') {
-        query = 'UPDATE transactions SET status = \'excluded\', updatedAt = datetime(\'now\') WHERE (status IS NULL OR status != \'excluded\') AND memo LIKE ?';
-        params.push(`%${exclusion.pattern}%`);
-      } else if (exclusion.type === 'both') {
-        query = 'UPDATE transactions SET status = \'excluded\', updatedAt = datetime(\'now\') WHERE (status IS NULL OR status != \'excluded\') AND (merchant LIKE ? OR memo LIKE ?)';
-        params.push(`%${exclusion.pattern}%`, `%${exclusion.pattern}%`);
-      } else if (exclusion.type === 'account') {
-        query = 'UPDATE transactions SET status = \'excluded\', updatedAt = datetime(\'now\') WHERE id IN (SELECT t.id FROM transactions t LEFT JOIN accounts a ON t.accountId = a.id WHERE (t.status IS NULL OR t.status != \'excluded\') AND a.name LIKE ?)';
-        params.push(`%${exclusion.pattern}%`);
-      }
+        switch (exclusion.type) {
+          case 'merchant':
+            matched = smartPatternMatch(tx.merchant || '', exclusion.pattern);
+            break;
+          case 'memo':
+            matched = smartPatternMatch(tx.memo || '', exclusion.pattern);
+            break;
+          case 'account':
+            matched = smartPatternMatch(tx.accountName || '', exclusion.pattern);
+            break;
+          case 'both':
+            matched = smartPatternMatch(tx.merchant || '', exclusion.pattern) ||
+                     smartPatternMatch(tx.memo || '', exclusion.pattern);
+            break;
+        }
 
-      if (!query) continue;
+        if (matched) {
+          // 거래 제외 처리
+          await db.runAsync(
+            'UPDATE transactions SET status = \'excluded\', updatedAt = datetime(\'now\') WHERE id = ?',
+            [tx.id]
+          );
+          totalUpdated++;
 
-      const result = await db.runAsync(query, params);
-      const count = result.changes;
-      totalUpdated += count;
-
-      if (count > 0) {
-        details.push({
-          pattern: exclusion.pattern,
-          count: count,
-        });
+          // 통계 업데이트
+          const currentCount = detailsMap.get(exclusion.pattern) || 0;
+          detailsMap.set(exclusion.pattern, currentCount + 1);
+          break; // 첫 번째 매칭 패턴에서 중단
+        }
       }
     }
+
+    // 결과 정리
+    const details = Array.from(detailsMap.entries()).map(([pattern, count]) => ({
+      pattern,
+      count,
+    }));
 
     return { updated: totalUpdated, details };
   }

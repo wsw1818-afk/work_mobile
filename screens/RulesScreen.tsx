@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { View, ScrollView, StyleSheet, RefreshControl, Alert, Modal, KeyboardAvoidingView, Platform, TouchableWithoutFeedback, Keyboard, TouchableOpacity } from 'react-native';
-import { Text, Button, TextInput, FAB, Switch, SegmentedButtons, ActivityIndicator } from 'react-native-paper';
+import { Text, Button, TextInput, FAB, SegmentedButtons, ActivityIndicator } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -24,8 +24,9 @@ export default function RulesScreen({ navigation }: any) {
   const [ruleType, setRuleType] = useState<'category' | 'exclusion'>('category');
   const [pattern, setPattern] = useState('');
   const [assignCategoryId, setAssignCategoryId] = useState<number | null>(null);
-  const [checkMerchant, setCheckMerchant] = useState(true);
-  const [checkMemo, setCheckMemo] = useState(false);
+  // 가맹점과 메모 모두 검색 (기본값)
+  const checkMerchant = true;
+  const checkMemo = true;
   const [exclusionType, setExclusionType] = useState<'merchant' | 'memo' | 'both' | 'account'>('merchant');
 
   // 수정 모드
@@ -134,8 +135,6 @@ export default function RulesScreen({ navigation }: any) {
   const resetForm = () => {
     setPattern('');
     setAssignCategoryId(null);
-    setCheckMerchant(true);
-    setCheckMemo(false);
     setExclusionType('merchant');
     setRuleType('category');
     setEditingRule(null);
@@ -148,8 +147,6 @@ export default function RulesScreen({ navigation }: any) {
     setRuleType('category');
     setPattern(rule.pattern);
     setAssignCategoryId(rule.assignCategoryId);
-    setCheckMerchant(rule.checkMerchant);
-    setCheckMemo(rule.checkMemo);
     setAddDialogVisible(true);
   };
 
@@ -409,18 +406,6 @@ export default function RulesScreen({ navigation }: any) {
                   <View style={styles.cardHeader}>
                     <View style={styles.cardInfo}>
                       <Text style={styles.patternText}>{rule.pattern}</Text>
-                      <View style={styles.tags}>
-                        {rule.checkMerchant && (
-                          <View style={styles.tagChip}>
-                            <Text style={styles.tagChipText}>가맹점</Text>
-                          </View>
-                        )}
-                        {rule.checkMemo && (
-                          <View style={styles.tagChip}>
-                            <Text style={styles.tagChipText}>메모</Text>
-                          </View>
-                        )}
-                      </View>
                       <View style={styles.categoryRow}>
                         <Ionicons name="arrow-forward" size={14} color={theme.colors.primary} />
                         <Text style={styles.categoryLabel}>{rule.assignCategoryName}</Text>
@@ -585,18 +570,8 @@ export default function RulesScreen({ navigation }: any) {
                           </Picker>
                         </View>
 
-                        <View style={styles.switchRow}>
-                          <Text>가맹점명에서 검색</Text>
-                          <Switch value={checkMerchant} onValueChange={setCheckMerchant} />
-                        </View>
-
-                        <View style={styles.switchRow}>
-                          <Text>메모에서 검색</Text>
-                          <Switch value={checkMemo} onValueChange={setCheckMemo} />
-                        </View>
-
                         <Text style={styles.hint}>
-                          💡 입력한 패턴을 포함한 거래가 자동으로 선택한 카테고리로 분류됩니다.
+                          💡 가맹점명 또는 메모에 패턴이 포함된 거래가 자동으로 선택한 카테고리로 분류됩니다.
                         </Text>
                       </>
                     ) : (

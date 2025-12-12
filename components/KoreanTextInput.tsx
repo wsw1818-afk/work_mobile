@@ -28,9 +28,18 @@ const KoreanTextInput = forwardRef<KoreanTextInputRef, KoreanTextInputProps>(
     const inputRef = useRef<TextInput>(null);
     const currentValueRef = useRef<string>(defaultValue);
 
+    // 사용자 입력을 추적하는 핸들러
+    const handleChangeText = (text: string) => {
+      currentValueRef.current = text;
+    };
+
     useImperativeHandle(ref, () => ({
       getValue: () => {
-        // _lastNativeText가 있으면 사용, 없으면 currentValueRef 사용
+        // currentValueRef가 항상 최신 값을 가지므로 이를 우선 사용
+        // _lastNativeText는 백업으로만 사용
+        if (currentValueRef.current !== '') {
+          return currentValueRef.current;
+        }
         const nativeText = (inputRef.current as any)?._lastNativeText;
         if (nativeText !== undefined) {
           return nativeText;
@@ -61,6 +70,7 @@ const KoreanTextInput = forwardRef<KoreanTextInputRef, KoreanTextInputProps>(
       <TextInput
         ref={inputRef}
         defaultValue={defaultValue}
+        onChangeText={handleChangeText}
         style={[styles.input, style]}
         placeholderTextColor="#9ca3af"
         {...props}

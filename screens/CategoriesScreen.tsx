@@ -27,7 +27,7 @@ const GROUP_COLORS = [
   '#8b5cf6', '#ec4899', '#14b8a6',
 ];
 
-// 이모지 프리셋 (카테고리별로 정리)
+// 이모지 프리셋 (카테고리별로 정리) - 그룹용
 const EMOJI_PRESETS = [
   // 돈/금융
   '💰', '💵', '💳', '🏦', '💸', '🪙', '📈', '📊',
@@ -43,6 +43,45 @@ const EMOJI_PRESETS = [
   '📝', '💼', '🎓', '💻', '📱', '🖥️', '📞', '✏️',
   // 기타
   '⭐', '🔥', '💡', '🎁', '🔧', '🏷️', '📌', '🗂️',
+];
+
+// 카테고리용 이모지 프리셋 (가계부에 어울리는 아이콘들)
+const CATEGORY_EMOJI_PRESETS = [
+  // 수입 관련
+  '💰', '💵', '💴', '💶', '💷', '🪙', '💎', '🏆', '🎯', '📈',
+  // 식비
+  '🍚', '🍜', '🍝', '🍕', '🍔', '🍟', '🌮', '🍣', '🍱', '🥗',
+  '🍳', '🥘', '🍲', '🥡', '🍛', '🍤', '🥪', '🥐', '🍞', '🧁',
+  // 카페/음료
+  '☕', '🧋', '🍵', '🥤', '🧃', '🍺', '🍷', '🍸', '🍹', '🧊',
+  // 장보기/마트
+  '🛒', '🛍️', '🧺', '🥬', '🥕', '🍎', '🥩', '🧀', '🥚', '🍼',
+  // 교통
+  '🚗', '🚕', '🚌', '🚇', '🚆', '✈️', '🚀', '⛽', '🅿️', '🚲',
+  // 주거/생활
+  '🏠', '🏡', '🏢', '🔑', '🛋️', '🛏️', '🪑', '💡', '🔌', '🧹',
+  // 통신/인터넷
+  '📱', '💻', '🖥️', '📞', '📶', '🌐', '📡', '🔋', '⌚', '🎧',
+  // 건강/의료
+  '💊', '🏥', '🩺', '💉', '🩹', '🧴', '🪥', '🧼', '💪', '🏃',
+  // 미용/패션
+  '👔', '👗', '👠', '👟', '👜', '💄', '💅', '💇', '🧥', '👓',
+  // 문화/여가
+  '🎬', '🎭', '🎪', '🎢', '🎡', '🎮', '🎲', '🎯', '🎳', '🎸',
+  // 교육/자기계발
+  '📚', '📖', '✏️', '🎓', '📝', '🖊️', '📐', '🔬', '🎨', '🌍',
+  // 여행/숙박
+  '🏨', '🏖️', '🏕️', '⛺', '🗺️', '🧳', '🎒', '📸', '🌅', '⛱️',
+  // 경조사/선물
+  '🎁', '💐', '🎂', '🎉', '💒', '⚰️', '🪦', '💌', '🎀', '🧧',
+  // 반려동물
+  '🐶', '🐱', '🐰', '🐹', '🐟', '🦜', '🐢', '🦴', '🐾', '🪺',
+  // 보험/금융
+  '🏦', '💳', '📊', '📉', '🏧', '💹', '🧾', '📑', '🔐', '🛡️',
+  // 세금/공과금
+  '🏛️', '📋', '💧', '🔥', '⚡', '🌡️', '📃', '🗳️', '⚖️', '📮',
+  // 기타
+  '❓', '❗', '⭐', '🌟', '✨', '🔔', '📌', '🗂️', '📁', '🔖',
 ];
 
 const PRESET_COLORS = [
@@ -69,6 +108,7 @@ export default function CategoriesScreen({ navigation }: any) {
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [newCategoryColor, setNewCategoryColor] = useState(PRESET_COLORS[0]);
   const [excludeFromStats, setExcludeFromStats] = useState(false);
+  const [selectedCategoryEmoji, setSelectedCategoryEmoji] = useState<string>('');
   const categoryNameRef = useRef<KoreanTextInputRef>(null);
 
   // 그룹 관리 모달
@@ -110,6 +150,7 @@ export default function CategoriesScreen({ navigation }: any) {
     setNewCategoryColor(category.color);
     setExcludeFromStats(category.excludeFromStats === true);
     setSelectedGroupId(category.groupId || null);
+    setSelectedCategoryEmoji((category as any).icon || '');
     setAddModalVisible(true);
     setTimeout(() => {
       categoryNameRef.current?.setValue(category.name);
@@ -158,6 +199,7 @@ export default function CategoriesScreen({ navigation }: any) {
           color: newCategoryColor,
           excludeFromStats: excludeFromStats,
           groupId: type === 'expense' ? selectedGroupId ?? undefined : undefined,
+          icon: selectedCategoryEmoji || undefined,
         });
         Alert.alert('성공', '카테고리가 수정되었습니다.');
       } else {
@@ -168,6 +210,7 @@ export default function CategoriesScreen({ navigation }: any) {
           color: newCategoryColor,
           excludeFromStats: excludeFromStats,
           groupId: type === 'expense' ? selectedGroupId ?? undefined : undefined,
+          icon: selectedCategoryEmoji || undefined,
         });
         Alert.alert('성공', '카테고리가 추가되었습니다.');
       }
@@ -178,6 +221,7 @@ export default function CategoriesScreen({ navigation }: any) {
       setNewCategoryColor(PRESET_COLORS[0]);
       setSelectedGroupId(null);
       setExcludeFromStats(false);
+      setSelectedCategoryEmoji('');
       loadCategories();
       notifyCategoryChanged(); // 대시보드 실시간 업데이트
     } catch (error: any) {
@@ -384,12 +428,18 @@ export default function CategoriesScreen({ navigation }: any) {
                   activeOpacity={0.7}
                 >
                   <View style={styles.categoryLeft}>
-                    <View
-                      style={[
-                        styles.categoryDot,
-                        { backgroundColor: category.color },
-                      ]}
-                    />
+                    {(category as any).icon ? (
+                      <View style={[styles.categoryIconContainer, { backgroundColor: category.color + '20' }]}>
+                        <Text style={styles.categoryIcon}>{(category as any).icon}</Text>
+                      </View>
+                    ) : (
+                      <View
+                        style={[
+                          styles.categoryDot,
+                          { backgroundColor: category.color },
+                        ]}
+                      />
+                    )}
                     <View style={styles.categoryNameContainer}>
                       <Text style={styles.categoryName}>
                         {category.name}
@@ -491,6 +541,7 @@ export default function CategoriesScreen({ navigation }: any) {
             setNewCategoryColor(PRESET_COLORS[0]);
             setSelectedGroupId(null);
             setExcludeFromStats(false);
+            setSelectedCategoryEmoji('');
           }}
           contentContainerStyle={styles.modalContainer}
         >
@@ -515,6 +566,42 @@ export default function CategoriesScreen({ navigation }: any) {
               <Button key={color} mode={newCategoryColor === color ? 'contained' : 'outlined'} onPress={() => setNewCategoryColor(color)} style={[styles.colorButton, { backgroundColor: color }]}>{''}</Button>
             ))}
           </View>
+
+          {/* 아이콘 선택 */}
+          <Text variant="bodyMedium" style={styles.inputLabel}>
+            아이콘 (선택사항)
+          </Text>
+          <View style={styles.selectedEmojiContainer}>
+            <Text style={styles.selectedEmojiText}>
+              {selectedCategoryEmoji || '선택 안함'}
+            </Text>
+            {selectedCategoryEmoji && (
+              <TouchableOpacity onPress={() => setSelectedCategoryEmoji('')}>
+                <Text style={styles.clearEmojiText}>지우기</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.categoryEmojiScrollView}
+            nestedScrollEnabled={true}
+          >
+            <View style={styles.categoryEmojiGrid}>
+              {CATEGORY_EMOJI_PRESETS.map((emoji, index) => (
+                <TouchableOpacity
+                  key={index}
+                  style={[
+                    styles.emojiOption,
+                    selectedCategoryEmoji === emoji && styles.emojiOptionSelected
+                  ]}
+                  onPress={() => setSelectedCategoryEmoji(emoji)}
+                >
+                  <Text style={styles.emojiText}>{emoji}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </ScrollView>
 
           {/* 지출 카테고리인 경우에만 그룹 선택 표시 */}
           {type === 'expense' && (
@@ -604,7 +691,7 @@ export default function CategoriesScreen({ navigation }: any) {
           </Text>
 
           <View style={styles.modalButtons}>
-            <Button mode="outlined" onPress={() => { setAddModalVisible(false); setEditingCategory(null); if (categoryNameRef.current) categoryNameRef.current.clear(); setNewCategoryColor(PRESET_COLORS[0]); setSelectedGroupId(null); setExcludeFromStats(false); }} style={styles.modalButton}>취소</Button>
+            <Button mode="outlined" onPress={() => { setAddModalVisible(false); setEditingCategory(null); if (categoryNameRef.current) categoryNameRef.current.clear(); setNewCategoryColor(PRESET_COLORS[0]); setSelectedGroupId(null); setExcludeFromStats(false); setSelectedCategoryEmoji(''); }} style={styles.modalButton}>취소</Button>
             <Button mode="contained" onPress={handleSaveCategory} style={styles.modalButton}>{editingCategory ? '수정' : '추가'}</Button>
           </View>
         </Modal>
@@ -848,6 +935,17 @@ const styles = StyleSheet.create({
     height: 16,
     borderRadius: 8,
     marginRight: theme.spacing.md,
+  },
+  categoryIconContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: theme.spacing.md,
+  },
+  categoryIcon: {
+    fontSize: 20,
   },
   categoryNameContainer: {
     flex: 1,
@@ -1130,6 +1228,17 @@ const styles = StyleSheet.create({
   },
   emojiScrollView: {
     marginBottom: 16,
+  },
+  categoryEmojiScrollView: {
+    maxHeight: 120,
+    marginBottom: 16,
+  },
+  categoryEmojiGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    paddingVertical: 4,
+    width: 800,
   },
   emojiGrid: {
     flexDirection: 'row',

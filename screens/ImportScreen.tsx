@@ -339,7 +339,10 @@ export default function ImportScreen({ navigation }: any) {
               const existingKeys = new Set<string>();
               for (const tx of existingTransactions) {
                 const merchantKey = (tx.merchant || tx.description || '').toLowerCase().replace(/\s+/g, '');
-                const key = `${tx.date}|${merchantKey}|${tx.amount}`;
+                // memo에서 시간 정보 추출 (형식: "[HH:mm:ss] ..." 또는 "[HH:mm] ...")
+                const timeMatch = (tx.memo || '').match(/^\[(\d{1,2}:\d{2}(:\d{2})?)\]/);
+                const timeKey = timeMatch ? timeMatch[1] : '';
+                const key = `${tx.date}|${timeKey}|${merchantKey}|${tx.amount}`;
                 existingKeys.add(key);
               }
 
@@ -380,12 +383,13 @@ export default function ImportScreen({ navigation }: any) {
               for (let i = 0; i < allTransactions.length; i++) {
                 const tx = allTransactions[i];
 
-                // DB 중복 체크
+                // DB 중복 체크 (시간 포함)
                 const merchantKey = (tx.merchant || tx.memo || '').toLowerCase().replace(/\s+/g, '');
-                const txKey = `${tx.date}|${merchantKey}|${tx.amount}`;
+                const timeKey = tx.time || '';
+                const txKey = `${tx.date}|${timeKey}|${merchantKey}|${tx.amount}`;
 
                 if (existingKeys.has(txKey)) {
-                  console.log(`[DB 중복] 스킵: ${tx.date} / ${tx.merchant} / ${tx.amount}`);
+                  console.log(`[DB 중복] 스킵: ${tx.date} ${tx.time || ''} / ${tx.merchant} / ${tx.amount}`);
                   dbSkippedCount++;
                   continue;
                 }
@@ -407,6 +411,13 @@ export default function ImportScreen({ navigation }: any) {
                   const isBank = /은행|저축|새마을|우체국|농협|수협|신협|산업|기업|하나|국민|신한|우리|SC|씨티|케이|IBK|BNK|DGB|경남|부산|전북|광주|제주/.test(sourceType) && !/카드/.test(sourceType);
                   const classifiedSource = isBank ? `[은행] ${sourceType}` : `[카드] ${sourceType}`;
 
+                  // 시간 정보가 있으면 memo 앞에 추가 (중복 체크용)
+                  // 형식: "[14:30:00] 기존 메모" 또는 "[14:30:00]" (메모 없을 때)
+                  let memoWithTime = tx.memo || '';
+                  if (tx.time) {
+                    memoWithTime = memoWithTime ? `[${tx.time}] ${memoWithTime}` : `[${tx.time}]`;
+                  }
+
                   await database.addTransaction({
                     amount: tx.amount,
                     type: tx.type as 'income' | 'expense',
@@ -414,7 +425,7 @@ export default function ImportScreen({ navigation }: any) {
                     accountId: undefined, // 계좌 연동은 나중에 별도로 진행
                     description: tx.merchant || tx.memo || '',
                     merchant: tx.merchant || '',
-                    memo: tx.memo || '',
+                    memo: memoWithTime,
                     date: tx.date,
                     tags: '',
                     isTransfer: false,
