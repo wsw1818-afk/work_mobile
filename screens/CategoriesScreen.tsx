@@ -309,6 +309,7 @@ export default function CategoriesScreen({ navigation }: any) {
             <Ionicons name="menu" size={24} color="#fff" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>카테고리</Text>
+          <View style={styles.headerRightPlaceholder} />
         </View>
 
         {/* 타입 선택 버튼 */}
@@ -774,16 +775,22 @@ const styles = StyleSheet.create({
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     marginBottom: theme.spacing.sm,
   },
   menuButton: {
     padding: theme.spacing.xs,
-    marginRight: theme.spacing.sm,
+    width: 40,
   },
   headerTitle: {
     fontSize: theme.fontSize.xl,
     fontWeight: '700',
     color: '#fff',
+    textAlign: 'center',
+    flex: 1,
+  },
+  headerRightPlaceholder: {
+    width: 40,
   },
   typeSelector: {
     flexDirection: 'row',

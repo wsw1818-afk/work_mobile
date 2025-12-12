@@ -457,96 +457,27 @@ export default function ImportScreen({ navigation }: any) {
               // 전면 광고 표시 (대량 작업 완료 - 자연스러운 타이밍)
               forceShowInterstitial();
 
-              // 가져온 거래의 가장 많은 월 분석
-              const monthCounts: Record<string, number> = {};
-              for (const tx of allTransactions) {
-                const match = tx.date.match(/^(\d{4})-(\d{2})/);
-                if (match) {
-                  const key = `${match[1]}-${match[2]}`;
-                  monthCounts[key] = (monthCounts[key] || 0) + 1;
-                }
-              }
-
-              // 가장 많은 월 찾기
-              let maxMonth = '';
-              let maxCount = 0;
-              for (const [month, count] of Object.entries(monthCounts)) {
-                if (count > maxCount) {
-                  maxCount = count;
-                  maxMonth = month;
-                }
-              }
-
-              const currentYear = new Date().getFullYear();
-              const currentMonth = new Date().getMonth() + 1;
-              const currentKey = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
-
-              // 가져온 거래의 월이 현재 월과 다르면 이동 옵션 제공
-              if (successCount > 0 && maxMonth && maxMonth !== currentKey) {
-                const [targetYear, targetMonth] = maxMonth.split('-').map(Number);
-                resultMessage += `\n\n💡 가져온 거래의 대부분(${maxCount}건)이 ${targetYear}년 ${targetMonth}월 데이터입니다.`;
-
-                Alert.alert(
-                  '가져오기 완료',
-                  resultMessage,
-                  [
-                    {
-                      text: '현재 월 보기',
-                      style: 'cancel',
-                      onPress: () => {
-                        // 초기화
-                        setParseResults([]);
-                        setPreviewData([]);
-                        setCardNames([]);
-                        setAllTransactions([]);
-                        setExcludedIncomeTransactions([]);
-                        setShowExcludedIncome(false);
-                        setDuplicateInfo({ removed: 0, dbSkipped: 0, incomeExcluded: 0, patternExcluded: 0 });
-                        navigation.navigate('Main');
-                      },
+              // 가져오기 완료 - 항상 현재 월로 이동
+              Alert.alert(
+                '가져오기 완료',
+                resultMessage,
+                [
+                  {
+                    text: '확인',
+                    onPress: () => {
+                      // 초기화
+                      setParseResults([]);
+                      setPreviewData([]);
+                      setCardNames([]);
+                      setAllTransactions([]);
+                      setExcludedIncomeTransactions([]);
+                      setShowExcludedIncome(false);
+                      setDuplicateInfo({ removed: 0, dbSkipped: 0, incomeExcluded: 0, patternExcluded: 0 });
+                      navigation.navigate('Main');
                     },
-                    {
-                      text: `${targetMonth}월로 이동`,
-                      onPress: () => {
-                        // 초기화
-                        setParseResults([]);
-                        setPreviewData([]);
-                        setCardNames([]);
-                        setAllTransactions([]);
-                        setExcludedIncomeTransactions([]);
-                        setShowExcludedIncome(false);
-                        setDuplicateInfo({ removed: 0, dbSkipped: 0, incomeExcluded: 0, patternExcluded: 0 });
-                        // 해당 월로 이동
-                        navigation.navigate('Main', {
-                          screen: 'Dashboard',
-                          params: { targetYear, targetMonth },
-                        });
-                      },
-                    },
-                  ]
-                );
-              } else {
-                Alert.alert(
-                  '가져오기 완료',
-                  resultMessage,
-                  [
-                    {
-                      text: '확인',
-                      onPress: () => {
-                        // 초기화
-                        setParseResults([]);
-                        setPreviewData([]);
-                        setCardNames([]);
-                        setAllTransactions([]);
-                        setExcludedIncomeTransactions([]);
-                        setShowExcludedIncome(false);
-                        setDuplicateInfo({ removed: 0, dbSkipped: 0, incomeExcluded: 0, patternExcluded: 0 });
-                        navigation.navigate('Main');
-                      },
-                    },
-                  ]
-                );
-              }
+                  },
+                ]
+              );
             } catch (error: any) {
               console.error('가져오기 오류:', error);
               setImporting(false);
@@ -579,6 +510,7 @@ export default function ImportScreen({ navigation }: any) {
             <Ionicons name="menu" size={24} color="#fff" />
           </TouchableOpacity>
           <RNText style={styles.headerTitle}>거래 가져오기</RNText>
+          <View style={styles.headerRightPlaceholder} />
         </View>
       </LinearGradient>
 
@@ -813,15 +745,21 @@ const styles = StyleSheet.create({
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
   },
   menuButton: {
     padding: theme.spacing.xs,
-    marginRight: theme.spacing.sm,
+    width: 40,
   },
   headerTitle: {
     fontSize: theme.fontSize.xl,
     fontWeight: '700',
     color: '#fff',
+    textAlign: 'center',
+    flex: 1,
+  },
+  headerRightPlaceholder: {
+    width: 40,
   },
   container: {
     flex: 1,

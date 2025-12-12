@@ -324,6 +324,7 @@ export default function BankAccountsScreen({ navigation }: any) {
             <Ionicons name="menu" size={24} color="#fff" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>통장/결제수단</Text>
+          <View style={styles.headerRightPlaceholder} />
         </View>
       </LinearGradient>
 
@@ -859,15 +860,21 @@ const styles = StyleSheet.create({
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
   },
   menuButton: {
     padding: theme.spacing.xs,
-    marginRight: theme.spacing.sm,
+    width: 40,
   },
   headerTitle: {
     fontSize: theme.fontSize.xl,
     fontWeight: '700',
     color: '#fff',
+    textAlign: 'center',
+    flex: 1,
+  },
+  headerRightPlaceholder: {
+    width: 40,
   },
   summaryCardTop: {
     backgroundColor: theme.colors.surface,

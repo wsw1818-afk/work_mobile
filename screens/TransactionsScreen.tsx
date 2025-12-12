@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef, memo } from 'react';
 import {
   View,
   ScrollView,
@@ -31,6 +31,106 @@ import { database, Transaction, Category } from '../lib/db/database';
 import { theme } from '../lib/theme';
 import { useTheme } from '../lib/ThemeContext';
 import { useTransactionContext } from '../lib/TransactionContext';
+
+// 년도/월 선택 모달 컴포넌트
+const YearMonthPicker = memo(({
+  visible,
+  onDismiss,
+  selectedDate,
+  onSelect,
+  currentTheme,
+}: {
+  visible: boolean;
+  onDismiss: () => void;
+  selectedDate: Date;
+  onSelect: (year: number, month: number) => void;
+  currentTheme: any;
+}) => {
+  const [pickerYear, setPickerYear] = useState(selectedDate.getFullYear());
+  const currentYear = new Date().getFullYear();
+  const currentMonth = new Date().getMonth() + 1;
+  const months = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+
+  useEffect(() => {
+    if (visible) {
+      setPickerYear(selectedDate.getFullYear());
+    }
+  }, [visible, selectedDate]);
+
+  const isDisabled = (year: number, month: number) => {
+    return year > currentYear || (year === currentYear && month > currentMonth);
+  };
+
+  return (
+    <Portal>
+      <Modal
+        visible={visible}
+        onDismiss={onDismiss}
+        contentContainerStyle={[styles.yearMonthModal, { backgroundColor: currentTheme.colors.surface }]}
+      >
+        <RNText style={[styles.yearMonthTitle, { color: currentTheme.colors.text }]}>년도/월 선택</RNText>
+
+        <View style={styles.yearSelector}>
+          <TouchableOpacity
+            style={[styles.yearArrowBtn, { backgroundColor: currentTheme.colors.surfaceVariant }]}
+            onPress={() => setPickerYear(prev => Math.max(prev - 1, currentYear - 9))}
+            disabled={pickerYear <= currentYear - 9}
+          >
+            <Ionicons name="chevron-back" size={20} color={pickerYear <= currentYear - 9 ? currentTheme.colors.textMuted : currentTheme.colors.text} />
+          </TouchableOpacity>
+          <RNText style={[styles.yearText, { color: currentTheme.colors.text }]}>{pickerYear}년</RNText>
+          <TouchableOpacity
+            style={[styles.yearArrowBtn, { backgroundColor: currentTheme.colors.surfaceVariant }]}
+            onPress={() => setPickerYear(prev => Math.min(prev + 1, currentYear))}
+            disabled={pickerYear >= currentYear}
+          >
+            <Ionicons name="chevron-forward" size={20} color={pickerYear >= currentYear ? currentTheme.colors.textMuted : currentTheme.colors.text} />
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.monthGrid}>
+          {months.map((month) => {
+            const disabled = isDisabled(pickerYear, month);
+            const isSelected = pickerYear === selectedDate.getFullYear() && month === selectedDate.getMonth() + 1;
+            return (
+              <TouchableOpacity
+                key={month}
+                style={[
+                  styles.monthItem,
+                  { backgroundColor: currentTheme.colors.surfaceVariant },
+                  isSelected && { backgroundColor: currentTheme.colors.primary },
+                  disabled && { opacity: 0.4 },
+                ]}
+                onPress={() => {
+                  if (!disabled) {
+                    onSelect(pickerYear, month);
+                    onDismiss();
+                  }
+                }}
+                disabled={disabled}
+              >
+                <RNText style={[
+                  styles.monthItemText,
+                  { color: currentTheme.colors.text },
+                  isSelected && { color: '#fff' },
+                ]}>
+                  {month}월
+                </RNText>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
+        <TouchableOpacity
+          style={[styles.yearMonthCloseBtn, { backgroundColor: currentTheme.colors.surfaceVariant }]}
+          onPress={onDismiss}
+        >
+          <RNText style={[styles.yearMonthCloseBtnText, { color: currentTheme.colors.textSecondary }]}>닫기</RNText>
+        </TouchableOpacity>
+      </Modal>
+    </Portal>
+  );
+});
 
 // 검색 debounce 훅
 function useDebounce<T>(value: T, delay: number): T {
@@ -75,6 +175,13 @@ export default function TransactionsScreen({ navigation }: any) {
 
   const goToCurrentMonth = () => {
     setSelectedDate(new Date());
+  };
+
+  // 년도/월 선택 모달 상태
+  const [yearMonthPickerVisible, setYearMonthPickerVisible] = useState(false);
+
+  const handleYearMonthSelect = (year: number, month: number) => {
+    setSelectedDate(new Date(year, month - 1, 1));
   };
 
   // 편집 모달
@@ -278,6 +385,7 @@ export default function TransactionsScreen({ navigation }: any) {
             <Ionicons name="menu" size={24} color="#fff" />
           </TouchableOpacity>
           <RNText style={styles.headerTitle}>거래내역</RNText>
+          <View style={styles.headerRightPlaceholder} />
         </View>
 
         {/* 월 선택기 */}
@@ -285,16 +393,19 @@ export default function TransactionsScreen({ navigation }: any) {
           <TouchableOpacity onPress={goToPreviousMonth} style={styles.monthArrow}>
             <Ionicons name="chevron-back" size={24} color="#fff" />
           </TouchableOpacity>
-          <View style={styles.monthInfo}>
-            <RNText style={styles.monthText}>
-              {format(selectedDate, 'yyyy년 M월', { locale: ko })}
-            </RNText>
+          <TouchableOpacity onPress={() => setYearMonthPickerVisible(true)} style={styles.monthInfo}>
+            <View style={styles.monthTextRow}>
+              <RNText style={styles.monthText}>
+                {format(selectedDate, 'yyyy년 M월', { locale: ko })}
+              </RNText>
+              <Ionicons name="calendar-outline" size={16} color="rgba(255,255,255,0.8)" style={{ marginLeft: 6 }} />
+            </View>
             {!isCurrentMonth && (
               <TouchableOpacity onPress={goToCurrentMonth}>
                 <RNText style={styles.currentMonthBtn}>이번 달로</RNText>
               </TouchableOpacity>
             )}
-          </View>
+          </TouchableOpacity>
           <TouchableOpacity
             onPress={goToNextMonth}
             style={[styles.monthArrow, isCurrentMonth && styles.disabledArrow]}
@@ -452,6 +563,15 @@ export default function TransactionsScreen({ navigation }: any) {
         <View style={{ height: 20 }} />
       </ScrollView>
 
+      {/* 년도/월 선택 모달 */}
+      <YearMonthPicker
+        visible={yearMonthPickerVisible}
+        onDismiss={() => setYearMonthPickerVisible(false)}
+        selectedDate={selectedDate}
+        onSelect={handleYearMonthSelect}
+        currentTheme={currentTheme}
+      />
+
       {/* 편집 모달 */}
       <Portal>
         <Modal
@@ -588,16 +708,22 @@ const styles = StyleSheet.create({
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     marginBottom: 16,
   },
   menuButton: {
     padding: theme.spacing.xs,
-    marginRight: theme.spacing.sm,
+    width: 40,
   },
   headerTitle: {
     fontSize: theme.fontSize.xl,
     fontWeight: '700',
     color: '#fff',
+    textAlign: 'center',
+    flex: 1,
+  },
+  headerRightPlaceholder: {
+    width: 40,
   },
 
   // 월 선택기
@@ -844,5 +970,70 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     color: '#fff',
+  },
+  // 월 텍스트 행
+  monthTextRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  // 년도/월 선택 모달
+  yearMonthModal: {
+    backgroundColor: theme.colors.surface,
+    margin: 20,
+    borderRadius: theme.borderRadius.xl,
+    padding: 20,
+  },
+  yearMonthTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: theme.colors.text,
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  yearSelector: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 20,
+    gap: 16,
+  },
+  yearArrowBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  yearText: {
+    fontSize: 20,
+    fontWeight: '700',
+    minWidth: 80,
+    textAlign: 'center',
+  },
+  monthGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: 10,
+    marginBottom: 20,
+  },
+  monthItem: {
+    width: '22%',
+    paddingVertical: 14,
+    borderRadius: theme.borderRadius.md,
+    alignItems: 'center',
+  },
+  monthItemText: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  yearMonthCloseBtn: {
+    paddingVertical: 14,
+    borderRadius: theme.borderRadius.lg,
+    alignItems: 'center',
+  },
+  yearMonthCloseBtnText: {
+    fontSize: 15,
+    fontWeight: '600',
   },
 });

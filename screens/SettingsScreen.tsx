@@ -391,6 +391,7 @@ export default function SettingsScreen({ navigation }: any) {
             <Ionicons name="menu" size={24} color="#fff" />
           </TouchableOpacity>
           <RNText style={styles.headerTitle}>설정</RNText>
+          <View style={styles.headerRightPlaceholder} />
         </View>
       </LinearGradient>
 
@@ -767,15 +768,21 @@ const styles = StyleSheet.create({
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
   },
   menuButton: {
     padding: theme.spacing.xs,
-    marginRight: theme.spacing.sm,
+    width: 40,
   },
   headerTitle: {
     fontSize: theme.fontSize.xl,
     fontWeight: '700',
     color: '#fff',
+    textAlign: 'center',
+    flex: 1,
+  },
+  headerRightPlaceholder: {
+    width: 40,
   },
 
   // 스크롤뷰

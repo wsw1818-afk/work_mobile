@@ -10,10 +10,6 @@ import {
   TouchableOpacity,
   TextInput as RNTextInput,
 } from 'react-native';
-import {
-  TextInput,
-  Menu,
-} from 'react-native-paper';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -23,6 +19,36 @@ import { theme } from '../lib/theme';
 import { useTheme } from '../lib/ThemeContext';
 import { useInterstitialAd } from '../components/InterstitialAd';
 import { useTransactionContext } from '../lib/TransactionContext';
+
+// 카테고리 아이콘 매핑
+const getCategoryEmoji = (name: string): string => {
+  const emojiMap: { [key: string]: string } = {
+    '식비': '🍽️',
+    '교통': '🚗',
+    '쇼핑': '🛍️',
+    '여가': '🎮',
+    '의료': '🏥',
+    '주거': '🏠',
+    '통신': '📱',
+    '교육': '📚',
+    '급여': '💼',
+    '부수입': '💰',
+    '용돈': '🎁',
+    '기타': '📦',
+    '생활': '🏡',
+    '문화': '🎭',
+    '카페': '☕',
+    '술/유흥': '🍺',
+    '미용': '💇',
+    '운동': '🏃',
+    '여행': '✈️',
+    '보험': '🛡️',
+    '저축': '🏦',
+    '투자': '📈',
+    '이체': '💸',
+  };
+  return emojiMap[name] || '📁';
+};
 
 export default function AddTransactionScreen({ navigation }: any) {
   const { theme: currentTheme } = useTheme();
@@ -35,7 +61,6 @@ export default function AddTransactionScreen({ navigation }: any) {
   const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [categories, setCategories] = useState<Category[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
-  const [categoryMenuVisible, setCategoryMenuVisible] = useState(false);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [selectedAccount, setSelectedAccount] = useState<Account | null>(null);
   const [accountMenuVisible, setAccountMenuVisible] = useState(false);
@@ -50,11 +75,8 @@ export default function AddTransactionScreen({ navigation }: any) {
     try {
       const cats = await database.getCategories(transactionType);
       setCategories(cats);
-      if (cats.length > 0) {
-        setSelectedCategory(cats[0]);
-      } else {
-        setSelectedCategory(null);
-      }
+      // 타입 변경 시 선택 초기화
+      setSelectedCategory(null);
     } catch (error) {
       console.error('Failed to load categories:', error);
     }
@@ -64,14 +86,23 @@ export default function AddTransactionScreen({ navigation }: any) {
     try {
       const accs = await database.getAccounts();
       setAccounts(accs);
-      if (accs.length > 0) {
+      if (accs.length > 0 && !selectedAccount) {
         setSelectedAccount(accs[0]);
-      } else {
-        setSelectedAccount(null);
       }
     } catch (error) {
       console.error('Failed to load accounts:', error);
     }
+  };
+
+  const handleAmountChange = (text: string) => {
+    // 숫자만 허용
+    const numericValue = text.replace(/[^0-9]/g, '');
+    setAmount(numericValue);
+  };
+
+  const formatAmount = (value: string): string => {
+    if (!value) return '';
+    return parseInt(value).toLocaleString('ko-KR');
   };
 
   const handleSubmit = async () => {
@@ -117,6 +148,7 @@ export default function AddTransactionScreen({ navigation }: any) {
             setAmount('');
             setDescription('');
             setDate(format(new Date(), 'yyyy-MM-dd'));
+            setSelectedCategory(null);
           },
         },
       ]);
@@ -128,6 +160,8 @@ export default function AddTransactionScreen({ navigation }: any) {
     }
   };
 
+  const isFormValid = amount && selectedCategory && selectedAccount;
+
   return (
     <>
     {/* 전면 광고 컴포넌트 */}
@@ -136,7 +170,7 @@ export default function AddTransactionScreen({ navigation }: any) {
       style={[styles.container, { backgroundColor: currentTheme.colors.background }]}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      {/* Dokterian 스타일 헤더 */}
+      {/* 헤더 */}
       <LinearGradient
         colors={currentTheme.gradients.header as [string, string]}
         style={[styles.header, { paddingTop: insets.top + theme.spacing.md }]}
@@ -150,179 +184,172 @@ export default function AddTransactionScreen({ navigation }: any) {
             <Ionicons name="menu" size={24} color="#fff" />
           </TouchableOpacity>
           <RNText style={styles.headerTitle}>거래 추가</RNText>
-        </View>
-
-        {/* 수입/지출 토글 */}
-        <View style={styles.typeToggle}>
-          <TouchableOpacity
-            style={[styles.typeBtn, type === 'income' && styles.typeBtnActiveIncome]}
-            onPress={() => setType('income')}
-          >
-            <Ionicons
-              name="trending-up"
-              size={20}
-              color={type === 'income' ? '#fff' : 'rgba(255,255,255,0.7)'}
-            />
-            <RNText style={[styles.typeBtnText, type === 'income' && styles.typeBtnTextActive]}>
-              수입
-            </RNText>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.typeBtn, type === 'expense' && styles.typeBtnActiveExpense]}
-            onPress={() => setType('expense')}
-          >
-            <Ionicons
-              name="trending-down"
-              size={20}
-              color={type === 'expense' ? '#fff' : 'rgba(255,255,255,0.7)'}
-            />
-            <RNText style={[styles.typeBtnText, type === 'expense' && styles.typeBtnTextActive]}>
-              지출
-            </RNText>
-          </TouchableOpacity>
+          <View style={styles.headerRightPlaceholder} />
         </View>
       </LinearGradient>
 
-      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
-        {/* 금액 입력 카드 */}
-        <View style={styles.card}>
-          <View style={styles.amountContainer}>
-            <RNText style={styles.amountLabel}>금액</RNText>
-            <View style={styles.amountInputContainer}>
-              <RNTextInput
-                style={styles.amountInput}
-                value={amount}
-                onChangeText={setAmount}
-                keyboardType="numeric"
-                placeholder="0"
-                placeholderTextColor={currentTheme.colors.textMuted}
-              />
-              <RNText style={styles.amountUnit}>원</RNText>
-            </View>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* 수입/지출 토글 */}
+        <View style={styles.typeToggleContainer}>
+          <TouchableOpacity
+            style={[
+              styles.typeBtn,
+              { backgroundColor: currentTheme.colors.surfaceVariant },
+              type === 'expense' && { backgroundColor: theme.colors.expense },
+            ]}
+            onPress={() => setType('expense')}
+          >
+            <Ionicons
+              name="remove"
+              size={18}
+              color={type === 'expense' ? '#fff' : currentTheme.colors.textSecondary}
+            />
+            <RNText style={[
+              styles.typeBtnText,
+              { color: currentTheme.colors.textSecondary },
+              type === 'expense' && styles.typeBtnTextActive,
+            ]}>
+              지출
+            </RNText>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              styles.typeBtn,
+              { backgroundColor: currentTheme.colors.surfaceVariant },
+              type === 'income' && { backgroundColor: theme.colors.income },
+            ]}
+            onPress={() => setType('income')}
+          >
+            <Ionicons
+              name="add"
+              size={18}
+              color={type === 'income' ? '#fff' : currentTheme.colors.textSecondary}
+            />
+            <RNText style={[
+              styles.typeBtnText,
+              { color: currentTheme.colors.textSecondary },
+              type === 'income' && styles.typeBtnTextActive,
+            ]}>
+              수입
+            </RNText>
+          </TouchableOpacity>
+        </View>
+
+        {/* 금액 입력 */}
+        <View style={styles.section}>
+          <RNText style={[styles.sectionLabel, { color: currentTheme.colors.textSecondary }]}>금액</RNText>
+          <View style={[styles.amountInputContainer, { borderColor: currentTheme.colors.border }]}>
+            <RNTextInput
+              style={[styles.amountInput, { color: currentTheme.colors.text }]}
+              value={amount}
+              onChangeText={handleAmountChange}
+              keyboardType="numeric"
+              placeholder="0"
+              placeholderTextColor={currentTheme.colors.textMuted}
+            />
+            <RNText style={[styles.amountUnit, { color: currentTheme.colors.textMuted }]}>원</RNText>
           </View>
+          {amount && (
+            <RNText style={[styles.amountFormatted, { color: currentTheme.colors.textSecondary }]}>
+              {formatAmount(amount)}원
+            </RNText>
+          )}
         </View>
 
         {/* 카테고리 선택 */}
-        <View style={styles.card}>
-          <RNText style={styles.label}>카테고리</RNText>
-          <Menu
-            visible={categoryMenuVisible}
-            onDismiss={() => setCategoryMenuVisible(false)}
-            anchor={
-              <TouchableOpacity
-                style={styles.selectButton}
-                onPress={() => setCategoryMenuVisible(true)}
-              >
-                {selectedCategory ? (
-                  <View style={styles.selectContent}>
-                    <View
-                      style={[styles.categoryDot, { backgroundColor: selectedCategory.color }]}
-                    />
-                    <RNText style={styles.selectText}>{selectedCategory.name}</RNText>
+        <View style={styles.section}>
+          <RNText style={[styles.sectionLabel, { color: currentTheme.colors.textSecondary }]}>카테고리</RNText>
+          <View style={styles.categoryGrid}>
+            {categories.map((category) => {
+              const isSelected = selectedCategory?.id === category.id;
+              return (
+                <TouchableOpacity
+                  key={category.id}
+                  style={[
+                    styles.categoryItem,
+                    { borderColor: currentTheme.colors.border },
+                    isSelected && { borderColor: currentTheme.colors.primary, backgroundColor: currentTheme.colors.primary + '10' },
+                  ]}
+                  onPress={() => setSelectedCategory(category)}
+                >
+                  <View style={[styles.categoryIconCircle, { backgroundColor: category.color }]}>
+                    <RNText style={styles.categoryEmoji}>{getCategoryEmoji(category.name)}</RNText>
                   </View>
-                ) : (
-                  <RNText style={styles.selectPlaceholder}>카테고리 선택</RNText>
-                )}
-                <Ionicons name="chevron-down" size={20} color={currentTheme.colors.textSecondary} />
-              </TouchableOpacity>
-            }
-          >
-            {categories.map((category) => (
-              <Menu.Item
-                key={category.id}
-                onPress={() => {
-                  setSelectedCategory(category);
-                  setCategoryMenuVisible(false);
-                }}
-                title={
-                  <View style={styles.menuItemContent}>
-                    <View style={[styles.categoryDot, { backgroundColor: category.color }]} />
-                    <RNText style={styles.menuItemText}>{category.name}</RNText>
-                  </View>
-                }
-              />
-            ))}
-          </Menu>
+                  <RNText style={[styles.categoryName, { color: currentTheme.colors.textSecondary }]} numberOfLines={1}>
+                    {category.name}
+                  </RNText>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
         </View>
 
         {/* 결제수단 선택 */}
-        <View style={styles.card}>
-          <RNText style={styles.label}>결제수단</RNText>
-          <Menu
-            visible={accountMenuVisible}
-            onDismiss={() => setAccountMenuVisible(false)}
-            anchor={
-              <TouchableOpacity
-                style={styles.selectButton}
-                onPress={() => setAccountMenuVisible(true)}
-              >
-                <View style={styles.selectContent}>
-                  <Ionicons name="wallet-outline" size={20} color={currentTheme.colors.primary} />
-                  <RNText style={styles.selectText}>
-                    {selectedAccount
-                      ? `${selectedAccount.name}${selectedAccount.last4 ? ` (*${selectedAccount.last4})` : ''}${selectedAccount.bankAccountName ? ` - ${selectedAccount.bankAccountName}` : ''}`
-                      : '결제수단 선택'}
+        <View style={styles.section}>
+          <RNText style={[styles.sectionLabel, { color: currentTheme.colors.textSecondary }]}>결제수단</RNText>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.accountsScroll}>
+            {accounts.map((account) => {
+              const isSelected = selectedAccount?.id === account.id;
+              return (
+                <TouchableOpacity
+                  key={account.id}
+                  style={[
+                    styles.accountChip,
+                    { backgroundColor: currentTheme.colors.surfaceVariant },
+                    isSelected && { backgroundColor: currentTheme.colors.primary },
+                  ]}
+                  onPress={() => setSelectedAccount(account)}
+                >
+                  <Ionicons
+                    name="wallet-outline"
+                    size={16}
+                    color={isSelected ? '#fff' : currentTheme.colors.textSecondary}
+                  />
+                  <RNText
+                    style={[
+                      styles.accountChipText,
+                      { color: currentTheme.colors.textSecondary },
+                      isSelected && { color: '#fff' },
+                    ]}
+                    numberOfLines={1}
+                  >
+                    {account.name}{account.last4 ? ` *${account.last4}` : ''}
                   </RNText>
-                </View>
-                <Ionicons name="chevron-down" size={20} color={currentTheme.colors.textSecondary} />
-              </TouchableOpacity>
-            }
-          >
-            {accounts.map((account) => (
-              <Menu.Item
-                key={account.id}
-                onPress={() => {
-                  setSelectedAccount(account);
-                  setAccountMenuVisible(false);
-                }}
-                title={`${account.name}${account.last4 ? ` (*${account.last4})` : ''}${account.bankAccountName ? ` - ${account.bankAccountName}` : ''}`}
-              />
-            ))}
-          </Menu>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
         </View>
 
-        {/* 날짜 입력 */}
-        <View style={styles.card}>
-          <RNText style={styles.label}>날짜</RNText>
-          <View style={styles.inputRow}>
-            <Ionicons name="calendar-outline" size={20} color={currentTheme.colors.primary} />
-            <TextInput
-              mode="flat"
+        {/* 날짜 */}
+        <View style={styles.section}>
+          <RNText style={[styles.sectionLabel, { color: currentTheme.colors.textSecondary }]}>날짜</RNText>
+          <View style={[styles.inputContainer, { borderColor: currentTheme.colors.border }]}>
+            <Ionicons name="calendar-outline" size={20} color={currentTheme.colors.textSecondary} />
+            <RNTextInput
+              style={[styles.textInput, { color: currentTheme.colors.text }]}
               value={date}
               onChangeText={setDate}
               placeholder="yyyy-MM-dd"
-              style={styles.flatInput}
-              underlineColor="transparent"
-              activeUnderlineColor="transparent"
-              autoCorrect={false}
-              autoComplete="off"
-              autoCapitalize="none"
-              spellCheck={false}
-              textContentType="none"
+              placeholderTextColor={currentTheme.colors.textMuted}
             />
           </View>
         </View>
 
-        {/* 메모 입력 */}
-        <View style={styles.card}>
-          <RNText style={styles.label}>메모 (선택)</RNText>
-          <View style={styles.memoContainer}>
-            <Ionicons name="document-text-outline" size={20} color={currentTheme.colors.primary} style={{ marginTop: 4 }} />
-            <TextInput
-              mode="flat"
+        {/* 메모 */}
+        <View style={styles.section}>
+          <RNText style={[styles.sectionLabel, { color: currentTheme.colors.textSecondary }]}>메모 (선택)</RNText>
+          <View style={[styles.inputContainer, { borderColor: currentTheme.colors.border }]}>
+            <RNTextInput
+              style={[styles.textInput, { color: currentTheme.colors.text }]}
               value={description}
               onChangeText={setDescription}
-              placeholder="메모를 입력하세요"
-              multiline
-              numberOfLines={3}
-              style={styles.memoInput}
-              underlineColor="transparent"
-              activeUnderlineColor="transparent"
-              autoCorrect={false}
-              autoComplete="off"
-              autoCapitalize="none"
-              spellCheck={false}
-              textContentType="none"
+              placeholder="메모를 입력하세요 (선택)"
+              placeholderTextColor={currentTheme.colors.textMuted}
             />
           </View>
         </View>
@@ -331,18 +358,15 @@ export default function AddTransactionScreen({ navigation }: any) {
         <TouchableOpacity
           style={[
             styles.submitButton,
-            { backgroundColor: type === 'income' ? currentTheme.colors.income : currentTheme.colors.expense },
+            isFormValid
+              ? { backgroundColor: currentTheme.colors.primary }
+              : { backgroundColor: currentTheme.colors.textMuted },
           ]}
           onPress={handleSubmit}
-          disabled={loading}
+          disabled={loading || !isFormValid}
         >
-          <Ionicons
-            name={type === 'income' ? 'add-circle' : 'remove-circle'}
-            size={24}
-            color="#fff"
-          />
           <RNText style={styles.submitButtonText}>
-            {loading ? '처리 중...' : `${type === 'income' ? '수입' : '지출'} 추가`}
+            {loading ? '처리 중...' : '추가하기'}
           </RNText>
         </TouchableOpacity>
 
@@ -368,47 +392,21 @@ const styles = StyleSheet.create({
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 16,
+    justifyContent: 'space-between',
   },
   menuButton: {
     padding: theme.spacing.xs,
-    marginRight: theme.spacing.sm,
+    width: 40,
   },
   headerTitle: {
     fontSize: theme.fontSize.xl,
     fontWeight: '700',
     color: '#fff',
-  },
-
-  // 유형 토글
-  typeToggle: {
-    flexDirection: 'row',
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    borderRadius: theme.borderRadius.lg,
-    padding: 4,
-  },
-  typeBtn: {
+    textAlign: 'center',
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    borderRadius: theme.borderRadius.md,
-    gap: 8,
   },
-  typeBtnActiveIncome: {
-    backgroundColor: theme.colors.income,
-  },
-  typeBtnActiveExpense: {
-    backgroundColor: theme.colors.expense,
-  },
-  typeBtnText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: 'rgba(255,255,255,0.7)',
-  },
-  typeBtnTextActive: {
-    color: '#fff',
+  headerRightPlaceholder: {
+    width: 40,
   },
 
   // 스크롤뷰
@@ -419,129 +417,136 @@ const styles = StyleSheet.create({
     padding: 20,
   },
 
-  // 카드
-  card: {
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.borderRadius.lg,
-    padding: 16,
-    marginBottom: 12,
-    ...theme.shadows.sm,
+  // 수입/지출 토글
+  typeToggleContainer: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 24,
   },
-  label: {
+  typeBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    borderRadius: theme.borderRadius.lg,
+    gap: 6,
+  },
+  typeBtnText: {
     fontSize: 14,
     fontWeight: '600',
-    color: theme.colors.textSecondary,
-    marginBottom: 12,
+  },
+  typeBtnTextActive: {
+    color: '#fff',
+  },
+
+  // 섹션
+  section: {
+    marginBottom: 24,
+  },
+  sectionLabel: {
+    fontSize: 14,
+    fontWeight: '500',
+    marginBottom: 10,
   },
 
   // 금액 입력
-  amountContainer: {
-    alignItems: 'center',
-  },
-  amountLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: theme.colors.textSecondary,
-    marginBottom: 8,
-  },
   amountInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    borderWidth: 1,
+    borderRadius: theme.borderRadius.lg,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
   },
   amountInput: {
-    fontSize: 36,
-    fontWeight: '700',
-    color: theme.colors.text,
-    textAlign: 'center',
-    minWidth: 120,
+    flex: 1,
+    fontSize: 28,
+    fontWeight: '600',
+    paddingRight: 8,
   },
   amountUnit: {
-    fontSize: 24,
-    fontWeight: '600',
-    color: theme.colors.textSecondary,
-    marginLeft: 8,
+    fontSize: 16,
+  },
+  amountFormatted: {
+    fontSize: 14,
+    marginTop: 8,
   },
 
-  // 선택 버튼
-  selectButton: {
+  // 카테고리 그리드
+  categoryGrid: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  categoryItem: {
+    width: '23%',
     alignItems: 'center',
-    justifyContent: 'space-between',
     paddingVertical: 12,
+    paddingHorizontal: 4,
+    borderWidth: 2,
+    borderRadius: theme.borderRadius.lg,
+  },
+  categoryIconCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: theme.borderRadius.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 6,
+  },
+  categoryEmoji: {
+    fontSize: 22,
+  },
+  categoryName: {
+    fontSize: 11,
+    fontWeight: '500',
+    textAlign: 'center',
+  },
+
+  // 결제수단
+  accountsScroll: {
+    flexDirection: 'row',
+  },
+  accountChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: theme.borderRadius.full,
+    marginRight: 8,
+    gap: 6,
+  },
+  accountChipText: {
+    fontSize: 13,
+    fontWeight: '500',
+  },
+
+  // 입력 필드
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderRadius: theme.borderRadius.lg,
     paddingHorizontal: 16,
-    backgroundColor: theme.colors.surfaceVariant,
-    borderRadius: theme.borderRadius.md,
+    paddingVertical: 14,
+    gap: 10,
   },
-  selectContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  selectText: {
-    fontSize: 15,
-    color: theme.colors.text,
-    marginLeft: 12,
-  },
-  selectPlaceholder: {
-    fontSize: 15,
-    color: theme.colors.textMuted,
-  },
-  categoryDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-  },
-  menuItemContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  menuItemText: {
-    fontSize: 15,
-    color: theme.colors.text,
-    marginLeft: 12,
-  },
-
-  // 입력 행
-  inputRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: theme.colors.surfaceVariant,
-    borderRadius: theme.borderRadius.md,
-    paddingLeft: 16,
-  },
-  flatInput: {
+  textInput: {
     flex: 1,
-    backgroundColor: 'transparent',
     fontSize: 15,
-  },
-
-  // 메모
-  memoContainer: {
-    flexDirection: 'row',
-    backgroundColor: theme.colors.surfaceVariant,
-    borderRadius: theme.borderRadius.md,
-    paddingLeft: 16,
-    paddingTop: 12,
-  },
-  memoInput: {
-    flex: 1,
-    backgroundColor: 'transparent',
-    fontSize: 15,
-    minHeight: 80,
   },
 
   // 제출 버튼
   submitButton: {
-    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 16,
     borderRadius: theme.borderRadius.lg,
     marginTop: 8,
-    gap: 8,
-    ...theme.shadows.md,
   },
   submitButtonText: {
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: '700',
     color: '#fff',
   },
